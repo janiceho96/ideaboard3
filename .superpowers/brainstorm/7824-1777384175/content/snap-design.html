@@ -1,0 +1,67 @@
+<h2>Here's how it will work</h2>
+<p class="subtitle">Drag → ghost appears at snap target → release → card lands there</p>
+
+<div class="section">
+  <div class="split">
+
+    <!-- State 1: Dragging near a card -->
+    <div class="mockup">
+      <div class="mockup-header">① Dragging near another card</div>
+      <div class="mockup-body" style="background:#ECEAE3;height:200px;position:relative;overflow:hidden;">
+        <!-- grid dots -->
+        <svg width="100%" height="100%" style="position:absolute;inset:0;" xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="gd1" width="40" height="40" patternUnits="userSpaceOnUse">
+            <circle cx="0" cy="0" r="1.2" fill="rgba(0,0,0,0.1)"/>
+          </pattern></defs>
+          <rect width="100%" height="100%" fill="url(#gd1)"/>
+        </svg>
+        <!-- Existing card -->
+        <div style="position:absolute;left:30px;top:30px;width:90px;height:60px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1B4D21;box-shadow:2px 2px 0 #1A1A2E;">Card A</div>
+        <!-- Ghost at snap target (aligned left edge with Card A) -->
+        <div style="position:absolute;left:30px;top:110px;width:90px;height:60px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#6C63FF;">snap here</div>
+        <!-- Snap zone ring around Card A -->
+        <div style="position:absolute;left:5px;top:5px;width:140px;height:110px;border:1.5px dashed rgba(108,99,255,0.3);border-radius:14px;"></div>
+        <div style="position:absolute;left:8px;top:118px;font-size:8px;color:#6C63FF;opacity:0.6;">← aligns left edge</div>
+        <!-- Card being dragged (cursor position) -->
+        <div style="position:absolute;left:60px;top:130px;width:90px;height:60px;background:#E8E0F5;border:2px solid #1A1A2E;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#3A2270;opacity:0.5;transform:rotate(2deg);box-shadow:4px 8px 20px rgba(0,0,0,0.2);">dragging</div>
+        <!-- cursor dot -->
+        <div style="position:absolute;left:104px;top:158px;width:8px;height:8px;background:#333;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.3);"></div>
+      </div>
+    </div>
+
+    <!-- State 2: Dropped far from any card -->
+    <div class="mockup">
+      <div class="mockup-header">② Dropped far away → grid snap</div>
+      <div class="mockup-body" style="background:#ECEAE3;height:200px;position:relative;overflow:hidden;">
+        <svg width="100%" height="100%" style="position:absolute;inset:0;" xmlns="http://www.w3.org/2000/svg">
+          <defs><pattern id="gd2" width="40" height="40" patternUnits="userSpaceOnUse">
+            <circle cx="0" cy="0" r="1.2" fill="rgba(0,0,0,0.1)"/>
+          </pattern></defs>
+          <rect width="100%" height="100%" fill="url(#gd2)"/>
+          <!-- Highlighted grid lines at snap point -->
+          <line x1="160" y1="0" x2="160" y2="200" stroke="#6C63FF" stroke-width="0.8" stroke-dasharray="4,4" opacity="0.4"/>
+          <line x1="0" y1="120" x2="320" y2="120" stroke="#6C63FF" stroke-width="0.8" stroke-dasharray="4,4" opacity="0.4"/>
+        </svg>
+        <!-- Existing card far away -->
+        <div style="position:absolute;left:20px;top:20px;width:90px;height:60px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1B4D21;box-shadow:2px 2px 0 #1A1A2E;">Card A</div>
+        <!-- Ghost at grid snap point -->
+        <div style="position:absolute;left:160px;top:120px;width:90px;height:60px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:#6C63FF;">grid snap</div>
+        <div style="position:absolute;left:162px;top:108px;font-size:8px;color:#6C63FF;opacity:0.7;">nearest grid point</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section">
+  <h3>What's being built</h3>
+  <ul style="color:var(--text-secondary);font-size:14px;line-height:2;">
+    <li>While dragging a card, the app checks for other cards within <strong>150px</strong></li>
+    <li>If a nearby card is found → ghost appears aligned to its left or top edge</li>
+    <li>If no nearby card → ghost snaps to nearest <strong>40px grid point</strong></li>
+    <li>On release → card moves to where the ghost was</li>
+    <li>No extra UI to configure — fully automatic</li>
+  </ul>
+</div>
+
+<p class="subtitle">Does this match what you had in mind?</p>

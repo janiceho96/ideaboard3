@@ -1,0 +1,79 @@
+<h2>Magnetic snap — 4 docking spots</h2>
+<p class="subtitle">Drop near a card and it clicks into the nearest open slot around it</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">The 4 positions a card can dock to around a neighbour</div>
+    <div class="mockup-body" style="background:#ECEAE3;height:280px;position:relative;overflow:hidden;">
+      <svg width="100%" height="100%" style="position:absolute;inset:0;" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="gdm" width="40" height="40" patternUnits="userSpaceOnUse">
+          <circle cx="0" cy="0" r="1.2" fill="rgba(0,0,0,0.1)"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#gdm)"/>
+      </svg>
+
+      <!-- Centre anchor card -->
+      <div style="position:absolute;left:170px;top:100px;width:100px;height:64px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#1B4D21;box-shadow:3px 3px 0 #1A1A2E;z-index:2;">Neighbour</div>
+
+      <!-- RIGHT slot -->
+      <div style="position:absolute;left:282px;top:100px;width:100px;height:64px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6C63FF;">
+        <span style="font-size:14px;">→</span>RIGHT
+      </div>
+
+      <!-- LEFT slot -->
+      <div style="position:absolute;left:58px;top:100px;width:100px;height:64px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6C63FF;">
+        <span style="font-size:14px;">←</span>LEFT
+      </div>
+
+      <!-- BELOW slot -->
+      <div style="position:absolute;left:170px;top:176px;width:100px;height:64px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6C63FF;">
+        <span style="font-size:14px;">↓</span>BELOW
+      </div>
+
+      <!-- ABOVE slot -->
+      <div style="position:absolute;left:170px;top:24px;width:100px;height:64px;background:rgba(108,99,255,0.12);border:2px dashed #6C63FF;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#6C63FF;">
+        <span style="font-size:14px;">↑</span>ABOVE
+      </div>
+
+      <!-- Gap labels -->
+      <div style="position:absolute;left:274px;top:124px;font-size:8px;color:#888;transform:rotate(90deg);transform-origin:center;">12px gap</div>
+      <div style="position:absolute;left:150px;top:124px;font-size:8px;color:#888;transform:rotate(90deg);transform-origin:center;">12px gap</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>How the closest slot is picked</h3>
+  <p style="color:var(--text-secondary);font-size:14px;line-height:1.8;">
+    When you release the card, it measures the distance from where you dropped it to each of the 4 slots around the nearest neighbour. Whichever slot is closest — that's where it lands. The ghost shows you in real time while dragging.
+  </p>
+</div>
+
+<div class="section">
+  <h3>One thing to confirm — gap size</h3>
+  <div class="options">
+    <div class="option" data-choice="tight" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Touching (0px gap)</h3>
+        <p>Cards sit right against each other. Very compact.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="small" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Small gap (12px)</h3>
+        <p>A little breathing room between cards. Recommended.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="medium" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content">
+        <h3>Wider gap (24px)</h3>
+        <p>More spacious. Easier to read at a glance.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle">Pick a gap size, then tell me in the terminal.</p>

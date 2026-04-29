@@ -1,0 +1,80 @@
+<h2>How should cards snap?</h2>
+<p class="subtitle">Three different snap behaviours — pick the one that feels right</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f5f0e8;padding:16px;position:relative;height:160px;overflow:hidden;">
+      <!-- Grid dots -->
+      <svg width="100%" height="100%" style="position:absolute;inset:0;" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="grid-a" width="32" height="32" patternUnits="userSpaceOnUse">
+          <circle cx="0" cy="0" r="1.5" fill="#c8c0b0"/>
+          <circle cx="32" cy="0" r="1.5" fill="#c8c0b0"/>
+          <circle cx="0" cy="32" r="1.5" fill="#c8c0b0"/>
+          <circle cx="32" cy="32" r="1.5" fill="#c8c0b0"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#grid-a)"/>
+      </svg>
+      <!-- Existing cards -->
+      <div style="position:absolute;left:16px;top:16px;width:70px;height:48px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#1B4D21;">Card A</div>
+      <div style="position:absolute;left:96px;top:16px;width:70px;height:48px;background:#FFF3B0;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#5C4009;">Card B</div>
+      <!-- Dropping card - snapping to grid -->
+      <div style="position:absolute;left:32px;top:80px;width:70px;height:48px;background:#E8E0F5;border:2px dashed #6C63FF;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#6C63FF;opacity:0.85;">→ snaps here</div>
+      <!-- snap indicator lines -->
+      <div style="position:absolute;left:32px;top:0;width:1px;height:100%;background:#6C63FF;opacity:0.3;"></div>
+      <div style="position:absolute;left:0;top:80px;width:100%;height:1px;background:#6C63FF;opacity:0.3;"></div>
+    </div>
+    <div class="card-body">
+      <h3>A — Fixed Grid</h3>
+      <p>The whole board has an invisible grid (e.g. every 40px). Cards always snap to the nearest grid point, wherever you drop them. Predictable and clean.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f5f0e8;padding:16px;position:relative;height:160px;overflow:hidden;">
+      <!-- Existing cards -->
+      <div style="position:absolute;left:16px;top:16px;width:70px;height:48px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#1B4D21;">Card A</div>
+      <div style="position:absolute;left:96px;top:16px;width:70px;height:48px;background:#FFF3B0;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#5C4009;">Card B</div>
+      <!-- Alignment guide lines from Card A -->
+      <div style="position:absolute;left:16px;top:80px;width:70px;height:1px;background:#6C63FF;opacity:0.5;"></div>
+      <!-- Dropping card - snapped to align with Card A -->
+      <div style="position:absolute;left:16px;top:82px;width:70px;height:48px;background:#E8E0F5;border:2px dashed #6C63FF;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#6C63FF;opacity:0.85;">aligns ↑</div>
+      <!-- Proximity radius around Card A -->
+      <div style="position:absolute;left:6px;top:6px;width:90px;height:68px;border:2px dashed rgba(108,99,255,0.25);border-radius:12px;"></div>
+      <div style="position:absolute;left:8px;top:74px;font-size:8px;color:#6C63FF;opacity:0.6;">snap zone</div>
+    </div>
+    <div class="card-body">
+      <h3>B — Align to Nearest Card</h3>
+      <p>When you drop a card within range of another card, it snaps to share the same left edge, top edge, or row. No global grid — cards line up with each other.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f5f0e8;padding:16px;position:relative;height:160px;overflow:hidden;">
+      <svg width="100%" height="100%" style="position:absolute;inset:0;" xmlns="http://www.w3.org/2000/svg">
+        <defs><pattern id="grid-c" width="32" height="32" patternUnits="userSpaceOnUse">
+          <circle cx="0" cy="0" r="1.5" fill="#c8c0b0"/>
+          <circle cx="32" cy="0" r="1.5" fill="#c8c0b0"/>
+          <circle cx="0" cy="32" r="1.5" fill="#c8c0b0"/>
+          <circle cx="32" cy="32" r="1.5" fill="#c8c0b0"/>
+        </pattern></defs>
+        <rect width="100%" height="100%" fill="url(#grid-c)"/>
+      </svg>
+      <!-- Existing cards -->
+      <div style="position:absolute;left:16px;top:16px;width:70px;height:48px;background:#D4EDD8;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#1B4D21;">Card A</div>
+      <div style="position:absolute;left:96px;top:16px;width:70px;height:48px;background:#FFF3B0;border:2px solid #1A1A2E;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#5C4009;">Card B</div>
+      <!-- Gap indicator -->
+      <div style="position:absolute;left:88px;top:22px;width:8px;height:36px;background:rgba(108,99,255,0.15);border-left:1px dashed #6C63FF;border-right:1px dashed #6C63FF;"></div>
+      <!-- Dropping card with same gap -->
+      <div style="position:absolute;left:32px;top:80px;width:70px;height:48px;background:#E8E0F5;border:2px dashed #6C63FF;border-radius:8px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#6C63FF;opacity:0.85;">+gap ✓</div>
+      <div style="position:absolute;left:28px;top:130px;font-size:8px;color:#6C63FF;opacity:0.7;">consistent spacing</div>
+    </div>
+    <div class="card-body">
+      <h3>C — Grid + Consistent Gap</h3>
+      <p>Snaps to the nearest grid AND tries to keep a consistent gap between cards (e.g. always 16px apart). Tidiest result but slightly more complex to implement.</p>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Click one to select, then tell me in the terminal. Option A is recommended — simplest and most reliable for a free-form board.</p>

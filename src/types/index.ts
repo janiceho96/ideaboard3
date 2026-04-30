@@ -45,3 +45,16 @@ export interface GoalTag {
 
 export type CardInsert = Omit<Card, 'id' | 'created_at' | 'updated_at'>
 export type GoalTagInsert = Omit<GoalTag, 'id' | 'created_at'>
+
+export interface SlideTile {
+  id: string
+  board_id: string
+  filename: string     // original PDF filename, shown in tile label
+  page_number: number  // 1-based
+  total_pages: number
+  x: number            // world-space position
+  y: number
+  width: number        // world-units; default 260
+  aspect_ratio: number // width/height ratio; tile height = width / aspect_ratio
+  created_at: string
+}

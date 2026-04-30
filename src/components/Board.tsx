@@ -5,6 +5,9 @@ import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
 import { snapPosition } from '../lib/snapPosition'
+import { useFramework } from '../hooks/useFramework'
+import type { FrameworkType } from '../hooks/useFramework'
+import FrameworkOverlay from './FrameworkOverlay'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
@@ -29,9 +32,12 @@ const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3
 const CARD_MIN_W = 140
 const CARD_MIN_H = 100
+const FRAMEWORK_MIN_W = 400
+const FRAMEWORK_MIN_H = 200
 
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
   const brd = useBoard(board.id)
+  const fw = useFramework(board.id)
 
   // Camera
   const [panX, setPanX] = useState(0)
@@ -62,6 +68,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeStartY = useRef(0)
   const resizeStartW = useRef(185)
   const resizeStartH = useRef<number | null>(null)
+  const resizeTarget = useRef<'card' | 'framework'>('card')
+  const fwRef = useRef(fw)
+  useEffect(() => { fwRef.current = fw })
 
   // Modal
   const [modalOpen, setModalOpen]     = useState(false)
@@ -76,6 +85,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // Colour picker
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
+  const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
 
   // Toast
   const [toast, setToast]   = useState<string | null>(null)
@@ -131,12 +141,22 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [zoom, panX, panY])
 
   const onResizeStart = useCallback((id: string, cx: number, cy: number, startW: number, startH: number | null) => {
+    resizeTarget.current  = 'card'
     isResizing.current    = true
     resizeCardId.current  = id
     resizeStartX.current  = cx
     resizeStartY.current  = cy
     resizeStartW.current  = startW
     resizeStartH.current  = startH
+  }, [])
+
+  const onFrameworkResizeStart = useCallback((e: React.MouseEvent) => {
+    isResizing.current   = true
+    resizeTarget.current = 'framework'
+    resizeStartX.current = e.clientX
+    resizeStartY.current = e.clientY
+    resizeStartW.current = fwRef.current.framework.width
+    resizeStartH.current = fwRef.current.framework.height
   }, [])
 
   useEffect(() => {
@@ -158,14 +178,21 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         if (dragTagId.current) brd.moveGoalTag(dragTagId.current, wx, wy)
         return
       }
-      if (isResizing.current && resizeCardId.current) {
+      if (isResizing.current) {
         const dx = (e.clientX - resizeStartX.current) / zoom
         const dy = (e.clientY - resizeStartY.current) / zoom
-        const newW = Math.max(CARD_MIN_W, resizeStartW.current + dx)
-        const newH = resizeStartH.current !== null
-          ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
-          : Math.max(CARD_MIN_H, 160 + dy)
-        brd.resizeCard(resizeCardId.current, newW, newH)
+        if (resizeTarget.current === 'framework') {
+          fwRef.current.setSize(
+            Math.max(FRAMEWORK_MIN_W, resizeStartW.current + dx),
+            Math.max(FRAMEWORK_MIN_H, (resizeStartH.current ?? 540) + dy),
+          )
+        } else if (resizeCardId.current) {
+          const newW = Math.max(CARD_MIN_W, resizeStartW.current + dx)
+          const newH = resizeStartH.current !== null
+            ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
+            : Math.max(CARD_MIN_H, 160 + dy)
+          brd.resizeCard(resizeCardId.current, newW, newH)
+        }
       }
     }
 
@@ -188,15 +215,24 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         setSnapGhost(null)
         return
       }
-      if (isResizing.current && resizeCardId.current) {
+      if (isResizing.current) {
         const dx = (e.clientX - resizeStartX.current) / zoom
         const dy = (e.clientY - resizeStartY.current) / zoom
-        const newW = Math.max(CARD_MIN_W, resizeStartW.current + dx)
-        const newH = resizeStartH.current !== null
-          ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
-          : Math.max(CARD_MIN_H, 160 + dy)
-        brd.commitCardResize(resizeCardId.current, newW, newH)
-        isResizing.current = false; resizeCardId.current = null
+        if (resizeTarget.current === 'framework') {
+          fwRef.current.commitSize(
+            Math.max(FRAMEWORK_MIN_W, resizeStartW.current + dx),
+            Math.max(FRAMEWORK_MIN_H, (resizeStartH.current ?? 540) + dy),
+          )
+        } else if (resizeCardId.current) {
+          const newW = Math.max(CARD_MIN_W, resizeStartW.current + dx)
+          const newH = resizeStartH.current !== null
+            ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
+            : Math.max(CARD_MIN_H, 160 + dy)
+          brd.commitCardResize(resizeCardId.current, newW, newH)
+        }
+        isResizing.current = false
+        resizeCardId.current = null
+        resizeTarget.current = 'card'
       }
     }
 
@@ -224,7 +260,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       const target = e.target as HTMLElement
       if (target.closest('input,textarea')) return
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩') }
-      if (e.key === 'Escape') setColourPicker(null)
+      if (e.key === 'Escape') { setColourPicker(null); setFrameworkDropdownOpen(false) }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         const cr = canvasRef.current?.getBoundingClientRect()
         if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) }
@@ -376,6 +412,47 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: topBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${topBdr}`, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, zIndex: 50 }}>
           <span style={{ fontSize: 12, color: subC }}>Boards /</span>
           <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: txtC }}>{board.name}</span>
+
+          {/* Framework picker dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setFrameworkDropdownOpen(o => !o)}
+              style={{ height: 28, padding: '0 10px', borderRadius: 7, border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, background: dark ? '#1A1A24' : 'white', color: dark ? '#aaa' : '#555', cursor: 'pointer', fontSize: 11, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5 }}
+            >
+              {fw.framework.type === 'blank'      && 'Blank Board'}
+              {fw.framework.type === 'eisenhower' && 'Eisenhower Matrix'}
+              {fw.framework.type === 'ooda'       && 'OODA Loop'}
+              <span style={{ fontSize: 9 }}>▾</span>
+            </button>
+
+            {frameworkDropdownOpen && (
+              <>
+                {/* Click-outside overlay */}
+                <div
+                  style={{ position: 'fixed', inset: 0, zIndex: 998 }}
+                  onClick={() => setFrameworkDropdownOpen(false)}
+                />
+                {/* Dropdown panel */}
+                <div style={{ position: 'absolute', top: 34, left: 0, zIndex: 999, background: dark ? '#1A1A24' : 'white', border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflow: 'hidden', minWidth: 190 }}>
+                  {([
+                    { key: 'blank',      label: 'Blank Board',        desc: 'Clean canvas, no overlay' },
+                    { key: 'eisenhower', label: 'Eisenhower Matrix',  desc: 'Urgent / Important grid' },
+                    { key: 'ooda',       label: 'OODA Loop',          desc: 'Observe → Orient → Decide → Act' },
+                  ] as { key: FrameworkType; label: string; desc: string }[]).map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => { fw.setType(opt.key); setFrameworkDropdownOpen(false) }}
+                      style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: fw.framework.type === opt.key ? (dark ? 'rgba(108,99,255,.15)' : 'rgba(108,99,255,.08)') : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 600, color: fw.framework.type === opt.key ? '#6C63FF' : (dark ? '#ddd' : '#1A1A2E') }}>{opt.label}</div>
+                      <div style={{ fontSize: 10, color: dark ? '#666' : '#999', marginTop: 1 }}>{opt.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           <div style={{ flex: 1 }}/>
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
             Double-click to add · Scroll to zoom · Drag to pan · N = new card
@@ -406,35 +483,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <div ref={worldRef}
             style={{ position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: `translate(${panX}px,${panY}px) scale(${zoom})` }}>
 
-            {/* Eisenhower Matrix */}
-            <div className="world-item" style={{ position: 'absolute', left: 60, top: 40, width: 640, height: 540 }}>
-              <div style={{ display: 'flex', padding: '0 0 6px 56px' }}>
-                {['Important','Not Important'].map((l,i)=>(
-                  <div key={l} style={{ flex:1, textAlign:'center', fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: i===0 ? (dark?'#666':'#999') : (dark?'#444':'#ccc') }}>{l}</div>
-                ))}
-              </div>
-              <div style={{ display:'flex', height:490 }}>
-                <div style={{ width:56, display:'flex', flexDirection:'column', justifyContent:'space-around', paddingRight:8 }}>
-                  {['Urgent','Not Urgent'].map((l,i)=>(
-                    <div key={l} style={{ fontSize:9, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color: i===0?(dark?'#666':'#999'):(dark?'#444':'#ccc'), writingMode:'vertical-rl', transform:'rotate(180deg)', textAlign:'center', height:'50%', display:'flex', alignItems:'center', justifyContent:'center' }}>{l}</div>
-                  ))}
-                </div>
-                <div style={{ flex:1, display:'grid', gridTemplateColumns:'1fr 1fr', gridTemplateRows:'1fr 1fr', gap:5 }}>
-                  {(['Do First','Schedule','Delegate','Eliminate'] as const).map((label,i)=>{
-                    const bgs = ['#D4EDD8','#FFF3B0','#FFD6C2','#E8E0F5']
-                    const tcs = ['#1B4D21','#5C4009','#6B2D0D','#3A2270']
-                    const qs  = ['Q1','Q2','Q3','Q4']
-                    const bg  = dark ? `${bgs[i]}22` : bgs[i]
-                    return (
-                      <div key={label} style={{ background:bg, borderRadius:15, border:`2px solid rgba(0,0,0,${dark?.04:.07})`, padding:13 }}>
-                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:10, fontWeight:700, letterSpacing:'.06em', textTransform:'uppercase', opacity:.45, marginBottom:3, color:tcs[i] }}>{qs[i]}</div>
-                        <div style={{ fontFamily:"'Syne',sans-serif", fontSize:15, fontWeight:800, color:tcs[i] }}>{label}</div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
+            {/* Framework overlay */}
+            <FrameworkOverlay
+              type={fw.framework.type}
+              width={fw.framework.width}
+              height={fw.framework.height}
+              dark={dark}
+              onResizeStart={onFrameworkResizeStart}
+            />
 
             {/* Cards */}
             {brd.cards.map(card => (

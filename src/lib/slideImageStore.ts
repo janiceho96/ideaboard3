@@ -3,17 +3,23 @@ const DB_NAME = 'ideaboard_db'
 const STORE_NAME = 'slide_images'
 const DB_VERSION = 1
 
+let _dbPromise: Promise<IDBDatabase> | null = null
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(STORE_NAME)) {
-        req.result.createObjectStore(STORE_NAME)
+  if (!_dbPromise) {
+    _dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION)
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(STORE_NAME)) {
+          req.result.createObjectStore(STORE_NAME)
+        }
       }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => { _dbPromise = null; reject(req.error) }
+      req.onblocked = () => reject(new Error('IndexedDB upgrade blocked by an open connection'))
+    })
+  }
+  return _dbPromise
 }
 
 export async function saveImage(id: string, dataUrl: string): Promise<void> {
@@ -21,8 +27,9 @@ export async function saveImage(id: string, dataUrl: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')
     tx.objectStore(STORE_NAME).put(dataUrl, id)
-    tx.oncomplete = () => { db.close(); resolve() }
-    tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'))
   })
 }
 
@@ -31,17 +38,22 @@ export async function getImage(id: string): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly')
     const req = tx.objectStore(STORE_NAME).get(id)
-    req.onsuccess = () => { db.close(); resolve((req.result as string | undefined) ?? null) }
-    req.onerror = () => { db.close(); reject(req.error) }
+    let value: string | null = null
+    req.onsuccess = () => { value = (req.result as string | undefined) ?? null }
+    tx.oncomplete = () => resolve(value)
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'))
   })
 }
 
+/** Resolves even if id was not found — IndexedDB delete is a no-op for missing keys */
 export async function deleteImage(id: string): Promise<void> {
   const db = await openDb()
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite')
     tx.objectStore(STORE_NAME).delete(id)
-    tx.oncomplete = () => { db.close(); resolve() }
-    tx.onerror = () => { db.close(); reject(tx.error) }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error ?? new Error('Transaction aborted'))
   })
 }

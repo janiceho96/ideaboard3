@@ -70,7 +70,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeStartH = useRef<number | null>(null)
   const resizeTarget = useRef<'card' | 'framework'>('card')
   const fwRef = useRef(fw)
-  useEffect(() => { fwRef.current = fw })
+  useEffect(() => { fwRef.current = fw }, [fw])
 
   // Modal
   const [modalOpen, setModalOpen]     = useState(false)

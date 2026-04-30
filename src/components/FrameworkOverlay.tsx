@@ -54,17 +54,17 @@ function EisenhowerMatrix({ width, height, dark }: { width: number; height: numb
       {/* Column labels */}
       <div style={{ display: 'flex', paddingLeft: labelW, paddingBottom: 6, height: labelH }}>
         {['Important', 'Not Important'].map((l, i) => (
-          <div key={l} style={{ flex: 1, textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: i === 0 ? (dark ? '#666' : '#999') : (dark ? '#444' : '#ccc') }}>
+          <div key={l} style={{ flex: 1, textAlign: 'center', fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: i === 0 ? (dark ? '#aaa' : '#999') : (dark ? '#666' : '#ccc') }}>
             {l}
           </div>
         ))}
       </div>
 
       {/* Row labels + grid */}
-      <div style={{ display: 'flex', height: height - labelH }}>
+      <div style={{ display: 'flex', height: Math.max(0, height - labelH) }}>
         <div style={{ width: labelW, display: 'flex', flexDirection: 'column', justifyContent: 'space-around', paddingRight: 8 }}>
           {['Urgent', 'Not Urgent'].map((l, i) => (
-            <div key={l} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: i === 0 ? (dark ? '#666' : '#999') : (dark ? '#444' : '#ccc'), writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div key={l} style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: i === 0 ? (dark ? '#aaa' : '#999') : (dark ? '#666' : '#ccc'), writingMode: 'vertical-rl', transform: 'rotate(180deg)', textAlign: 'center', height: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {l}
             </div>
           ))}
@@ -97,7 +97,7 @@ function OodaLoop({ width, height, dark }: { width: number; height: number; dark
     { label: 'Act',     sub: 'Execute & observe results',  bg: '#FFD6C2', tc: '#6B2D0D' },
   ]
   const arrowW = 28
-  const boxW = Math.floor((width - arrowW * 3) / 4)
+  const boxW = Math.max(40, Math.floor((width - arrowW * 3) / 4))
 
   return (
     <div style={{ display: 'flex', alignItems: 'stretch', height: '100%', gap: 0 }}>

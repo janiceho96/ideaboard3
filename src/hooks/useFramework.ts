@@ -19,14 +19,14 @@ const DEFAULTS: Record<FrameworkType, { width: number; height: number }> = {
 export function parseFrameworkSettings(raw: string | null): FrameworkSettings {
   if (!raw) return { type: 'eisenhower', ...DEFAULTS.eisenhower }
   try {
-    const parsed = JSON.parse(raw) as Partial<FrameworkSettings>
-    const type: FrameworkType = VALID_TYPES.includes(parsed.type as FrameworkType)
-      ? (parsed.type as FrameworkType)
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const type: FrameworkType = VALID_TYPES.includes(parsed['type'] as FrameworkType)
+      ? (parsed['type'] as FrameworkType)
       : 'eisenhower'
     return {
       type,
-      width:  typeof parsed.width  === 'number' ? parsed.width  : DEFAULTS[type].width,
-      height: typeof parsed.height === 'number' ? parsed.height : DEFAULTS[type].height,
+      width:  typeof parsed['width']  === 'number' ? parsed['width']  : DEFAULTS[type].width,
+      height: typeof parsed['height'] === 'number' ? parsed['height'] : DEFAULTS[type].height,
     }
   } catch {
     return { type: 'eisenhower', ...DEFAULTS.eisenhower }
@@ -64,7 +64,7 @@ export function useFramework(boardId: string) {
   const commitSize = useCallback((width: number, height: number) => {
     setFramework(prev => {
       const next = { ...prev, width, height }
-      save(boardId, next)
+      if (width > 0 && height > 0) save(boardId, next)
       return next
     })
   }, [boardId])

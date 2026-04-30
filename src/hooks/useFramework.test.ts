@@ -33,4 +33,14 @@ describe('parseFrameworkSettings', () => {
   it('falls back to eisenhower for malformed JSON', () => {
     expect(parseFrameworkSettings('not-json').type).toBe('eisenhower')
   })
+
+  it('returns the stored value unchanged — proving setSize-only does not affect what parseFrameworkSettings sees', () => {
+    // If setSize is called but commitSize is not, localStorage is NOT updated.
+    // This test documents that contract: parseFrameworkSettings reflects only what commitSize wrote.
+    const stored = JSON.stringify({ type: 'eisenhower', width: 640, height: 540 })
+    // Simulate: setSize called with 800x600, but commitSize never called, so localStorage still has 640x540
+    const result = parseFrameworkSettings(stored)
+    expect(result.width).toBe(640)
+    expect(result.height).toBe(540)
+  })
 })

@@ -1,5 +1,5 @@
 // src/components/SlideTile.tsx
-import { useState } from 'react'
+import React, { useState } from 'react'
 import type { SlideTile as SlideTileType } from '../types'
 
 interface SlideTileProps {
@@ -10,9 +10,11 @@ interface SlideTileProps {
   onDelete: (id: string) => void
 }
 
-export default function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete }: SlideTileProps) {
+const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete }: SlideTileProps) {
   const [hovered, setHovered] = useState(false)
-  const tileHeight = Math.round(tile.width / tile.aspect_ratio)
+  const tileHeight = tile.aspect_ratio > 0
+    ? Math.round(tile.width / tile.aspect_ratio)
+    : tile.width  // fall back to a square tile
 
   return (
     <div
@@ -51,7 +53,7 @@ export default function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete 
             <img
               src={imageUrl}
               alt={`${tile.filename} p.${tile.page_number}`}
-              style={{ width: '100%', height: '100%', display: 'block', objectFit: 'fill' }}
+              style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
               draggable={false}
             />
           )
@@ -74,6 +76,7 @@ export default function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete 
             onClick={e => { e.stopPropagation(); onDelete(tile.id) }}
             onMouseDown={e => e.stopPropagation()}
             title="Remove slide"
+            aria-label={`Remove slide ${tile.filename} page ${tile.page_number}`}
             style={{
               position: 'absolute', top: 5, right: 5,
               width: 20, height: 20,
@@ -109,4 +112,6 @@ export default function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete 
       </div>
     </div>
   )
-}
+})
+
+export default SlideTile

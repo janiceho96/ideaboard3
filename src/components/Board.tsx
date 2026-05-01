@@ -8,6 +8,11 @@ import { snapPosition } from '../lib/snapPosition'
 import { useFramework } from '../hooks/useFramework'
 import type { FrameworkType } from '../hooks/useFramework'
 import FrameworkOverlay from './FrameworkOverlay'
+import { useSlides } from '../hooks/useSlides'
+import { importPdf } from '../lib/pdfImport'
+import { saveImage, getImage, deleteImage } from '../lib/slideImageStore'
+import SlideTile from './SlideTile'
+import type { SlideTile as SlideTileType } from '../types'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
@@ -38,6 +43,9 @@ const FRAMEWORK_MIN_H = 200
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
   const brd = useBoard(board.id)
   const fw = useFramework(board.id)
+  const sld = useSlides(board.id)
+  const sldRef = useRef(sld)
+  useEffect(() => { sldRef.current = sld }, [sld])
 
   // Camera
   const [panX, setPanX] = useState(0)
@@ -69,6 +77,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeStartW = useRef(185)
   const resizeStartH = useRef<number | null>(null)
   const resizeTarget = useRef<'card' | 'framework'>('card')
+  const dragTileId = useRef<string | null>(null)
   const fwRef = useRef(fw)
   useEffect(() => { fwRef.current = fw }, [fw])
 
@@ -86,6 +95,31 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Colour picker
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
   const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
+  const [tileImages, setTileImages] = useState<Record<string, string>>({})
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  // Load tile images from IndexedDB when tiles are added or removed
+  const tileIdKey = sld.tiles.map(t => t.id).join(',')
+  useEffect(() => {
+    if (!sld.tiles.length) return
+    let cancelled = false
+    async function loadMissing() {
+      for (const tile of sld.tiles) {
+        if (cancelled) return
+        setTileImages(prev => {
+          if (prev[tile.id]) return prev  // already loaded
+          // Fire async load for this tile
+          getImage(tile.id).then(img => {
+            if (img && !cancelled) setTileImages(p => p[tile.id] ? p : { ...p, [tile.id]: img })
+          })
+          return prev
+        })
+      }
+    }
+    loadMissing()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tileIdKey])
 
   // Toast
   const [toast, setToast]   = useState<string | null>(null)
@@ -159,6 +193,88 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     resizeStartH.current = fwRef.current.framework.height
   }, [])
 
+  const onTileMoveStart = useCallback((id: string, cx: number, cy: number) => {
+    const tile = sld.tiles.find(t => t.id === id)
+    if (!tile) return
+    isDragging.current  = true
+    dragTileId.current  = id
+    dragCardId.current  = null
+    dragTagId.current   = null
+    snapZoom.current    = zoom
+    snapPanX.current    = panX
+    snapPanY.current    = panY
+    const cr = canvasRef.current!.getBoundingClientRect()
+    const mwx = (cx - cr.left - panX) / zoom
+    const mwy = (cy - cr.top  - panY) / zoom
+    dragOffWX.current = mwx - tile.x
+    dragOffWY.current = mwy - tile.y
+  }, [zoom, panX, panY, sld.tiles])
+
+  const handleDeleteTile = useCallback(async (id: string) => {
+    await deleteImage(id)
+    sld.removeTile(id)
+    setTileImages(prev => {
+      const next = { ...prev }
+      delete next[id]
+      return next
+    })
+  }, [sld])
+
+  const handleImportPdf = useCallback(async (files: FileList | null) => {
+    if (!files || !files.length) return
+    const cr = canvasRef.current?.getBoundingClientRect()
+    if (!cr) return
+    const { x: cx, y: cy } = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2)
+
+    const TILE_W = 260
+    const GAP    = 20
+    const COLS   = 4
+
+    let yOffset = cy
+    const newTiles: SlideTileType[] = []
+    const imageEntries: Array<{ id: string; dataUrl: string }> = []
+
+    for (const file of Array.from(files)) {
+      try {
+        const pages = await importPdf(file)
+        if (!pages.length) continue
+
+        const maxTileH = Math.max(...pages.map(p => TILE_W / p.aspectRatio))
+
+        pages.forEach((page, i) => {
+          const col = i % COLS
+          const row = Math.floor(i / COLS)
+          const tileH = TILE_W / page.aspectRatio
+          const id = crypto.randomUUID()
+          newTiles.push({
+            id,
+            board_id: board.id,
+            filename: file.name,
+            page_number: i + 1,
+            total_pages: pages.length,
+            x: cx + col * (TILE_W + GAP),
+            y: yOffset + row * (tileH + GAP),
+            width: TILE_W,
+            aspect_ratio: page.aspectRatio,
+            created_at: new Date().toISOString(),
+          })
+          imageEntries.push({ id, dataUrl: page.dataUrl })
+        })
+
+        const rows = Math.ceil(pages.length / COLS)
+        yOffset += rows * (maxTileH + GAP) + 40
+      } catch {
+        showToast(`Failed to import ${file.name}`)
+      }
+    }
+
+    if (!newTiles.length) return
+
+    await Promise.all(imageEntries.map(({ id, dataUrl }) => saveImage(id, dataUrl)))
+    sld.addTiles(newTiles)
+    showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
+  }, [board.id, screenToWorld, sld])
+
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       if (isPanning.current) {
@@ -176,6 +292,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           if (draggingCard) setSnapGhost(snapPosition(wx, wy, draggingCard, brd.cards))
         }
         if (dragTagId.current) brd.moveGoalTag(dragTagId.current, wx, wy)
+        if (dragTileId.current) sldRef.current.moveTile(dragTileId.current, wx, wy)
         return
       }
       if (isResizing.current) {
@@ -211,7 +328,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           brd.commitCardMove(dragCardId.current, finalPos.x, finalPos.y)
         }
         if (dragTagId.current) brd.commitGoalTagMove(dragTagId.current, wx, wy)
-        isDragging.current = false; dragCardId.current = null; dragTagId.current = null
+        if (dragTileId.current) sldRef.current.commitTileMove(dragTileId.current, wx, wy)
+        isDragging.current = false
+        dragCardId.current = null
+        dragTagId.current = null
+        dragTileId.current = null
         setSnapGhost(null)
         return
       }
@@ -390,6 +511,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         </SbBtn>
 
+        <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </SbBtn>
+        <input
+          ref={pdfInputRef}
+          type="file"
+          accept=".pdf"
+          multiple
+          style={{ display: 'none' }}
+          onChange={e => { handleImportPdf(e.target.files); e.target.value = '' }}
+        />
+
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
         </SbBtn>
@@ -491,6 +624,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               dark={dark}
               onResizeStart={onFrameworkResizeStart}
             />
+
+            {/* Slide tiles */}
+            {sld.tiles.map(tile => (
+              <SlideTile
+                key={tile.id}
+                tile={tile}
+                imageUrl={tileImages[tile.id] ?? null}
+                dark={dark}
+                onMoveStart={onTileMoveStart}
+                onDelete={handleDeleteTile}
+              />
+            ))}
 
             {/* Cards */}
             {brd.cards.map(card => (

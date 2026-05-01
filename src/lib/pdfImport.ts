@@ -41,8 +41,10 @@ const defaultCanvasMaker: CanvasMaker = {
     const canvas = document.createElement('canvas')
     canvas.width = w
     canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('pdfImport: could not acquire 2D canvas context')
     return {
-      ctx: canvas.getContext('2d')!,
+      ctx,
       toDataURL: () => canvas.toDataURL('image/png'),
     }
   },
@@ -52,6 +54,8 @@ async function defaultPdfjsLoader(): Promise<PdfjsLib> {
   const lib = await import(
     /* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs'
   ) as unknown as PdfjsLib
+  lib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'
   return lib
 }
 
@@ -63,8 +67,6 @@ export async function importPdf(
   pdfjsLoader: () => Promise<PdfjsLib> = defaultPdfjsLoader,
 ): Promise<RenderedPage[]> {
   const pdfjsLib = await pdfjsLoader()
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'
 
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise

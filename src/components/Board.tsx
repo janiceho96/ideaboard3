@@ -103,20 +103,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   useEffect(() => {
     if (!sld.tiles.length) return
     let cancelled = false
-    async function loadMissing() {
-      for (const tile of sld.tiles) {
-        if (cancelled) return
-        setTileImages(prev => {
-          if (prev[tile.id]) return prev  // already loaded
-          // Fire async load for this tile
-          getImage(tile.id).then(img => {
-            if (img && !cancelled) setTileImages(p => p[tile.id] ? p : { ...p, [tile.id]: img })
-          })
-          return prev
-        })
-      }
+    for (const tile of sld.tiles) {
+      if (tileImages[tile.id]) continue   // already in state — skip
+      getImage(tile.id).then(img => {
+        if (img && !cancelled)
+          setTileImages(p => p[tile.id] ? p : { ...p, [tile.id]: img })
+      })
     }
-    loadMissing()
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tileIdKey])
@@ -211,14 +204,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [zoom, panX, panY, sld.tiles])
 
   const handleDeleteTile = useCallback(async (id: string) => {
-    await deleteImage(id)
-    sld.removeTile(id)
+    try {
+      await deleteImage(id)
+    } catch {
+      // Best effort — still remove tile from board
+    }
+    sldRef.current.removeTile(id)
     setTileImages(prev => {
       const next = { ...prev }
       delete next[id]
       return next
     })
-  }, [sld])
+  }, [])
 
   const handleImportPdf = useCallback(async (files: FileList | null) => {
     if (!files || !files.length) return
@@ -271,9 +268,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     if (!newTiles.length) return
 
     await Promise.all(imageEntries.map(({ id, dataUrl }) => saveImage(id, dataUrl)))
-    sld.addTiles(newTiles)
+    sldRef.current.addTiles(newTiles)
     showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
-  }, [board.id, screenToWorld, sld])
+  }, [board.id, screenToWorld])
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {

@@ -16,7 +16,7 @@ function openDb(): Promise<IDBDatabase> {
       }
       req.onsuccess = () => resolve(req.result)
       req.onerror = () => { _dbPromise = null; reject(req.error) }
-      req.onblocked = () => reject(new Error('IndexedDB upgrade blocked by an open connection'))
+      req.onblocked = () => { _dbPromise = null; reject(new Error('IndexedDB upgrade blocked by another tab')) }
     })
   }
   return _dbPromise

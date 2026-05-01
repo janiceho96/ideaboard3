@@ -267,7 +267,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
     if (!newTiles.length) return
 
-    await Promise.all(imageEntries.map(({ id, dataUrl }) => saveImage(id, dataUrl)))
+    try {
+      await Promise.all(imageEntries.map(({ id, dataUrl }) => saveImage(id, dataUrl)))
+    } catch {
+      // Rollback any images that were saved before the failure
+      await Promise.allSettled(imageEntries.map(({ id }) => deleteImage(id)))
+      showToast('Import failed — storage may be full')
+      return
+    }
     sldRef.current.addTiles(newTiles)
     showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
   }, [board.id, screenToWorld])

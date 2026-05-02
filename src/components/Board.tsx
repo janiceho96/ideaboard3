@@ -1012,10 +1012,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
       {/* Keyboard shortcuts overlay */}
       {showShortcuts && (
-        <div style={{
+        <div
+          role="dialog"
+          aria-modal={true}
+          aria-label="Keyboard shortcuts"
+          style={{
           position: 'fixed',
           right: 20,
-          bottom: 80,
+          bottom: 170,
           zIndex: 500,
           background: 'rgba(26,26,46,0.95)',
           backdropFilter: 'blur(8px)',
@@ -1031,6 +1035,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             <span style={{ fontWeight: 700, fontSize: 14 }}>Keyboard Shortcuts</span>
             <button
               onClick={() => setShowShortcuts(false)}
+              aria-label="Close shortcuts"
               style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
             >×</button>
           </div>
@@ -1043,8 +1048,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               ['Shift + arrows', 'Pan faster'],
               ['+  /  -',    'Zoom in / out'],
               ['0',          'Reset zoom'],
-            ] as [string, string][]).map(([key, desc], i) => (
-              <Fragment key={i}>
+            ] as [string, string][]).map(([key, desc]) => (
+              <Fragment key={key}>
                 <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
                 <span style={{ opacity: 0.85 }}>{desc}</span>
               </Fragment>
@@ -1056,10 +1061,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             {([
               ['N',        'New card'],
               ['Esc',      'Deselect / close'],
-              ['Delete',   'Delete selected card'],
+              ['Del / Backspace', 'Delete selected card'],
               ['Ctrl + Z', 'Undo'],
-            ] as [string, string][]).map(([key, desc], i) => (
-              <Fragment key={i}>
+            ] as [string, string][]).map(([key, desc]) => (
+              <Fragment key={key}>
                 <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
                 <span style={{ opacity: 0.85 }}>{desc}</span>
               </Fragment>
@@ -1067,7 +1072,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </div>
 
           <div style={{ opacity: 0.4, fontSize: 11, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
-            Press <span style={{ fontFamily: 'monospace' }}>?</span> to close
+            Press <span style={{ fontFamily: 'monospace' }}>?</span> or <span style={{ fontFamily: 'monospace' }}>Esc</span> to close
           </div>
         </div>
       )}

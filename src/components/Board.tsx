@@ -87,6 +87,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const fwRef = useRef(fw)
   useEffect(() => { fwRef.current = fw }, [fw])
 
+  // Selection
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+
   // Modal
   const [modalOpen, setModalOpen]     = useState(false)
   const [editingCard, setEditingCard] = useState<Card | null>(null)
@@ -139,6 +142,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const onCanvasMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
+    setSelectedCardId(null)
     if (e.ctrlKey) {
       isCtrlPanning.current = true
       setCtrlPanActive(true)
@@ -152,6 +156,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }
 
   const onCardMoveStart = useCallback((id: string, cx: number, cy: number) => {
+    setSelectedCardId(id)
     isDragging.current  = true
     dragCardId.current  = id
     dragTagId.current   = null
@@ -447,7 +452,19 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         return
       }
 
-      if (e.key === 'Escape') { setColourPicker(null); setFrameworkDropdownOpen(false) }
+      if (e.key === 'Escape') {
+        setColourPicker(null)
+        setFrameworkDropdownOpen(false)
+        setSelectedCardId(null)
+        setModalOpen(false)
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+        if (selectedCardId) {
+          e.preventDefault()
+          brd.removeCard(selectedCardId).then(() => showToast('Card deleted'))
+          setSelectedCardId(null)
+        }
+      }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         const cr = canvasRef.current?.getBoundingClientRect()
         if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) }
@@ -455,7 +472,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [brd, screenToWorld])
+  }, [brd, screenToWorld, selectedCardId])
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
@@ -846,6 +863,28 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   pointerEvents: 'none',
                   zIndex: 19,
                   boxSizing: 'border-box',
+                }} />
+              )
+            })()}
+
+            {/* Selection ring */}
+            {selectedCardId && (() => {
+              const card = brd.cards.find(c => c.id === selectedCardId)
+              if (!card) return null
+              return (
+                <div style={{
+                  position: 'absolute',
+                  left: card.x - 5,
+                  top: card.y - 5,
+                  width: (card.card_width ?? 185) + 10,
+                  height: card.card_height ? card.card_height + 10 : undefined,
+                  minHeight: card.card_height ? undefined : 110,
+                  border: '2px solid #49B6E5',
+                  borderRadius: 18,
+                  pointerEvents: 'none',
+                  zIndex: 21,
+                  boxSizing: 'border-box',
+                  boxShadow: '0 0 0 3px rgba(73,182,229,0.15)',
                 }} />
               )
             })()}

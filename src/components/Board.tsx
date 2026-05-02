@@ -421,6 +421,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     setExporting(true)
     showToast('Generating PDF…')
     try {
+      // Dynamically import so bundle stays small
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
@@ -478,7 +479,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const topBdr = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.08)'
   const txtC   = dark ? '#F0EEE8' : '#1A1A2E'
   const subC   = dark ? '#666'    : '#999'
-  const cvBg   = dark ? '#0F0F14' : '#ECEAE3'
+  const cvBg   = dark ? '#0F0F14' : '#faf8f0'
   const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)'
 
   if (brd.loading) return <Centered dark={dark}>Loading board…</Centered>

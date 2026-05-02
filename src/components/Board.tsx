@@ -1,5 +1,5 @@
 // src/components/Board.tsx
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import type { LocalUser, Board as BoardType, Card, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
@@ -104,6 +104,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Colour picker
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
   const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
@@ -457,6 +458,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         setFrameworkDropdownOpen(false)
         setSelectedCardId(null)
         setModalOpen(false)
+        setShowShortcuts(false)
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         if (selectedCardId) {
@@ -471,6 +473,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         const cr = canvasRef.current?.getBoundingClientRect()
         if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) }
       }
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -1004,6 +1007,68 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background: dark?'#25252F':'#1A1A2E',color:'white',borderRadius:10,padding:'10px 20px',fontSize:13,fontFamily:"'DM Sans',sans-serif",zIndex:2000,display:'flex',alignItems:'center',gap:10,boxShadow:'0 8px 24px rgba(0,0,0,.2)' }}>
           {toast}
           <button onClick={() => { brd.undo(); showToast('Undone ↩') }} style={{ background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,padding:'2px 9px',cursor:'pointer',fontSize:11,color:'white',fontFamily:"'DM Sans',sans-serif" }}>Undo</button>
+        </div>
+      )}
+
+      {/* Keyboard shortcuts overlay */}
+      {showShortcuts && (
+        <div style={{
+          position: 'fixed',
+          right: 20,
+          bottom: 80,
+          zIndex: 500,
+          background: 'rgba(26,26,46,0.95)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: 12,
+          padding: '16px 20px',
+          color: '#fff',
+          fontSize: 13,
+          width: 290,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          fontFamily: "'DM Sans',sans-serif",
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>Keyboard Shortcuts</span>
+            <button
+              onClick={() => setShowShortcuts(false)}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
+            >×</button>
+          </div>
+
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5, marginBottom: 8 }}>Navigation</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', alignItems: 'center', marginBottom: 14 }}>
+            {([
+              ['Ctrl + drag', 'Pan with mouse'],
+              ['↑ ↓ ← →',    'Pan canvas'],
+              ['Shift + arrows', 'Pan faster'],
+              ['+  /  -',    'Zoom in / out'],
+              ['0',          'Reset zoom'],
+            ] as [string, string][]).map(([key, desc], i) => (
+              <Fragment key={i}>
+                <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
+                <span style={{ opacity: 0.85 }}>{desc}</span>
+              </Fragment>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5, marginBottom: 8 }}>Cards</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', alignItems: 'center', marginBottom: 14 }}>
+            {([
+              ['N',        'New card'],
+              ['Esc',      'Deselect / close'],
+              ['Delete',   'Delete selected card'],
+              ['Ctrl + Z', 'Undo'],
+            ] as [string, string][]).map(([key, desc], i) => (
+              <Fragment key={i}>
+                <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
+                <span style={{ opacity: 0.85 }}>{desc}</span>
+              </Fragment>
+            ))}
+          </div>
+
+          <div style={{ opacity: 0.4, fontSize: 11, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
+            Press <span style={{ fontFamily: 'monospace' }}>?</span> to close
+          </div>
         </div>
       )}
     </div>

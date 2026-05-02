@@ -1,6 +1,6 @@
 // src/hooks/useBoard.ts
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Card, GoalTag, TagType } from '../types'
+import type { Card, CardInsert, GoalTag, TagType } from '../types'
 import * as db from '../lib/db'
 
 interface UseBoardReturn {
@@ -18,6 +18,7 @@ interface UseBoardReturn {
   commitCardResize: (id: string, w: number, h: number | null) => Promise<void>
   removeCard: (id: string) => Promise<void>
   duplicateCard: (id: string) => Promise<void>
+  bulkImportCards: (inserts: CardInsert[]) => Promise<void>
   moveGoalTag: (id: string, x: number, y: number) => void
   commitGoalTagMove: (id: string, x: number, y: number) => Promise<void>
   removeGoalTag: (id: string) => Promise<void>
@@ -137,6 +138,13 @@ export function useBoard(boardId: string | null): UseBoardReturn {
     setCards(prev => [...prev, newCard])
   }, [activeBoardId, cards, goalTags, pushHistory])
 
+  const bulkImportCards = useCallback(async (inserts: CardInsert[]) => {
+    if (!activeBoardId) return
+    setCards(prev => { pushHistory(prev, goalTags); return prev })
+    const newCards = await Promise.all(inserts.map(insert => db.createCard(insert)))
+    setCards(prev => [...prev, ...newCards])
+  }, [activeBoardId, goalTags, pushHistory])
+
   const moveGoalTag = useCallback((id: string, x: number, y: number) => {
     setGoalTags(prev => prev.map(t => t.id === id ? { ...t, x, y } : t))
   }, [])
@@ -155,6 +163,7 @@ export function useBoard(boardId: string | null): UseBoardReturn {
     boardId: activeBoardId, boardName, loading, error,
     addCard, updateCard, moveCard, commitCardMove,
     resizeCard, commitCardResize, removeCard, duplicateCard,
+    bulkImportCards,
     moveGoalTag, commitGoalTagMove, removeGoalTag,
     undo, canUndo,
   }

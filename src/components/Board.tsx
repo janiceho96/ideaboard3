@@ -54,6 +54,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const canvasRef    = useRef<HTMLDivElement>(null)
   const worldRef     = useRef<HTMLDivElement>(null)
+  const zoomRef      = useRef(zoom)
+  useEffect(() => { zoomRef.current = zoom }, [zoom])
 
   // Pan
   const isPanning    = useRef(false)
@@ -401,8 +403,50 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (target.closest('input,textarea')) return
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩') }
+      if (target.closest('input,textarea,[contenteditable]')) return
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩'); return }
+
+      // Arrow key pan
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+        if (e.ctrlKey || e.metaKey) return
+        e.preventDefault()
+        const step = e.shiftKey ? 100 : 20
+        if (e.key === 'ArrowLeft')  setPanX(px => px + step)
+        if (e.key === 'ArrowRight') setPanX(px => px - step)
+        if (e.key === 'ArrowUp')    setPanY(py => py + step)
+        if (e.key === 'ArrowDown')  setPanY(py => py - step)
+        return
+      }
+
+      // Zoom shortcuts
+      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        const cr = canvasRef.current?.getBoundingClientRect()
+        if (!cr) return
+        const cx = cr.width / 2, cy = cr.height / 2
+        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 1.2))
+        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
+        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
+        setZoom(nz)
+        return
+      }
+      if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        const cr = canvasRef.current?.getBoundingClientRect()
+        if (!cr) return
+        const cx = cr.width / 2, cy = cr.height / 2
+        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 0.8))
+        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
+        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
+        setZoom(nz)
+        return
+      }
+      if (e.key === '0' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        setPanX(0); setPanY(0); setZoom(1)
+        return
+      }
+
       if (e.key === 'Escape') { setColourPicker(null); setFrameworkDropdownOpen(false) }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         const cr = canvasRef.current?.getBoundingClientRect()

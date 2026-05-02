@@ -417,18 +417,17 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── PDF Export ──────────────────────────────────────────────
   const exportPDF = async () => {
-    if (!worldRef.current) return
+    if (!canvasRef.current) return
     setExporting(true)
     showToast('Generating PDF…')
     try {
-      // Dynamically import so bundle stays small
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
-      const canvas = await html2canvas(worldRef.current, {
+      const canvas = await html2canvas(canvasRef.current, {
         scale: 1.5,
-        backgroundColor: dark ? '#0F0F14' : '#ECEAE3',
+        backgroundColor: dark ? '#0F0F14' : '#faf8f0',
         useCORS: true,
         logging: false,
       })
@@ -437,7 +436,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
       pdf.save(`${board.name}.pdf`)
       showToast('PDF downloaded ✓')
-    } catch {
+    } catch (err) {
+      console.error('Export failed:', err)
       showToast('Export failed — try again')
     } finally {
       setExporting(false)
@@ -474,12 +474,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── Theme colours ───────────────────────────────────────────
   const sbBg   = dark ? '#0D0D12' : '#141418'
-  const topBg  = dark ? 'rgba(13,13,18,.94)' : 'rgba(248,246,240,.94)'
-  const topBdr = dark ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.08)'
-  const txtC   = dark ? '#F0EEE8' : '#1A1A2E'
+  const topBg  = dark ? 'rgba(13,13,18,.94)' : 'rgba(253,252,245,0.97)'
+  const topBdr = dark ? 'rgba(255,255,255,.06)' : '#e8e4d9'
   const subC   = dark ? '#666'    : '#999'
-  const cvBg   = dark ? '#0F0F14' : '#ECEAE3'
-  const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)'
+  const cvBg   = dark ? '#0F0F14' : '#faf8f0'
+  const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,0.16)'
 
   if (brd.loading) return <Centered dark={dark}>Loading board…</Centered>
   if (brd.error)   return <Centered dark={dark} error>{brd.error}</Centered>
@@ -488,35 +487,35 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'DM Sans',sans-serif" }}>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{ width: 68, background: sbBg, borderRight: `1px solid ${dark ? '#1A1A22' : '#2A2A32'}`, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 2, flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: 38, height: 38, background: 'linear-gradient(135deg,#6C63FF,#E040FB)', borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: 'white', marginBottom: 14 }}>I</div>
+      <aside style={{ width: 68, background: sbBg, borderRight: '1px solid #1A1A22', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 2, flexShrink: 0, zIndex: 100 }}>
+        <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg,#49B6E5,#263D5B)', borderRadius: 10, border: '2px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Delius Swash Caps',cursive", fontWeight: 800, fontSize: 16, color: 'white', marginBottom: 12 }}>I</div>
 
         <SbBtn title="Back to boards" onClick={onBack} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
         </SbBtn>
 
-        <div style={{ width: 28, height: 1, background: dark ? '#1A1A22' : '#2A2A32', margin: '4px 0' }}/>
+        <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
 
         <SbBtn title="New Card (N)" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
         </SbBtn>
 
         <SbBtn title="Fit all cards in view" onClick={fitAll} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         </SbBtn>
 
         <SbBtn title="Reset to 100%" onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </SbBtn>
 
-        <div style={{ width: 28, height: 1, background: dark ? '#1A1A22' : '#2A2A32', margin: '4px 0' }}/>
+        <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
 
         <SbBtn title="Export as PDF" onClick={exportPDF} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10v6m0 0l-3-3m3 3l3-3"/><path d="M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
         </SbBtn>
 
         <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/><polyline points="8 8 12 4 16 8"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
         </SbBtn>
         <input
           ref={pdfInputRef}
@@ -528,13 +527,16 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         />
 
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
         </SbBtn>
 
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 28, height: 1, background: dark ? '#1A1A22' : '#2A2A32', marginBottom: 4 }}/>
+          <div style={{ width: 28, height: 1, background: '#1A1A22', marginBottom: 4 }}/>
           <SbBtn title="Toggle dark mode" onClick={onToggleDark} dark={dark}>
-            <span style={{ fontSize: 14 }}>{dark ? '☀️' : '🌙'}</span>
+            {dark
+              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            }
           </SbBtn>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6C63FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'white', border: `2px solid ${dark ? '#1A1A22' : '#2A2A32'}` }}>
             {user.email?.[0]?.toUpperCase() ?? 'U'}
@@ -547,14 +549,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
         {/* Topbar */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: topBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${topBdr}`, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, zIndex: 50 }}>
-          <span style={{ fontSize: 12, color: subC }}>Boards /</span>
-          <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: txtC }}>{board.name}</span>
+          <span style={{ fontSize: 12, color: subC, fontFamily: "'Delius',cursive" }}>Boards /</span>
+          <span style={{ fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, fontSize: 15, color: dark ? '#F0EEE8' : '#263D5B' }}>{board.name}</span>
 
           {/* Framework picker dropdown */}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setFrameworkDropdownOpen(o => !o)}
-              style={{ height: 28, padding: '0 10px', borderRadius: 7, border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, background: dark ? '#1A1A24' : 'white', color: dark ? '#aaa' : '#555', cursor: 'pointer', fontSize: 11, fontFamily: "'DM Sans',sans-serif", display: 'flex', alignItems: 'center', gap: 5 }}
+              style={{ height: 28, padding: '0 10px', borderRadius: 20, border: `1.5px solid ${dark ? '#49B6E5' : '#263D5B'}`, background: 'transparent', color: dark ? '#49B6E5' : '#263D5B', cursor: 'pointer', fontSize: 10, fontFamily: "'Delius Swash Caps',cursive", display: 'flex', alignItems: 'center', gap: 5 }}
             >
               {fw.framework.type === 'blank'      && 'Blank Board'}
               {fw.framework.type === 'eisenhower' && 'Eisenhower Matrix'}
@@ -595,7 +597,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             Double-click to add · Scroll to zoom · Drag to pan · N = new card
           </span>
           <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
-            style={{ height: 30, padding: '0 14px', borderRadius: 7, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}>
+            style={{ height: 30, padding: '0 14px', borderRadius: 8, border: '2px solid #263D5B', background: '#49B6E5', color: 'white', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, boxShadow: '2px 2px 0 #263D5B' }}>
             + Add Card
           </button>
         </div>
@@ -611,8 +613,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             overflow: 'hidden',
             backgroundColor: cvBg,
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
-            backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
-            backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
+            backgroundSize: `${22 * zoom}px ${22 * zoom}px`,
+            backgroundPosition: `${panX % (22 * zoom)}px ${panY % (22 * zoom)}px`,
             cursor: 'crosshair',
           }}
         >
@@ -718,7 +720,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               }} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:17,color:dark?'#ccc':'#555',background:'none',border:'none' }}>{sym}</button>
             ))}
             <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
-            <div style={{ width:34,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:dark?'#666':'#888',fontFamily:"'DM Sans',sans-serif" }}>{Math.round(zoom*100)}%</div>
+            <div style={{ width:34,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:dark?'#666':'#888',fontFamily:"'Delius Swash Caps',cursive" }}>{Math.round(zoom*100)}%</div>
             <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
             <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#666':'#888',background:'none',border:'none' }}>1:1</button>
           </div>
@@ -734,7 +736,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </div>
 
           {/* World coords */}
-          <div style={{ position:'absolute',left:18,bottom:22,fontSize:10,color:dark?'#444':subC,fontFamily:"'DM Sans',sans-serif",background: dark?'rgba(26,26,36,.8)':'rgba(255,255,255,.8)',padding:'3px 8px',borderRadius:6,border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.06)'}` }}>
+          <div style={{ position:'absolute',left:18,bottom:22,fontSize:10,color:dark?'#444':subC,fontFamily:"'JetBrains Mono',monospace",background: dark?'rgba(26,26,36,.8)':'rgba(255,255,255,.8)',padding:'3px 8px',borderRadius:6,border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.06)'}` }}>
             {Math.round(-panX/zoom)}, {Math.round(-panY/zoom)}
           </div>
 
@@ -816,12 +818,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   )
 }
 
-function SbBtn({ children, title, onClick, dark }: { children: React.ReactNode; title: string; onClick: () => void; dark: boolean }) {
+function SbBtn({ children, title, onClick }: { children: React.ReactNode; title: string; onClick: () => void; dark?: boolean }) {
   return (
     <button title={title} onClick={onClick}
-      style={{ width:42,height:42,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#555',background:'none',border:'none',transition:'background .15s,color .15s' }}
-      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = dark?'#1A1A22':'#22222A'; (e.currentTarget as HTMLButtonElement).style.color = '#ccc' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; (e.currentTarget as HTMLButtonElement).style.color = '#555' }}
+      style={{ width:42,height:42,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'rgba(255,255,255,0.45)',background:'none',border:'1px solid transparent',transition:'background .15s,color .15s,border-color .15s' }}
+      onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(73,182,229,0.12)'; b.style.color = '#49B6E5'; b.style.borderColor = 'rgba(73,182,229,0.3)' }}
+      onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'none'; b.style.color = 'rgba(255,255,255,0.45)'; b.style.borderColor = 'transparent' }}
     >{children}</button>
   )
 }

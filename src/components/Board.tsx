@@ -97,6 +97,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
+  const jsonInputRef = useRef<HTMLInputElement>(null)
 
   // Load tile images from IndexedDB when tiles are added or removed
   const tileIdKey = sld.tiles.map(t => t.id).join(',')
@@ -445,6 +446,56 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
   }
 
+  // ── JSON card export ────────────────────────────────────────
+  const exportCards = () => {
+    const slug = board.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+    const date = new Date().toISOString().slice(0, 10)
+    const data = {
+      exportedAt: new Date().toISOString(),
+      boardName: board.name,
+      cards: brd.cards,
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Cards exported ✓')
+  }
+
+  // ── JSON card import ────────────────────────────────────────
+  const importCards = async (files: FileList | null) => {
+    if (!files || !files.length) return
+    const file = files[0]
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      if (!Array.isArray(data.cards)) throw new Error('missing cards array')
+      const inserts: import('../types').CardInsert[] = data.cards.map((c: import('../types').Card) => ({
+        board_id: board.id,
+        title: c.title ?? '',
+        body: c.body ?? '',
+        date_label: c.date_label ?? '',
+        due_date: c.due_date ?? null,
+        tag: c.tag ?? 'idea',
+        bg: c.bg ?? 'white',
+        x: typeof c.x === 'number' ? c.x : 100,
+        y: typeof c.y === 'number' ? c.y : 100,
+        rotation: typeof c.rotation === 'number' ? c.rotation : 0,
+        card_width: typeof c.card_width === 'number' ? c.card_width : 185,
+        card_height: typeof c.card_height === 'number' ? c.card_height : null,
+        collapsed: c.collapsed ?? false,
+        locked: c.locked ?? false,
+      }))
+      await brd.bulkImportCards(inserts)
+      showToast(`Imported ${inserts.length} card${inserts.length !== 1 ? 's' : ''} ✓`)
+    } catch {
+      showToast("Could not read file — make sure it's a valid Ideaboard export")
+    }
+  }
+
   // ── Colour picker ───────────────────────────────────────────
   const handleColorPick = useCallback((cardId: string, clientX: number, clientY: number) => {
     setColourPicker({ cardId, x: clientX, y: clientY })
@@ -516,6 +567,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         </SbBtn>
 
+        <SbBtn title="Export cards as JSON backup" onClick={exportCards} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+          </svg>
+        </SbBtn>
+
         <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </SbBtn>
@@ -526,6 +584,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           multiple
           style={{ display: 'none' }}
           onChange={e => { handleImportPdf(e.target.files); e.target.value = '' }}
+        />
+
+        <SbBtn title="Import cards from JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="12" x2="12" y2="18"/><polyline points="15 15 12 12 9 15"/>
+          </svg>
+        </SbBtn>
+        <input
+          ref={jsonInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={e => { importCards(e.target.files); e.target.value = '' }}
         />
 
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>

@@ -61,6 +61,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const isCtrlPanning  = useRef(false)
   const ctrlPanStart   = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const [ctrlHeld, setCtrlHeld] = useState(false)
+  const [ctrlPanActive, setCtrlPanActive] = useState(false)
 
   // Card drag
   const isDragging   = useRef(false)
@@ -138,6 +139,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     if ((e.target as HTMLElement).closest('.world-item')) return
     if (e.ctrlKey) {
       isCtrlPanning.current = true
+      setCtrlPanActive(true)
       ctrlPanStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
       e.preventDefault()
       return
@@ -333,7 +335,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
 
     const onUp = (e: MouseEvent) => {
-      if (isCtrlPanning.current) { isCtrlPanning.current = false; return }
+      if (isCtrlPanning.current) { isCtrlPanning.current = false; setCtrlPanActive(false); return }
       if (isPanning.current) { isPanning.current = false; return }
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -414,7 +416,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
-    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); isCtrlPanning.current = false } }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); isCtrlPanning.current = false; setCtrlPanActive(false) } }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup',   onKeyUp)
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
@@ -713,7 +715,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
             backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
             backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
-            cursor: ctrlHeld ? 'grab' : 'crosshair',
+            cursor: ctrlPanActive ? 'grabbing' : ctrlHeld ? 'grab' : 'crosshair',
           }}
         >
           {/* THE WORLD */}

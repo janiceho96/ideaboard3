@@ -58,6 +58,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Pan
   const isPanning    = useRef(false)
   const panStart     = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const isCtrlPanning  = useRef(false)
+  const ctrlPanStart   = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const [ctrlHeld, setCtrlHeld] = useState(false)
 
   // Card drag
   const isDragging   = useRef(false)
@@ -133,6 +136,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const onCanvasMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
+    if (e.ctrlKey) {
+      isCtrlPanning.current = true
+      ctrlPanStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
+      e.preventDefault()
+      return
+    }
     isPanning.current = true
     panStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
     e.preventDefault()
@@ -282,6 +291,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
+      if (isCtrlPanning.current) {
+        setPanX(ctrlPanStart.current.px + (e.clientX - ctrlPanStart.current.x))
+        setPanY(ctrlPanStart.current.py + (e.clientY - ctrlPanStart.current.y))
+        return
+      }
       if (isPanning.current) {
         setPanX(panStart.current.px + (e.clientX - panStart.current.x))
         setPanY(panStart.current.py + (e.clientY - panStart.current.y))
@@ -319,6 +333,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
 
     const onUp = (e: MouseEvent) => {
+      if (isCtrlPanning.current) { isCtrlPanning.current = false; return }
       if (isPanning.current) { isPanning.current = false; return }
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -395,6 +410,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [brd, screenToWorld])
+
+  // ── Ctrl key for cursor ──────────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); isCtrlPanning.current = false } }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup',   onKeyUp)
+    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
+  }, [])
 
   // ── Double-click canvas ─────────────────────────────────────
   const onCanvasDblClick = (e: React.MouseEvent) => {
@@ -689,7 +713,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
             backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
             backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
-            cursor: 'crosshair',
+            cursor: ctrlHeld ? 'grab' : 'crosshair',
           }}
         >
           {/* THE WORLD */}

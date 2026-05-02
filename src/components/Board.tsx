@@ -761,7 +761,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           <div style={{ flex: 1 }}/>
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
-            Double-click to add · Scroll to zoom · Drag to pan · N = new card
+            Double-click to add · Scroll to zoom · Ctrl+drag to pan · Press ? for shortcuts
           </span>
           <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
             style={{ height: 30, padding: '0 14px', borderRadius: 7, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}>
@@ -919,6 +919,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
             <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#666':'#888',background:'none',border:'none' }}>1:1</button>
           </div>
+
+          {/* Shortcuts hint button */}
+          <button
+            onClick={() => setShowShortcuts(s => !s)}
+            title="Keyboard shortcuts (?)"
+            aria-label="Toggle keyboard shortcuts"
+            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, fontWeight:700, color: dark?'#ccc':'#555', background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}
+          >?</button>
 
           {/* Minimap */}
           <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>

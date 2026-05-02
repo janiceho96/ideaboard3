@@ -417,18 +417,17 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── PDF Export ──────────────────────────────────────────────
   const exportPDF = async () => {
-    if (!worldRef.current) return
+    if (!canvasRef.current) return
     setExporting(true)
     showToast('Generating PDF…')
     try {
-      // Dynamically import so bundle stays small
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
-      const canvas = await html2canvas(worldRef.current, {
+      const canvas = await html2canvas(canvasRef.current, {
         scale: 1.5,
-        backgroundColor: dark ? '#0F0F14' : '#ECEAE3',
+        backgroundColor: dark ? '#0F0F14' : '#faf8f0',
         useCORS: true,
         logging: false,
       })
@@ -437,7 +436,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
       pdf.save(`${board.name}.pdf`)
       showToast('PDF downloaded ✓')
-    } catch {
+    } catch (err) {
+      console.error('Export failed:', err)
       showToast('Export failed — try again')
     } finally {
       setExporting(false)

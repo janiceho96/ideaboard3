@@ -460,6 +460,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         if (selectedCardId) {
+          const card = brd.cards.find(c => c.id === selectedCardId)
+          if (!card || card.locked) return
           e.preventDefault()
           brd.removeCard(selectedCardId).then(() => showToast('Card deleted'))
           setSelectedCardId(null)
@@ -610,6 +612,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const handleDelete = async () => {
     if (!editingCard) return
+    if (editingCard?.id === selectedCardId) setSelectedCardId(null)
     await brd.removeCard(editingCard.id)
     setModalOpen(false); showToast('Card deleted')
   }
@@ -812,7 +815,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   onMoveStart={onCardMoveStart}
                   onResizeStart={onResizeStart}
                   onEdit={openEdit}
-                  onDelete={async id => { await brd.removeCard(id); showToast('Card deleted') }}
+                  onDelete={async id => {
+                    if (id === selectedCardId) setSelectedCardId(null)
+                    await brd.removeCard(id)
+                    showToast('Card deleted')
+                  }}
                   onInlineTitle={async (id, title) => { await brd.updateCard(id, { title }); showToast('Renamed ✓') }}
                   onToggleCollapse={async id => { await brd.updateCard(id, { collapsed: !brd.cards.find(c => c.id === id)?.collapsed }) }}
                   onDuplicate={async id => { await brd.duplicateCard(id); showToast('Card duplicated ✓') }}
@@ -878,13 +885,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   top: card.y - 5,
                   width: (card.card_width ?? 185) + 10,
                   height: card.card_height ? card.card_height + 10 : undefined,
-                  minHeight: card.card_height ? undefined : 110,
+                  minHeight: card.card_height ? undefined : (card.collapsed ? 54 : 110),
                   border: '2px solid #49B6E5',
                   borderRadius: 18,
                   pointerEvents: 'none',
                   zIndex: 21,
                   boxSizing: 'border-box',
                   boxShadow: '0 0 0 3px rgba(73,182,229,0.15)',
+                  transform: card.rotation ? `rotate(${card.rotation}deg)` : undefined,
+                  transformOrigin: 'top left',
                 }} />
               )
             })()}

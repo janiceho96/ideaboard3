@@ -461,7 +461,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         setShowShortcuts(false)
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
-        if (selectedCardId) {
+        if (selectedCardId && !modalOpen) {
           const card = brd.cards.find(c => c.id === selectedCardId)
           if (!card || card.locked) return
           e.preventDefault()

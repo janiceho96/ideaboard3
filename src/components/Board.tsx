@@ -461,7 +461,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     a.href = url
     a.download = `${slug}-${date}.json`
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
     showToast('Cards exported ✓')
   }
 
@@ -491,8 +491,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       }))
       await brd.bulkImportCards(inserts)
       showToast(`Imported ${inserts.length} card${inserts.length !== 1 ? 's' : ''} ✓`)
-    } catch {
-      showToast("Could not read file — make sure it's a valid Ideaboard export")
+    } catch (err) {
+      const msg = err instanceof Error && err.message === 'missing cards array'
+        ? "Could not read file — make sure it's a valid Ideaboard export"
+        : 'Import failed — storage may be full'
+      showToast(msg)
     }
   }
 

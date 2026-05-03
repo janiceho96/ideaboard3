@@ -1,5 +1,5 @@
 // src/components/Board.tsx
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
 import type { LocalUser, Board as BoardType, Card, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
@@ -54,10 +54,16 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const canvasRef    = useRef<HTMLDivElement>(null)
   const worldRef     = useRef<HTMLDivElement>(null)
+  const zoomRef      = useRef(zoom)
+  useEffect(() => { zoomRef.current = zoom }, [zoom])
 
   // Pan
   const isPanning    = useRef(false)
   const panStart     = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const isCtrlPanning  = useRef(false)
+  const ctrlPanStart   = useRef({ x: 0, y: 0, px: 0, py: 0 })
+  const [ctrlHeld, setCtrlHeld] = useState(false)
+  const [ctrlPanActive, setCtrlPanActive] = useState(false)
 
   // Card drag
   const isDragging   = useRef(false)
@@ -81,6 +87,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const fwRef = useRef(fw)
   useEffect(() => { fwRef.current = fw }, [fw])
 
+  // Selection
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+
   // Modal
   const [modalOpen, setModalOpen]     = useState(false)
   const [editingCard, setEditingCard] = useState<Card | null>(null)
@@ -95,8 +104,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Colour picker
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
   const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
+  const [showShortcuts, setShowShortcuts] = useState(false)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
+  const jsonInputRef = useRef<HTMLInputElement>(null)
 
   // Load tile images from IndexedDB when tiles are added or removed
   const tileIdKey = sld.tiles.map(t => t.id).join(',')
@@ -132,12 +143,21 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const onCanvasMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
+    setSelectedCardId(null)
+    if (e.ctrlKey) {
+      isCtrlPanning.current = true
+      setCtrlPanActive(true)
+      ctrlPanStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
+      e.preventDefault()
+      return
+    }
     isPanning.current = true
     panStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
     e.preventDefault()
   }
 
   const onCardMoveStart = useCallback((id: string, cx: number, cy: number) => {
+    setSelectedCardId(id)
     isDragging.current  = true
     dragCardId.current  = id
     dragTagId.current   = null
@@ -281,6 +301,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
+      if (isCtrlPanning.current) {
+        setPanX(ctrlPanStart.current.px + (e.clientX - ctrlPanStart.current.x))
+        setPanY(ctrlPanStart.current.py + (e.clientY - ctrlPanStart.current.y))
+        return
+      }
       if (isPanning.current) {
         setPanX(panStart.current.px + (e.clientX - panStart.current.x))
         setPanY(panStart.current.py + (e.clientY - panStart.current.y))
@@ -318,6 +343,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
 
     const onUp = (e: MouseEvent) => {
+      if (isCtrlPanning.current) { isCtrlPanning.current = false; setCtrlPanActive(false); return }
       if (isPanning.current) { isPanning.current = false; return }
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -383,17 +409,84 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (target.closest('input,textarea')) return
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩') }
-      if (e.key === 'Escape') { setColourPicker(null); setFrameworkDropdownOpen(false) }
+      if (target.closest('input,textarea,[contenteditable]')) return
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩'); return }
+
+      // Arrow key pan
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
+        if (e.ctrlKey || e.metaKey) return
+        e.preventDefault()
+        const step = e.shiftKey ? 100 : 20
+        if (e.key === 'ArrowLeft')  setPanX(px => px + step)
+        if (e.key === 'ArrowRight') setPanX(px => px - step)
+        if (e.key === 'ArrowUp')    setPanY(py => py + step)
+        if (e.key === 'ArrowDown')  setPanY(py => py - step)
+        return
+      }
+
+      // Zoom shortcuts
+      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        const cr = canvasRef.current?.getBoundingClientRect()
+        if (!cr) return
+        const cx = cr.width / 2, cy = cr.height / 2
+        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 1.2))
+        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
+        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
+        setZoom(nz)
+        return
+      }
+      if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        const cr = canvasRef.current?.getBoundingClientRect()
+        if (!cr) return
+        const cx = cr.width / 2, cy = cr.height / 2
+        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 0.8))
+        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
+        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
+        setZoom(nz)
+        return
+      }
+      if (e.key === '0' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault()
+        setPanX(0); setPanY(0); setZoom(1)
+        return
+      }
+
+      if (e.key === 'Escape') {
+        setColourPicker(null)
+        setFrameworkDropdownOpen(false)
+        setSelectedCardId(null)
+        setModalOpen(false)
+        setShowShortcuts(false)
+      }
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+        if (selectedCardId && !modalOpen) {
+          const card = brd.cards.find(c => c.id === selectedCardId)
+          if (!card || card.locked) return
+          e.preventDefault()
+          brd.removeCard(selectedCardId).then(() => showToast('Card deleted'))
+          setSelectedCardId(null)
+        }
+      }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
         const cr = canvasRef.current?.getBoundingClientRect()
         if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) }
       }
+      if (e.key === '?') { e.preventDefault(); setShowShortcuts(s => !s) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [brd, screenToWorld])
+  }, [brd, screenToWorld, selectedCardId])
+
+  // ── Ctrl key for cursor ──────────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); isCtrlPanning.current = false; setCtrlPanActive(false) } }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup',   onKeyUp)
+    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
+  }, [])
 
   // ── Double-click canvas ─────────────────────────────────────
   const onCanvasDblClick = (e: React.MouseEvent) => {
@@ -444,6 +537,59 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
   }
 
+  // ── JSON card export ────────────────────────────────────────
+  const exportCards = () => {
+    const slug = board.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
+    const date = new Date().toISOString().slice(0, 10)
+    const data = {
+      exportedAt: new Date().toISOString(),
+      boardName: board.name,
+      cards: brd.cards,
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}-${date}.json`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 100)
+    showToast('Cards exported ✓')
+  }
+
+  // ── JSON card import ────────────────────────────────────────
+  const importCards = async (files: FileList | null) => {
+    if (!files || !files.length) return
+    const file = files[0]
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      if (!Array.isArray(data.cards)) throw new Error('missing cards array')
+      const inserts: import('../types').CardInsert[] = data.cards.map((c: import('../types').Card) => ({
+        board_id: board.id,
+        title: c.title ?? '',
+        body: c.body ?? '',
+        date_label: c.date_label ?? '',
+        due_date: c.due_date ?? null,
+        tag: c.tag ?? 'idea',
+        bg: c.bg ?? 'white',
+        x: typeof c.x === 'number' ? c.x : 100,
+        y: typeof c.y === 'number' ? c.y : 100,
+        rotation: typeof c.rotation === 'number' ? c.rotation : 0,
+        card_width: typeof c.card_width === 'number' ? c.card_width : 185,
+        card_height: typeof c.card_height === 'number' ? c.card_height : null,
+        collapsed: c.collapsed ?? false,
+        locked: c.locked ?? false,
+      }))
+      await brd.bulkImportCards(inserts)
+      showToast(`Imported ${inserts.length} card${inserts.length !== 1 ? 's' : ''} ✓`)
+    } catch (err) {
+      const msg = err instanceof Error && err.message === 'missing cards array'
+        ? "Could not read file — make sure it's a valid Ideaboard export"
+        : 'Import failed — storage may be full'
+      showToast(msg)
+    }
+  }
+
   // ── Colour picker ───────────────────────────────────────────
   const handleColorPick = useCallback((cardId: string, clientX: number, clientY: number) => {
     setColourPicker({ cardId, x: clientX, y: clientY })
@@ -468,6 +614,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const handleDelete = async () => {
     if (!editingCard) return
+    if (editingCard?.id === selectedCardId) setSelectedCardId(null)
     await brd.removeCard(editingCard.id)
     setModalOpen(false); showToast('Card deleted')
   }
@@ -478,7 +625,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const topBdr = dark ? 'rgba(255,255,255,.06)' : '#e8e4d9'
   const subC   = dark ? '#666'    : '#999'
   const cvBg   = dark ? '#0F0F14' : '#faf8f0'
-  const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,0.16)'
+  const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)'
 
   if (brd.loading) return <Centered dark={dark}>Loading board…</Centered>
   if (brd.error)   return <Centered dark={dark} error>{brd.error}</Centered>
@@ -514,6 +661,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10v6m0 0l-3-3m3 3l3-3"/><path d="M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
         </SbBtn>
 
+        <SbBtn title="Export cards as JSON backup" onClick={exportCards} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+          </svg>
+        </SbBtn>
+
         <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/><polyline points="8 8 12 4 16 8"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
         </SbBtn>
@@ -524,6 +678,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           multiple
           style={{ display: 'none' }}
           onChange={e => { handleImportPdf(e.target.files); e.target.value = '' }}
+        />
+
+        <SbBtn title="Import cards from JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="12" x2="12" y2="18"/><polyline points="15 15 12 12 9 15"/>
+          </svg>
+        </SbBtn>
+        <input
+          ref={jsonInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={e => { importCards(e.target.files); e.target.value = '' }}
         />
 
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
@@ -594,7 +762,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           <div style={{ flex: 1 }}/>
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
-            Double-click to add · Scroll to zoom · Drag to pan · N = new card
+            Double-click to add · Scroll to zoom · Ctrl+drag to pan · Press ? for shortcuts
           </span>
           <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
             style={{ height: 30, padding: '0 14px', borderRadius: 8, border: '2px solid #263D5B', background: '#49B6E5', color: 'white', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, boxShadow: '2px 2px 0 #263D5B' }}>
@@ -613,9 +781,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             overflow: 'hidden',
             backgroundColor: cvBg,
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
-            backgroundSize: `${22 * zoom}px ${22 * zoom}px`,
-            backgroundPosition: `${panX % (22 * zoom)}px ${panY % (22 * zoom)}px`,
-            cursor: 'crosshair',
+            backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
+            backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
+            cursor: ctrlPanActive ? 'grabbing' : ctrlHeld ? 'grab' : 'crosshair',
           }}
         >
           {/* THE WORLD */}
@@ -651,7 +819,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   onMoveStart={onCardMoveStart}
                   onResizeStart={onResizeStart}
                   onEdit={openEdit}
-                  onDelete={async id => { await brd.removeCard(id); showToast('Card deleted') }}
+                  onDelete={async id => {
+                    if (id === selectedCardId) setSelectedCardId(null)
+                    await brd.removeCard(id)
+                    showToast('Card deleted')
+                  }}
                   onInlineTitle={async (id, title) => { await brd.updateCard(id, { title }); showToast('Renamed ✓') }}
                   onToggleCollapse={async id => { await brd.updateCard(id, { collapsed: !brd.cards.find(c => c.id === id)?.collapsed }) }}
                   onDuplicate={async id => { await brd.duplicateCard(id); showToast('Card duplicated ✓') }}
@@ -706,6 +878,30 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               )
             })()}
 
+            {/* Selection ring */}
+            {selectedCardId && (() => {
+              const card = brd.cards.find(c => c.id === selectedCardId)
+              if (!card) return null
+              return (
+                <div style={{
+                  position: 'absolute',
+                  left: card.x - 5,
+                  top: card.y - 5,
+                  width: (card.card_width ?? 185) + 10,
+                  height: card.card_height ? card.card_height + 10 : undefined,
+                  minHeight: card.card_height ? undefined : (card.collapsed ? 54 : 110),
+                  border: '2px solid #49B6E5',
+                  borderRadius: 18,
+                  pointerEvents: 'none',
+                  zIndex: 21,
+                  boxSizing: 'border-box',
+                  boxShadow: '0 0 0 3px rgba(73,182,229,0.15)',
+                  transform: card.rotation ? `rotate(${card.rotation}deg)` : undefined,
+                  transformOrigin: 'top left',
+                }} />
+              )
+            })()}
+
           </div>{/* end world */}
 
           {/* ── HUD ── */}
@@ -724,6 +920,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
             <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#666':'#888',background:'none',border:'none' }}>1:1</button>
           </div>
+
+          {/* Shortcuts hint button */}
+          <button
+            onClick={() => setShowShortcuts(s => !s)}
+            title="Keyboard shortcuts (?)"
+            aria-label="Toggle keyboard shortcuts"
+            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, fontWeight:700, color: dark?'#ccc':'#555', background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}
+          >?</button>
 
           {/* Minimap */}
           <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>
@@ -812,6 +1016,73 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background: dark?'#25252F':'#1A1A2E',color:'white',borderRadius:10,padding:'10px 20px',fontSize:13,fontFamily:"'DM Sans',sans-serif",zIndex:2000,display:'flex',alignItems:'center',gap:10,boxShadow:'0 8px 24px rgba(0,0,0,.2)' }}>
           {toast}
           <button onClick={() => { brd.undo(); showToast('Undone ↩') }} style={{ background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,padding:'2px 9px',cursor:'pointer',fontSize:11,color:'white',fontFamily:"'DM Sans',sans-serif" }}>Undo</button>
+        </div>
+      )}
+
+      {/* Keyboard shortcuts overlay */}
+      {showShortcuts && (
+        <div
+          role="dialog"
+          aria-modal={true}
+          aria-label="Keyboard shortcuts"
+          style={{
+          position: 'fixed',
+          right: 20,
+          bottom: 170,
+          zIndex: 500,
+          background: 'rgba(26,26,46,0.95)',
+          backdropFilter: 'blur(8px)',
+          borderRadius: 12,
+          padding: '16px 20px',
+          color: '#fff',
+          fontSize: 13,
+          width: 290,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          fontFamily: "'DM Sans',sans-serif",
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span style={{ fontWeight: 700, fontSize: 14 }}>Keyboard Shortcuts</span>
+            <button
+              onClick={() => setShowShortcuts(false)}
+              aria-label="Close shortcuts"
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}
+            >×</button>
+          </div>
+
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5, marginBottom: 8 }}>Navigation</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', alignItems: 'center', marginBottom: 14 }}>
+            {([
+              ['Ctrl + drag', 'Pan with mouse'],
+              ['↑ ↓ ← →',    'Pan canvas'],
+              ['Shift + arrows', 'Pan faster'],
+              ['+  /  -',    'Zoom in / out'],
+              ['0',          'Reset zoom'],
+            ] as [string, string][]).map(([key, desc]) => (
+              <Fragment key={key}>
+                <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
+                <span style={{ opacity: 0.85 }}>{desc}</span>
+              </Fragment>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5, marginBottom: 8 }}>Cards</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', alignItems: 'center', marginBottom: 14 }}>
+            {([
+              ['N',        'New card'],
+              ['Esc',      'Deselect / close'],
+              ['Del / Backspace', 'Delete selected card'],
+              ['Ctrl + Z', 'Undo'],
+            ] as [string, string][]).map(([key, desc]) => (
+              <Fragment key={key}>
+                <span style={{ background: '#263D5B', padding: '2px 7px', borderRadius: 4, fontFamily: 'monospace', fontSize: 12, whiteSpace: 'nowrap', textAlign: 'center' }}>{key}</span>
+                <span style={{ opacity: 0.85 }}>{desc}</span>
+              </Fragment>
+            ))}
+          </div>
+
+          <div style={{ opacity: 0.4, fontSize: 11, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
+            Press <span style={{ fontFamily: 'monospace' }}>?</span> or <span style={{ fontFamily: 'monospace' }}>Esc</span> to close
+          </div>
         </div>
       )}
     </div>

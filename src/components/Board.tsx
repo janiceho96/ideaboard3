@@ -60,10 +60,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Pan
   const isPanning    = useRef(false)
   const panStart     = useRef({ x: 0, y: 0, px: 0, py: 0 })
-  const isCtrlPanning  = useRef(false)
-  const ctrlPanStart   = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const [ctrlHeld, setCtrlHeld] = useState(false)
-  const [ctrlPanActive, setCtrlPanActive] = useState(false)
+  const lastCtrlPos = useRef<{ x: number; y: number } | null>(null)
 
   // Card drag
   const isDragging   = useRef(false)
@@ -144,13 +142,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
     setSelectedCardId(null)
-    if (e.ctrlKey) {
-      isCtrlPanning.current = true
-      setCtrlPanActive(true)
-      ctrlPanStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
-      e.preventDefault()
-      return
-    }
+    if (e.ctrlKey) return
     isPanning.current = true
     panStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
     e.preventDefault()
@@ -301,11 +293,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (isCtrlPanning.current) {
-        setPanX(ctrlPanStart.current.px + (e.clientX - ctrlPanStart.current.x))
-        setPanY(ctrlPanStart.current.py + (e.clientY - ctrlPanStart.current.y))
+      if (e.ctrlKey) {
+        if (lastCtrlPos.current) {
+          setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
+          setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
+        }
+        lastCtrlPos.current = { x: e.clientX, y: e.clientY }
         return
       }
+      lastCtrlPos.current = null
       if (isPanning.current) {
         setPanX(panStart.current.px + (e.clientX - panStart.current.x))
         setPanY(panStart.current.py + (e.clientY - panStart.current.y))
@@ -343,7 +339,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
 
     const onUp = (e: MouseEvent) => {
-      if (isCtrlPanning.current) { isCtrlPanning.current = false; setCtrlPanActive(false); return }
       if (isPanning.current) { isPanning.current = false; return }
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -482,7 +477,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
-    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); isCtrlPanning.current = false; setCtrlPanActive(false) } }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); lastCtrlPos.current = null } }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup',   onKeyUp)
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
@@ -762,7 +757,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           <div style={{ flex: 1 }}/>
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
-            Double-click to add · Scroll to zoom · Ctrl+drag to pan · Press ? for shortcuts
+            Double-click to add · Scroll to zoom · Ctrl+move to pan · Press ? for shortcuts
           </span>
           <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
             style={{ height: 30, padding: '0 14px', borderRadius: 8, border: '2px solid #263D5B', background: '#49B6E5', color: 'white', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, boxShadow: '2px 2px 0 #263D5B' }}>
@@ -783,7 +778,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
             backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
             backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
-            cursor: ctrlPanActive ? 'grabbing' : ctrlHeld ? 'grab' : 'crosshair',
+            cursor: ctrlHeld ? 'grab' : 'crosshair',
           }}
         >
           {/* THE WORLD */}
@@ -1052,7 +1047,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.5, marginBottom: 8 }}>Navigation</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 14px', alignItems: 'center', marginBottom: 14 }}>
             {([
-              ['Ctrl + drag', 'Pan with mouse'],
+              ['Ctrl + move', 'Pan with mouse'],
               ['↑ ↓ ← →',    'Pan canvas'],
               ['Shift + arrows', 'Pan faster'],
               ['+  /  -',    'Zoom in / out'],

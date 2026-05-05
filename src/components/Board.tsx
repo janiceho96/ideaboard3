@@ -61,6 +61,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const isPanning    = useRef(false)
   const panStart     = useRef({ x: 0, y: 0, px: 0, py: 0 })
   const [ctrlHeld, setCtrlHeld] = useState(false)
+  const ctrlHeldRef = useRef(false)          // mirrors ctrlHeld but accessible in stable closures
   const lastCtrlPos = useRef<{ x: number; y: number } | null>(null)
 
   // Card drag
@@ -142,7 +143,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
     setSelectedCardId(null)
-    if (e.ctrlKey) return
+    if (e.ctrlKey) { e.preventDefault(); return }
     isPanning.current = true
     panStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
     e.preventDefault()
@@ -293,7 +294,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (e.ctrlKey) {
+      if (ctrlHeldRef.current) {
         if (lastCtrlPos.current) {
           setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
           setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
@@ -476,8 +477,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCtrlHeld(true) }
-    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { setCtrlHeld(false); lastCtrlPos.current = null } }
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = true;  setCtrlHeld(true)  } }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = false; setCtrlHeld(false); lastCtrlPos.current = null } }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup',   onKeyUp)
     return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }

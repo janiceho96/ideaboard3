@@ -294,15 +294,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
-      if (ctrlHeldRef.current) {
-        if (lastCtrlPos.current) {
-          setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
-          setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
-        }
-        lastCtrlPos.current = { x: e.clientX, y: e.clientY }
-        return
-      }
-      lastCtrlPos.current = null
       if (isPanning.current) {
         setPanX(panStart.current.px + (e.clientX - panStart.current.x))
         setPanY(panStart.current.py + (e.clientY - panStart.current.y))
@@ -479,9 +470,26 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = true;  setCtrlHeld(true)  } }
     const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = false; setCtrlHeld(false); lastCtrlPos.current = null } }
+    // reset if window loses focus mid-hold so Ctrl never gets stuck
+    const onBlur = () => { ctrlHeldRef.current = false; setCtrlHeld(false); lastCtrlPos.current = null }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup',   onKeyUp)
-    return () => { window.removeEventListener('keydown', onKeyDown); window.removeEventListener('keyup', onKeyUp) }
+    window.addEventListener('blur',    onBlur)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup',   onKeyUp)
+      window.removeEventListener('blur',    onBlur)
+    }
+  }, [])
+
+  // ── Ctrl+move canvas pan ─────────────────────────────────────
+  const onCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!e.ctrlKey) { lastCtrlPos.current = null; return }
+    if (lastCtrlPos.current) {
+      setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
+      setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
+    }
+    lastCtrlPos.current = { x: e.clientX, y: e.clientY }
   }, [])
 
   // ── Double-click canvas ─────────────────────────────────────
@@ -770,6 +778,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div
           ref={canvasRef}
           onMouseDown={onCanvasMouseDown}
+          onMouseMove={onCanvasMouseMove}
           onDoubleClick={onCanvasDblClick}
           onWheel={onWheel}
           style={{

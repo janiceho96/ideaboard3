@@ -407,9 +407,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       if (target.closest('input,textarea,[contenteditable]')) return
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩'); return }
 
-      // Arrow key pan
+      // Arrow key pan (with or without Ctrl — Ctrl+Arrow also pans)
       if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
-        if (e.ctrlKey || e.metaKey) return
+        if (e.metaKey) return  // let browser handle Cmd+arrow
         e.preventDefault()
         const step = e.shiftKey ? 100 : 20
         if (e.key === 'ArrowLeft')  setPanX(px => px + step)
@@ -1049,6 +1049,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             {([
               ['Ctrl + move', 'Pan with mouse'],
               ['↑ ↓ ← →',    'Pan canvas'],
+              ['Ctrl + ↑↓←→', 'Pan canvas'],
               ['Shift + arrows', 'Pan faster'],
               ['+  /  -',    'Zoom in / out'],
               ['0',          'Reset zoom'],

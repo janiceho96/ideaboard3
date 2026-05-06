@@ -483,14 +483,25 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [])
 
   // ── Ctrl+move canvas pan ─────────────────────────────────────
-  const onCanvasMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!e.ctrlKey) { lastCtrlPos.current = null; return }
-    if (lastCtrlPos.current) {
-      setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
-      setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
+  // Registered once on window so it catches moves over cards too.
+  // Guarded against drag/pan/resize so it never corrupts snap offsets.
+  useEffect(() => {
+    const onCtrlMove = (e: MouseEvent) => {
+      // Accept Ctrl from either our tracked ref OR the live event key state
+      if (!ctrlHeldRef.current && !e.ctrlKey) { lastCtrlPos.current = null; return }
+      // Never pan while a drag, canvas-pan, or resize is active
+      if (isDragging.current || isPanning.current || isResizing.current) {
+        lastCtrlPos.current = null; return
+      }
+      if (lastCtrlPos.current) {
+        setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
+        setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
+      }
+      lastCtrlPos.current = { x: e.clientX, y: e.clientY }
     }
-    lastCtrlPos.current = { x: e.clientX, y: e.clientY }
-  }, [])
+    window.addEventListener('mousemove', onCtrlMove)
+    return () => window.removeEventListener('mousemove', onCtrlMove)
+  }, []) // empty deps — only refs and stable setters used inside
 
   // ── Double-click canvas ─────────────────────────────────────
   const onCanvasDblClick = (e: React.MouseEvent) => {
@@ -778,7 +789,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div
           ref={canvasRef}
           onMouseDown={onCanvasMouseDown}
-          onMouseMove={onCanvasMouseMove}
           onDoubleClick={onCanvasDblClick}
           onWheel={onWheel}
           style={{

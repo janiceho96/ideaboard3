@@ -17,6 +17,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
 }: TextBlockItemProps) {
   const [focused, setFocused] = useState(false)
   const [isEmpty, setIsEmpty] = useState(!block.html)
+  const [bouncing, setBouncing] = useState<string | null>(null)
   const editRef = useRef<HTMLDivElement>(null)
 
   // Sync innerHTML when block.html changes externally (e.g. on reload)
@@ -69,9 +70,11 @@ const TextBlockItem = React.memo(function TextBlockItem({
     : dark ? '#2A2A38' : '#e8e4d9'
 
   return (
-    <div
-      className="world-item"
-      style={{ position: 'absolute', left: block.x, top: block.y, width: block.width, userSelect: 'none' }}
+    <>
+      <style>{`@keyframes snapBounce{0%{transform:scale(1)}25%{transform:scale(.88)}65%{transform:scale(1.15)}100%{transform:scale(1)}}`}</style>
+      <div
+        className="world-item"
+        style={{ position: 'absolute', left: block.x, top: block.y, width: block.width, userSelect: 'none' }}
       onMouseDown={e => {
         if (e.button !== 0) return
         if ((e.target as HTMLElement).closest('.text-no-drag')) return
@@ -103,35 +106,35 @@ const TextBlockItem = React.memo(function TextBlockItem({
         >
           {/* Smaller */}
           <button
-            onMouseDown={e => { e.preventDefault(); changeFontSize(-4) }}
+            onMouseDown={e => { e.preventDefault(); setBouncing('smaller'); setTimeout(() => setBouncing(null), 240); changeFontSize(-4) }}
             title="Decrease font size"
-            style={{ fontSize: 11, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+            style={{ fontSize: 11, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'smaller' ? 'snapBounce 240ms ease-out' : 'none' }}
           >A⁻</button>
           {/* Larger */}
           <button
-            onMouseDown={e => { e.preventDefault(); changeFontSize(4) }}
+            onMouseDown={e => { e.preventDefault(); setBouncing('larger'); setTimeout(() => setBouncing(null), 240); changeFontSize(4) }}
             title="Increase font size"
-            style={{ fontSize: 13, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+            style={{ fontSize: 13, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'larger' ? 'snapBounce 240ms ease-out' : 'none' }}
           >A⁺</button>
           {/* Size/format divider */}
           <div style={{ width: 1, height: 14, background: dark ? '#2A2A38' : '#e8e4d9', margin: '0 4px' }} />
           {/* Bold */}
           <button
-            onMouseDown={e => { e.preventDefault(); execFormat('bold') }}
+            onMouseDown={e => { e.preventDefault(); setBouncing('bold'); setTimeout(() => setBouncing(null), 240); execFormat('bold') }}
             title="Bold"
-            style={{ fontWeight: 700, fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+            style={{ fontWeight: 700, fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'bold' ? 'snapBounce 240ms ease-out' : 'none' }}
           >B</button>
           {/* Italic */}
           <button
-            onMouseDown={e => { e.preventDefault(); execFormat('italic') }}
+            onMouseDown={e => { e.preventDefault(); setBouncing('italic'); setTimeout(() => setBouncing(null), 240); execFormat('italic') }}
             title="Italic"
-            style={{ fontStyle: 'italic', fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+            style={{ fontStyle: 'italic', fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'italic' ? 'snapBounce 240ms ease-out' : 'none' }}
           >I</button>
           {/* Highlight */}
           <button
-            onMouseDown={e => { e.preventDefault(); execFormat('hiliteColor', '#ffe082') }}
+            onMouseDown={e => { e.preventDefault(); setBouncing('highlight'); setTimeout(() => setBouncing(null), 240); execFormat('hiliteColor', '#ffe082') }}
             title="Highlight"
-            style={{ fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+            style={{ fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'highlight' ? 'snapBounce 240ms ease-out' : 'none' }}
           ><span style={{ background: '#ffe082', padding: '0 3px', borderRadius: 2 }}>H</span></button>
           {/* Divider */}
           <div style={{ width: 1, height: 14, background: dark ? '#2A2A38' : '#e8e4d9', margin: '0 4px' }} />
@@ -217,6 +220,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
         />
       </div>
     </div>
+    </>
   )
 })
 

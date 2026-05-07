@@ -58,3 +58,13 @@ export interface SlideTile {
   aspect_ratio: number // width/height ratio; tile height = width / aspect_ratio
   created_at: string
 }
+
+export interface TextBlock {
+  id: string
+  board_id: string
+  html: string       // innerHTML — preserves bold/italic/highlight across reloads
+  x: number          // world-space position
+  y: number
+  width: number      // world-units; default 260
+  created_at: string
+}

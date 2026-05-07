@@ -26,6 +26,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [editGroupName, setEditGroupName] = useState('')
   const [creatingBoardInGroup, setCreatingBoardInGroup] = useState<string | null>(null)
   const [newBoardInGroupName, setNewBoardInGroupName] = useState('')
+  const [chipDropdown, setChipDropdown] = useState<{ boardId: string; x: number; y: number } | null>(null)
 
   useEffect(() => {
     Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups()]).then(
@@ -121,7 +122,23 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       ) : (
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: txt, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
       )}
-      <div style={{ fontSize: 11, color: sub }}>{new Date(b.created_at).toLocaleDateString()}</div>
+      <div style={{ fontSize: 11, color: sub, marginBottom: 8 }}>{new Date(b.created_at).toLocaleDateString()}</div>
+      {/* Group chips */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} onClick={e => e.stopPropagation()}>
+        {groups
+          .filter(g => boardGroups.some(bg => bg.board_id === b.id && bg.group_id === g.id))
+          .map(g => (
+            <span key={g.id}
+              onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setChipDropdown({ boardId: b.id, x: r.left, y: r.bottom + 4 }) }}
+              style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: dark ? '#2A2A40' : '#EEE8FF', color: '#6C63FF', cursor: 'pointer', border: '1px solid #6C63FF22', fontFamily: "'DM Sans',sans-serif" }}
+            >{g.name}</span>
+          ))
+        }
+        <span
+          onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setChipDropdown({ boardId: b.id, x: r.left, y: r.bottom + 4 }) }}
+          style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'transparent', color: sub, cursor: 'pointer', border: `1px dashed ${bdr}`, fontFamily: "'DM Sans',sans-serif" }}
+        >+</span>
+      </div>
       <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 4 }}>
         <button onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name) }}
           title="Rename" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
@@ -259,6 +276,48 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
           </>
         )}
       </div>
+
+      {/* Group-assignment dropdown */}
+      {chipDropdown && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 200 }} onClick={() => setChipDropdown(null)} />
+          <div style={{
+            position: 'fixed',
+            left: Math.min(chipDropdown.x, window.innerWidth - 200),
+            top: Math.min(chipDropdown.y, window.innerHeight - 40 - groups.length * 36),
+            zIndex: 201,
+            background: dark ? '#1A1A24' : 'white',
+            border: `1px solid ${bdr}`,
+            borderRadius: 10,
+            padding: '8px 0',
+            boxShadow: '0 8px 24px rgba(0,0,0,.18)',
+            minWidth: 180,
+          }}>
+            {groups.length === 0 ? (
+              <div style={{ padding: '8px 16px', fontSize: 13, color: sub }}>No groups yet — create one first</div>
+            ) : groups.map(g => {
+              const checked = boardGroups.some(bg => bg.board_id === chipDropdown.boardId && bg.group_id === g.id)
+              return (
+                <label key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', cursor: 'pointer' }}
+                  onClick={e => e.stopPropagation()}>
+                  <input type="checkbox" checked={checked}
+                    onChange={async () => {
+                      if (checked) {
+                        await db.removeBoardFromGroup(chipDropdown.boardId, g.id)
+                        setBoardGroups(prev => prev.filter(bg => !(bg.board_id === chipDropdown.boardId && bg.group_id === g.id)))
+                      } else {
+                        await db.addBoardToGroup(chipDropdown.boardId, g.id)
+                        setBoardGroups(prev => [...prev, { board_id: chipDropdown.boardId, group_id: g.id }])
+                      }
+                    }}
+                  />
+                  <span style={{ fontSize: 13, color: txt, fontFamily: "'DM Sans',sans-serif" }}>{g.name}</span>
+                </label>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }

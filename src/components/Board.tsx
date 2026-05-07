@@ -51,6 +51,8 @@ const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
   'daily-reflection':    'Daily Reflection',
   okr:                   'OKR',
   'energy-audit':        'Energy Audit',
+  'eat-that-frog':       'Eat That Frog',
+  gtd:                   'GTD',
 }
 
 type DropdownEntry =

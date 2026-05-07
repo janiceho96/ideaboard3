@@ -622,3 +622,52 @@ function EnergyAudit({ width, height, dark }: { width: number; height: number; d
     </div>
   )
 }
+
+// ── Eat That Frog ─────────────────────────────────────────────────────────────
+
+function EatThatFrog({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const tasks = ['#1 Frog (Most Important)', '#2 Task', '#3 Task', '#4 Task', '#5 Task']
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('EAT THAT FROG')}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, padding: 12, overflowY: 'auto' }}>
+        {tasks.map((label, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 10px',
+            background: i === 0 ? NAVY_ALPHA : (dark ? 'rgba(255,255,255,0.04)' : 'rgba(38,61,91,0.04)'),
+            border: `1.5px solid ${i === 0 ? NAVY : (dark ? 'rgba(255,255,255,0.08)' : 'rgba(38,61,91,0.1)')}`,
+            borderRadius: 6,
+          }}>
+            <span style={{ fontSize: 11, fontWeight: i === 0 ? 700 : 400, color: dark ? 'rgba(255,255,255,0.7)' : NAVY, fontFamily: FONT }}>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── GTD (Getting Things Done) ─────────────────────────────────────────────────
+
+function GTD({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const buckets = ['INBOX', 'NEXT ACTIONS', 'PROJECTS', 'WAITING FOR', 'SOMEDAY']
+  const colW = Math.floor((width - 2) / buckets.length)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('GETTING THINGS DONE')}
+      <div style={{ flex: 1, display: 'flex' }}>
+        {buckets.map((label, i) => (
+          <div key={label} style={{
+            width: colW, flexShrink: 0,
+            borderRight: i < buckets.length - 1 ? `1.5px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(38,61,91,0.1)'}` : 'none',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ padding: '6px 8px', borderBottom: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(38,61,91,0.1)'}` }}>
+              <span style={{ fontSize: 8, letterSpacing: '0.06em', color: dark ? 'rgba(255,255,255,0.45)' : 'rgba(38,61,91,0.55)', fontFamily: FONT }}>{label}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

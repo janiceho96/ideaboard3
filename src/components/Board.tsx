@@ -251,6 +251,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     dragTileId.current  = id
     dragCardId.current  = null
     dragTagId.current   = null
+    dragTextId.current  = null
     snapZoom.current    = zoom
     snapPanX.current    = panX
     snapPanY.current    = panY
@@ -262,7 +263,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [zoom, panX, panY, sld.tiles])
 
   const onTextMoveStart = useCallback((id: string, cx: number, cy: number) => {
-    const block = txt.blocks.find(b => b.id === id)
+    const block = txtRef.current.blocks.find(b => b.id === id)
     if (!block) return
     isDragging.current  = true
     dragTextId.current  = id
@@ -277,12 +278,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     const mwy = (cy - cr.top  - panY) / zoom
     dragOffWX.current = mwx - block.x
     dragOffWY.current = mwy - block.y
-  }, [zoom, panX, panY, txt.blocks])
+  }, [zoom, panX, panY])
 
   const onTextResizeStart = useCallback((id: string, cx: number, cy: number, startW: number) => {
     resizeTarget.current  = 'textblock'
     isResizing.current    = true
     resizeTextId.current  = id
+    resizeCardId.current  = null
     resizeStartX.current  = cx
     resizeStartY.current  = cy
     resizeStartW.current  = startW

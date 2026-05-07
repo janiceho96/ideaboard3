@@ -14,6 +14,7 @@ style.textContent = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { overflow: hidden; }
   body[data-theme="dark"] { color-scheme: dark; }
+  @keyframes snapBounce{0%{transform:scale(1)}25%{transform:scale(.88)}65%{transform:scale(1.15)}100%{transform:scale(1)}}
 `
 document.head.appendChild(style)
 

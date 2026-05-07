@@ -42,10 +42,8 @@ const TextBlockItem = React.memo(function TextBlockItem({
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
     const range = sel.getRangeAt(0)
     if (!editRef.current?.contains(range.commonAncestorContainer)) return
-    const anchor = sel.anchorNode
-    const el = anchor
-      ? (anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor as HTMLElement)
-      : editRef.current
+    const startNode = range.startContainer
+    const el = startNode.nodeType === Node.TEXT_NODE ? startNode.parentElement : startNode as HTMLElement
     const currentPx = el ? (parseInt(getComputedStyle(el).fontSize, 10) || 14) : 14
     const newPx = Math.max(8, Math.min(72, currentPx + delta))
     const span = document.createElement('span')
@@ -66,7 +64,8 @@ const TextBlockItem = React.memo(function TextBlockItem({
     const newRange = document.createRange()
     newRange.selectNodeContents(span)
     sel.addRange(newRange)
-  }, [])
+    onUpdateHtml(block.id, editRef.current?.innerHTML ?? '')
+  }, [block.id, onUpdateHtml])
 
   const borderColor = focused
     ? '#49B6E5'

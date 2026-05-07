@@ -1,5 +1,5 @@
 // src/components/HomeScreen.tsx
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { LocalUser, Board, Group, BoardGroup } from '../types'
 import * as db from '../lib/db'
 
@@ -27,6 +27,10 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [creatingBoardInGroup, setCreatingBoardInGroup] = useState<string | null>(null)
   const [newBoardInGroupName, setNewBoardInGroupName] = useState('')
   const [chipDropdown, setChipDropdown] = useState<{ boardId: string; x: number; y: number } | null>(null)
+  const groupRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const dragGroupId = useRef<string | null>(null)
+  const dragOrderRef = useRef<string[]>([])
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups()]).then(
@@ -89,6 +93,64 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
     setBoardGroups(prev => [...prev, { board_id: b.id, group_id: groupId }])
     setNewBoardInGroupName(''); setCreatingBoardInGroup(null)
   }
+
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragGroupId.current) return
+      const currentOrder = dragOrderRef.current
+      const draggingIdx = currentOrder.indexOf(dragGroupId.current)
+      if (draggingIdx === -1) return
+
+      if (draggingIdx > 0) {
+        const prevId = currentOrder[draggingIdx - 1]
+        const prevEl = groupRefs.current[prevId]
+        if (prevEl) {
+          const rect = prevEl.getBoundingClientRect()
+          if (e.clientY < rect.top + rect.height / 2) {
+            const newOrder = [...currentOrder]
+            newOrder[draggingIdx] = prevId
+            newOrder[draggingIdx - 1] = dragGroupId.current
+            dragOrderRef.current = newOrder
+            setGroups(prev =>
+              newOrder.map((id, i) => ({ ...prev.find(g => g.id === id)!, order: i }))
+            )
+            return
+          }
+        }
+      }
+
+      if (draggingIdx < currentOrder.length - 1) {
+        const nextId = currentOrder[draggingIdx + 1]
+        const nextEl = groupRefs.current[nextId]
+        if (nextEl) {
+          const rect = nextEl.getBoundingClientRect()
+          if (e.clientY > rect.top + rect.height / 2) {
+            const newOrder = [...currentOrder]
+            newOrder[draggingIdx] = nextId
+            newOrder[draggingIdx + 1] = dragGroupId.current
+            dragOrderRef.current = newOrder
+            setGroups(prev =>
+              newOrder.map((id, i) => ({ ...prev.find(g => g.id === id)!, order: i }))
+            )
+          }
+        }
+      }
+    }
+
+    const onUp = () => {
+      if (!dragGroupId.current) return
+      db.reorderGroups(dragOrderRef.current)
+      dragGroupId.current = null
+      setDraggingGroupId(null)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [])
 
   const bg   = dark ? '#0F0F14' : '#ECEAE3'
   const card = dark ? '#1A1A24' : '#FFFFFF'
@@ -227,8 +289,26 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
               const ids = boardGroups.filter(bg => bg.group_id === group.id).map(bg => bg.board_id)
               const groupBoards = boards.filter(b => ids.includes(b.id))
               return (
-                <div key={group.id} style={{ marginBottom: 36 }}>
+                <div
+                  key={group.id}
+                  ref={el => { groupRefs.current[group.id] = el }}
+                  style={{
+                    marginBottom: 36,
+                    opacity: draggingGroupId === group.id ? 0.5 : 1,
+                    transition: 'opacity 0.15s',
+                  }}
+                >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    <span
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        dragGroupId.current = group.id
+                        dragOrderRef.current = groups.map(g => g.id)
+                        setDraggingGroupId(group.id)
+                      }}
+                      title="Drag to reorder"
+                      style={{ cursor: 'grab', fontSize: 16, color: sub, userSelect: 'none', paddingRight: 4 }}
+                    >⠿</span>
                     {editingGroupId === group.id ? (
                       <input autoFocus value={editGroupName}
                         onChange={e => setEditGroupName(e.target.value)}

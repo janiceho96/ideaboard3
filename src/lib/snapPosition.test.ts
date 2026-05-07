@@ -30,7 +30,7 @@ describe('snapPosition — magnetic snap', () => {
     // Drop at the right slot itself — dragging centre (383.5,180), neighbour centre (192.5,180), dist=191 < 200
     const result = snapPosition(291, 100, dragging, [neighbour])
     // right slot = neighbour.x + neighbour.card_width + 6 = 100 + 185 + 6 = 291
-    expect(result).toEqual({ x: 291, y: 100 })
+    expect(result).toEqual({ x: 291, y: 100, snappedToId: 'nb' })
   })
 
   it('snaps to the left of a neighbour when dropped to its left', () => {
@@ -38,7 +38,7 @@ describe('snapPosition — magnetic snap', () => {
     // Drop at the left slot — dragging centre (201.5,180), neighbour centre (392.5,180), dist=191 < 200
     const result = snapPosition(109, 100, dragging, [neighbour])
     // left slot = neighbour.x - dragging.card_width - 6 = 300 - 185 - 6 = 109
-    expect(result).toEqual({ x: 109, y: 100 })
+    expect(result).toEqual({ x: 109, y: 100, snappedToId: 'nb' })
   })
 
   it('snaps below a neighbour when dropped below it', () => {
@@ -46,7 +46,7 @@ describe('snapPosition — magnetic snap', () => {
     // Drop dragging card below neighbour — uses card_height estimate 160
     const result = snapPosition(100, 280, dragging, [neighbour])
     // below slot = neighbour.y + 160 + 6 = 266
-    expect(result).toEqual({ x: 100, y: 266 })
+    expect(result).toEqual({ x: 100, y: 266, snappedToId: 'nb' })
   })
 
   it('snaps above a neighbour when dropped above it', () => {
@@ -54,23 +54,23 @@ describe('snapPosition — magnetic snap', () => {
     // Drop dragging card above neighbour
     const result = snapPosition(100, 120, dragging, [neighbour])
     // above slot = neighbour.y - dragging height estimate - 6 = 300 - 160 - 6 = 134
-    expect(result).toEqual({ x: 100, y: 134 })
+    expect(result).toEqual({ x: 100, y: 134, snappedToId: 'nb' })
   })
 
   it('skips the dragging card itself when scanning neighbours', () => {
     // Only card in list is the dragging card — should fall back to grid
     const result = snapPosition(55, 55, dragging, [dragging])
-    expect(result).toEqual({ x: 40, y: 40 })
+    expect(result).toEqual({ x: 40, y: 40, snappedToId: null })
   })
 
   it('falls back to grid snap when no neighbour is within 300px', () => {
     const farCard = makeCard({ id: 'far', x: 2000, y: 2000 })
     const result = snapPosition(55, 75, dragging, [farCard])
-    expect(result).toEqual({ x: 40, y: 80 })
+    expect(result).toEqual({ x: 40, y: 80, snappedToId: null })
   })
 
   it('falls back to grid snap when card list is empty', () => {
     const result = snapPosition(50, 90, dragging, [])
-    expect(result).toEqual({ x: 40, y: 80 })
+    expect(result).toEqual({ x: 40, y: 80, snappedToId: null })
   })
 })

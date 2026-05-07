@@ -10,7 +10,7 @@ export function snapPosition(
   wy: number,
   draggingCard: Card,
   allCards: Card[],
-): { x: number; y: number } {
+): { x: number; y: number; snappedToId: string | null } {
   const dw = draggingCard.card_width ?? 185
   const dh = draggingCard.card_height ?? CARD_HEIGHT_ESTIMATE
   const dragCx = wx + dw / 2
@@ -57,12 +57,13 @@ export function snapPosition(
         best = c
       }
     }
-    return best
+    return { ...best, snappedToId: nearest.id }
   }
 
   // Fallback: nearest grid point
   return {
     x: Math.round(wx / SNAP_GRID) * SNAP_GRID,
     y: Math.round(wy / SNAP_GRID) * SNAP_GRID,
+    snappedToId: null,
   }
 }

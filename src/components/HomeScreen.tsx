@@ -20,6 +20,12 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [newName, setNewName] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [editGroupName, setEditGroupName] = useState('')
+  const [creatingBoardInGroup, setCreatingBoardInGroup] = useState<string | null>(null)
+  const [newBoardInGroupName, setNewBoardInGroupName] = useState('')
 
   useEffect(() => {
     Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups()]).then(
@@ -50,6 +56,37 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
     await db.deleteBoard(id)
     setBoards(prev => prev.filter(b => b.id !== id))
     setBoardGroups(prev => prev.filter(bg => bg.board_id !== id))
+  }
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return
+    const g = await db.createGroup(newGroupName.trim())
+    setGroups(prev => [g, ...prev.map(g2 => ({ ...g2, order: g2.order + 1 }))])
+    setNewGroupName(''); setCreatingGroup(false)
+  }
+
+  const renameGroup = async (id: string) => {
+    if (!editGroupName.trim()) return
+    await db.updateGroup(id, editGroupName.trim())
+    setGroups(prev => prev.map(g => g.id === id ? { ...g, name: editGroupName.trim() } : g))
+    setEditingGroupId(null)
+  }
+
+  const removeGroup = async (id: string) => {
+    const group = groups.find(g => g.id === id)
+    if (!confirm(`Delete group "${group?.name}"? Boards will move to Uncategorized.`)) return
+    await db.deleteGroup(id)
+    setGroups(prev => prev.filter(g => g.id !== id))
+    setBoardGroups(prev => prev.filter(bg => bg.group_id !== id))
+  }
+
+  const createBoardInGroup = async (groupId: string) => {
+    if (!newBoardInGroupName.trim()) return
+    const b = await db.createBoard(newBoardInGroupName.trim(), user.id)
+    await db.addBoardToGroup(b.id, groupId)
+    setBoards(prev => [...prev, b])
+    setBoardGroups(prev => [...prev, { board_id: b.id, group_id: groupId }])
+    setNewBoardInGroupName(''); setCreatingBoardInGroup(null)
   }
 
   const bg   = dark ? '#0F0F14' : '#ECEAE3'
@@ -124,6 +161,10 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
             <p style={{ fontSize: 14, color: sub }}>{boards.length} board{boards.length !== 1 ? 's' : ''}</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setCreatingGroup(true)}
+              style={{ height: 38, padding: '0 18px', borderRadius: 10, border: `1.5px solid #6C63FF`, background: 'transparent', color: '#6C63FF', cursor: 'pointer', fontSize: 14, fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }}>
+              + New Group
+            </button>
             <button onClick={() => setCreating(true)}
               style={{ height: 38, padding: '0 18px', borderRadius: 10, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 14, fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }}>
               + New Board
@@ -143,6 +184,18 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
           </div>
         )}
 
+        {creatingGroup && (
+          <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '16px 18px', marginBottom: 16, display: 'flex', gap: 10 }}>
+            <input autoFocus value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreateGroup(); if (e.key === 'Escape') setCreatingGroup(false) }}
+              placeholder="Group name…"
+              style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+            />
+            <button onClick={handleCreateGroup} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
+            <button onClick={() => setCreatingGroup(false)} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60, color: sub, fontSize: 14 }}>Loading boards…</div>
         ) : boards.length === 0 && !creating ? (
@@ -158,10 +211,38 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
               const groupBoards = boards.filter(b => ids.includes(b.id))
               return (
                 <div key={group.id} style={{ marginBottom: 36 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: txt }}>{group.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                    {editingGroupId === group.id ? (
+                      <input autoFocus value={editGroupName}
+                        onChange={e => setEditGroupName(e.target.value)}
+                        onBlur={() => renameGroup(group.id)}
+                        onKeyDown={e => { if (e.key === 'Enter') renameGroup(group.id); if (e.key === 'Escape') setEditingGroupId(null) }}
+                        style={{ border: `1.5px solid #6C63FF`, borderRadius: 6, padding: '3px 8px', fontSize: 15, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+                      />
+                    ) : (
+                      <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: txt }}>{group.name}</span>
+                    )}
+                    <button onClick={() => { setEditingGroupId(group.id); setEditGroupName(group.name) }}
+                      title="Rename group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
+                    <button onClick={() => removeGroup(group.id)}
+                      title="Delete group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+                    <button onClick={() => { setCreatingBoardInGroup(group.id); setNewBoardInGroupName('') }}
+                      style={{ marginLeft: 'auto', height: 28, padding: '0 12px', borderRadius: 7, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}>
+                      + New Board
+                    </button>
                   </div>
                   <div style={{ height: 1, background: bdr, marginBottom: 16 }} />
+                  {creatingBoardInGroup === group.id && (
+                    <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10 }}>
+                      <input autoFocus value={newBoardInGroupName} onChange={e => setNewBoardInGroupName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') createBoardInGroup(group.id); if (e.key === 'Escape') setCreatingBoardInGroup(null) }}
+                        placeholder="Board name…"
+                        style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '7px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+                      />
+                      <button onClick={() => createBoardInGroup(group.id)} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13 }}>Create</button>
+                      <button onClick={() => setCreatingBoardInGroup(null)} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                    </div>
+                  )}
                   {renderGrid(groupBoards)}
                 </div>
               )

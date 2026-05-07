@@ -68,3 +68,15 @@ export interface TextBlock {
   width: number      // world-units; default 260
   created_at: string
 }
+
+export interface Group {
+  id: string
+  name: string
+  order: number
+  created_at: string
+}
+
+export interface BoardGroup {
+  board_id: string
+  group_id: string
+}

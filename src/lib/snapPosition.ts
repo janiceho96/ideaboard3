@@ -5,6 +5,58 @@ const SNAP_GAP = 6               // world-px: gap between docked cards
 const SNAP_GRID = 40             // world-px: grid size for fallback snap
 const CARD_HEIGHT_ESTIMATE = 160 // world-px: fallback when card_height is null
 
+export interface SnapTarget {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export function snapPositionGeneric(
+  wx: number,
+  wy: number,
+  dragging: SnapTarget,
+  others: SnapTarget[],
+): { x: number; y: number; snappedToId: string | null } {
+  const { w: dw, h: dh } = dragging
+  const dragCx = wx + dw / 2
+  const dragCy = wy + dh / 2
+
+  let nearest: SnapTarget | null = null
+  let nearestDist = SNAP_RADIUS
+
+  for (const item of others) {
+    if (item.id === dragging.id) continue
+    const ncx = item.x + item.w / 2
+    const ncy = item.y + item.h / 2
+    const dist = Math.sqrt((dragCx - ncx) ** 2 + (dragCy - ncy) ** 2)
+    if (dist < nearestDist) { nearestDist = dist; nearest = item }
+  }
+
+  if (nearest) {
+    const candidates = [
+      { x: nearest.x + nearest.w + SNAP_GAP, y: nearest.y },
+      { x: nearest.x - dw - SNAP_GAP,        y: nearest.y },
+      { x: nearest.x, y: nearest.y + nearest.h + SNAP_GAP },
+      { x: nearest.x, y: nearest.y - dh - SNAP_GAP },
+    ]
+    let best = candidates[0]
+    let bestDist = Infinity
+    for (const c of candidates) {
+      const d = Math.sqrt((c.x + dw / 2 - dragCx) ** 2 + (c.y + dh / 2 - dragCy) ** 2)
+      if (d < bestDist) { bestDist = d; best = c }
+    }
+    return { ...best, snappedToId: nearest.id }
+  }
+
+  return {
+    x: Math.round(wx / SNAP_GRID) * SNAP_GRID,
+    y: Math.round(wy / SNAP_GRID) * SNAP_GRID,
+    snappedToId: null,
+  }
+}
+
 export function snapPosition(
   wx: number,
   wy: number,

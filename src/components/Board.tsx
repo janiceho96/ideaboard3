@@ -4,7 +4,7 @@ import type { LocalUser, Board as BoardType, Card, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
-import { snapPosition } from '../lib/snapPosition'
+import { snapPosition, snapPositionGeneric } from '../lib/snapPosition'
 import { playSnapSound } from '../lib/snapSound'
 import { useFramework } from '../hooks/useFramework'
 import type { FrameworkType } from '../hooks/useFramework'
@@ -82,6 +82,7 @@ const CARD_MIN_W = 140
 const CARD_MIN_H = 100
 const FRAMEWORK_MIN_W = 400
 const FRAMEWORK_MIN_H = 200
+const TEXT_HEIGHT_ESTIMATE = 80
 
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
   const brd = useBoard(board.id)
@@ -391,7 +392,17 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         }
         if (dragTagId.current) brd.moveGoalTag(dragTagId.current, wx, wy)
         if (dragTileId.current) sldRef.current.moveTile(dragTileId.current, wx, wy)
-        if (dragTextId.current) txtRef.current.moveBlock(dragTextId.current, wx, wy)
+        if (dragTextId.current) {
+          txtRef.current.moveBlock(dragTextId.current, wx, wy)
+          const draggingBlock = txtRef.current.blocks.find(b => b.id === dragTextId.current)
+          if (draggingBlock) {
+            const targets = txtRef.current.blocks.map(b => ({ id: b.id, x: b.x, y: b.y, w: b.width, h: TEXT_HEIGHT_ESTIMATE }))
+            const snap = snapPositionGeneric(wx, wy, { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE }, targets)
+            setSnapGhost(snap)
+            if (snap.snappedToId && snap.snappedToId !== lastSnapId.current) playSnapSound()
+            lastSnapId.current = snap.snappedToId
+          }
+        }
         return
       }
       if (isResizing.current) {
@@ -431,7 +442,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         }
         if (dragTagId.current) brd.commitGoalTagMove(dragTagId.current, wx, wy)
         if (dragTileId.current) sldRef.current.commitTileMove(dragTileId.current, wx, wy)
-        if (dragTextId.current) txtRef.current.commitBlockMove(dragTextId.current, wx, wy)
+        if (dragTextId.current) {
+          const draggingBlock = txtRef.current.blocks.find(b => b.id === dragTextId.current)
+          const targets = draggingBlock ? txtRef.current.blocks.map(b => ({ id: b.id, x: b.x, y: b.y, w: b.width, h: TEXT_HEIGHT_ESTIMATE })) : []
+          const finalPos = draggingBlock
+            ? snapPositionGeneric(wx, wy, { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE }, targets)
+            : { x: wx, y: wy }
+          txtRef.current.moveBlock(dragTextId.current, finalPos.x, finalPos.y)
+          txtRef.current.commitBlockMove(dragTextId.current, finalPos.x, finalPos.y)
+        }
         isDragging.current = false
         dragCardId.current = null
         dragTagId.current = null
@@ -1005,7 +1024,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               </div>
             ))}
 
-            {/* Snap ghost */}
+            {/* Snap ghost — cards */}
             {snapGhost && dragCardId.current && (() => {
               const card = brd.cards.find(c => c.id === dragCardId.current)
               if (!card) return null
@@ -1020,6 +1039,26 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   border: '2px dashed #6C63FF',
                   borderRadius: 14,
                   background: 'rgba(108,99,255,0.08)',
+                  pointerEvents: 'none',
+                  zIndex: 19,
+                  boxSizing: 'border-box',
+                }} />
+              )
+            })()}
+            {/* Snap ghost — text blocks */}
+            {snapGhost && dragTextId.current && (() => {
+              const block = txt.blocks.find(b => b.id === dragTextId.current)
+              if (!block) return null
+              return (
+                <div style={{
+                  position: 'absolute',
+                  left: snapGhost.x,
+                  top: snapGhost.y,
+                  width: block.width,
+                  minHeight: TEXT_HEIGHT_ESTIMATE,
+                  border: '2px dashed #49B6E5',
+                  borderRadius: 8,
+                  background: 'rgba(73,182,229,0.08)',
                   pointerEvents: 'none',
                   zIndex: 19,
                   boxSizing: 'border-box',

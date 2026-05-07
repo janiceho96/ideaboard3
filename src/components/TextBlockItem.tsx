@@ -156,18 +156,33 @@ const TextBlockItem = React.memo(function TextBlockItem({
           border: `1.5px solid ${borderColor}`,
           borderRadius: 8,
           boxShadow: '2px 2px 0 rgba(38,61,91,0.08)',
-          minHeight: 60,
-          padding: '12px 14px',
+          minHeight: 70,
+          padding: '24px 14px 12px 14px',
           position: 'relative',
           cursor: focused ? 'text' : 'grab',
           transition: 'border-color 0.15s',
           boxSizing: 'border-box',
         }}
       >
+        {/* Grab handle — always draggable, not text-no-drag */}
+        <div
+          style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 20,
+            cursor: 'grab',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            borderRadius: '8px 8px 0 0',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 4px)', gap: '3px 4px' }}>
+            {[0,1,2,3,4,5].map(i => (
+              <div key={i} style={{ width: 3, height: 3, borderRadius: '50%', background: dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)' }} />
+            ))}
+          </div>
+        </div>
         {/* Placeholder */}
         {isEmpty && !focused && (
           <div style={{
-            position: 'absolute', top: 12, left: 14,
+            position: 'absolute', top: 24, left: 14,
             fontSize: 14, color: dark ? '#555' : '#bbb',
             pointerEvents: 'none',
             fontFamily: "'Delius', cursive",

@@ -33,6 +33,32 @@ const TextBlockItem = React.memo(function TextBlockItem({
     document.execCommand(cmd, false, value)
   }, [])
 
+  const changeFontSize = useCallback((delta: number) => {
+    const sel = window.getSelection()
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return
+    const range = sel.getRangeAt(0)
+    const anchor = sel.anchorNode
+    const el = anchor
+      ? (anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor as HTMLElement)
+      : editRef.current
+    const currentPx = el ? parseInt(getComputedStyle(el).fontSize, 10) : 14
+    const newPx = Math.max(8, Math.min(72, currentPx + delta))
+    const span = document.createElement('span')
+    span.style.fontSize = `${newPx}px`
+    try {
+      range.surroundContents(span)
+    } catch {
+      // Selection crosses element boundaries — extract and reinsert
+      const contents = range.extractContents()
+      span.appendChild(contents)
+      range.insertNode(span)
+    }
+    sel.removeAllRanges()
+    const newRange = document.createRange()
+    newRange.selectNodeContents(span)
+    sel.addRange(newRange)
+  }, [])
+
   const borderColor = focused
     ? '#49B6E5'
     : dark ? '#2A2A38' : '#e8e4d9'
@@ -70,6 +96,20 @@ const TextBlockItem = React.memo(function TextBlockItem({
             zIndex: 10,
           }}
         >
+          {/* Smaller */}
+          <button
+            onMouseDown={e => { e.preventDefault(); changeFontSize(-4) }}
+            title="Decrease font size"
+            style={{ fontSize: 11, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+          >A⁻</button>
+          {/* Larger */}
+          <button
+            onMouseDown={e => { e.preventDefault(); changeFontSize(4) }}
+            title="Increase font size"
+            style={{ fontSize: 13, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4 }}
+          >A⁺</button>
+          {/* Size/format divider */}
+          <div style={{ width: 1, height: 14, background: dark ? '#2A2A38' : '#e8e4d9', margin: '0 4px' }} />
           {/* Bold */}
           <button
             onMouseDown={e => { e.preventDefault(); execFormat('bold') }}

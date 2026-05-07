@@ -136,8 +136,9 @@ const TextBlockItem = React.memo(function TextBlockItem({
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false)
-            const html = editRef.current?.innerHTML ?? ''
-            setIsEmpty(!editRef.current?.textContent?.trim())
+            const hasText = !!editRef.current?.textContent?.trim()
+            const html = hasText ? (editRef.current?.innerHTML ?? '') : ''
+            setIsEmpty(!hasText)
             onUpdateHtml(block.id, html)
           }}
           onInput={() => setIsEmpty(!editRef.current?.textContent?.trim())}

@@ -5,6 +5,7 @@ import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
 import { snapPosition } from '../lib/snapPosition'
+import { playSnapSound } from '../lib/snapSound'
 import { useFramework } from '../hooks/useFramework'
 import type { FrameworkType } from '../hooks/useFramework'
 import FrameworkOverlay from './FrameworkOverlay'
@@ -13,6 +14,9 @@ import { importPdf } from '../lib/pdfImport'
 import { saveImage, getImage, deleteImage } from '../lib/slideImageStore'
 import SlideTile from './SlideTile'
 import type { SlideTile as SlideTileType } from '../types'
+import TextBlockItem, { TEXT_MIN_W } from './TextBlockItem'
+import { useTextBlocks } from '../hooks/useTextBlocks'
+import type { UseTextBlocksReturn } from '../hooks/useTextBlocks'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
@@ -33,6 +37,43 @@ interface BoardProps {
   onToggleDark: () => void
 }
 
+const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
+  blank:                 'Blank Board',
+  eisenhower:            'Eisenhower Matrix',
+  ooda:                  'OODA Loop',
+  ikigai:                'Ikigai',
+  'wheel-of-life':       'Wheel of Life',
+  grow:                  'GROW Model',
+  'smart-goals':         'SMART Goals',
+  'start-stop-continue': 'Start / Stop / Continue',
+  'personal-kanban':     'Personal Kanban',
+  'five-whys':           '5 Whys',
+  'daily-reflection':    'Daily Reflection',
+  okr:                   'OKR',
+  'energy-audit':        'Energy Audit',
+}
+
+type DropdownEntry =
+  | { key: FrameworkType; label: string; desc: string }
+  | { sep: string }
+
+const FRAMEWORK_DROPDOWN: DropdownEntry[] = [
+  { key: 'blank',      label: 'Blank Board',       desc: 'Clean canvas, no overlay' },
+  { key: 'eisenhower', label: 'Eisenhower Matrix',  desc: 'Urgent / Important grid' },
+  { key: 'ooda',       label: 'OODA Loop',          desc: 'Observe → Orient → Decide → Act' },
+  { sep: 'PERSONAL GROWTH' },
+  { key: 'ikigai',                label: 'Ikigai',                  desc: 'Find your reason for being' },
+  { key: 'wheel-of-life',         label: 'Wheel of Life',           desc: 'Balance across 8 life areas' },
+  { key: 'grow',                  label: 'GROW Model',              desc: 'Goal → Reality → Options → Will' },
+  { key: 'smart-goals',           label: 'SMART Goals',             desc: 'Specific · Measurable · Achievable · Relevant · Time-bound' },
+  { key: 'start-stop-continue',   label: 'Start / Stop / Continue', desc: 'Retrospective for habits & actions' },
+  { key: 'personal-kanban',       label: 'Personal Kanban',         desc: 'Backlog → In Progress → Done' },
+  { key: 'five-whys',             label: '5 Whys',                  desc: 'Drill down to root causes' },
+  { key: 'daily-reflection',      label: 'Daily Reflection',        desc: 'Gratitude · Focus · Wins · Lessons' },
+  { key: 'okr',                   label: 'OKR',                     desc: 'Objective + Key Results' },
+  { key: 'energy-audit',          label: 'Energy Audit',            desc: 'Map activities by energy level' },
+]
+
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3
 const CARD_MIN_W = 140
@@ -46,6 +87,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const sld = useSlides(board.id)
   const sldRef = useRef(sld)
   useEffect(() => { sldRef.current = sld }, [sld])
+  const txt = useTextBlocks(board.id)
+  const txtRef = useRef<UseTextBlocksReturn>(txt)
+  useEffect(() => { txtRef.current = txt }, [txt])
 
   // Camera
   const [panX, setPanX] = useState(0)
@@ -60,8 +104,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Pan
   const isPanning    = useRef(false)
   const panStart     = useRef({ x: 0, y: 0, px: 0, py: 0 })
-  const [ctrlHeld, setCtrlHeld] = useState(false)
-  const ctrlHeldRef = useRef(false)          // mirrors ctrlHeld but accessible in stable closures
   const lastCtrlPos = useRef<{ x: number; y: number } | null>(null)
 
   // Card drag
@@ -81,8 +123,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeStartY = useRef(0)
   const resizeStartW = useRef(185)
   const resizeStartH = useRef<number | null>(null)
-  const resizeTarget = useRef<'card' | 'framework'>('card')
-  const dragTileId = useRef<string | null>(null)
+  const resizeTarget = useRef<'card' | 'framework' | 'textblock'>('card')
+  const dragTileId   = useRef<string | null>(null)
+  const lastSnapId   = useRef<string | null>(null)
+  const dragTextId   = useRef<string | null>(null)
+  const resizeTextId = useRef<string | null>(null)
   const fwRef = useRef(fw)
   useEffect(() => { fwRef.current = fw }, [fw])
 
@@ -216,6 +261,33 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     dragOffWY.current = mwy - tile.y
   }, [zoom, panX, panY, sld.tiles])
 
+  const onTextMoveStart = useCallback((id: string, cx: number, cy: number) => {
+    const block = txt.blocks.find(b => b.id === id)
+    if (!block) return
+    isDragging.current  = true
+    dragTextId.current  = id
+    dragCardId.current  = null
+    dragTagId.current   = null
+    dragTileId.current  = null
+    snapZoom.current    = zoom
+    snapPanX.current    = panX
+    snapPanY.current    = panY
+    const cr = canvasRef.current!.getBoundingClientRect()
+    const mwx = (cx - cr.left - panX) / zoom
+    const mwy = (cy - cr.top  - panY) / zoom
+    dragOffWX.current = mwx - block.x
+    dragOffWY.current = mwy - block.y
+  }, [zoom, panX, panY, txt.blocks])
+
+  const onTextResizeStart = useCallback((id: string, cx: number, cy: number, startW: number) => {
+    resizeTarget.current  = 'textblock'
+    isResizing.current    = true
+    resizeTextId.current  = id
+    resizeStartX.current  = cx
+    resizeStartY.current  = cy
+    resizeStartW.current  = startW
+  }, [])
+
   const handleDeleteTile = useCallback(async (id: string) => {
     try {
       await deleteImage(id)
@@ -306,10 +378,16 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         if (dragCardId.current) {
           brd.moveCard(dragCardId.current, wx, wy)
           const draggingCard = brd.cards.find(c => c.id === dragCardId.current)
-          if (draggingCard) setSnapGhost(snapPosition(wx, wy, draggingCard, brd.cards))
+          if (draggingCard) {
+            const snap = snapPosition(wx, wy, draggingCard, brd.cards)
+            setSnapGhost(snap)
+            if (snap.snappedToId && snap.snappedToId !== lastSnapId.current) playSnapSound()
+            lastSnapId.current = snap.snappedToId
+          }
         }
         if (dragTagId.current) brd.moveGoalTag(dragTagId.current, wx, wy)
         if (dragTileId.current) sldRef.current.moveTile(dragTileId.current, wx, wy)
+        if (dragTextId.current) txtRef.current.moveBlock(dragTextId.current, wx, wy)
         return
       }
       if (isResizing.current) {
@@ -326,6 +404,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
             : Math.max(CARD_MIN_H, 160 + dy)
           brd.resizeCard(resizeCardId.current, newW, newH)
+        } else if (resizeTarget.current === 'textblock' && resizeTextId.current) {
+          const newW = Math.max(TEXT_MIN_W, resizeStartW.current + (e.clientX - resizeStartX.current) / zoom)
+          txtRef.current.resizeBlock(resizeTextId.current, newW)
         }
       }
     }
@@ -346,10 +427,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         }
         if (dragTagId.current) brd.commitGoalTagMove(dragTagId.current, wx, wy)
         if (dragTileId.current) sldRef.current.commitTileMove(dragTileId.current, wx, wy)
+        if (dragTextId.current) txtRef.current.commitBlockMove(dragTextId.current, wx, wy)
         isDragging.current = false
         dragCardId.current = null
         dragTagId.current = null
         dragTileId.current = null
+        dragTextId.current = null
+        lastSnapId.current = null
         setSnapGhost(null)
         return
       }
@@ -367,6 +451,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             ? Math.max(CARD_MIN_H, resizeStartH.current + dy)
             : Math.max(CARD_MIN_H, 160 + dy)
           brd.commitCardResize(resizeCardId.current, newW, newH)
+        } else if (resizeTarget.current === 'textblock' && resizeTextId.current) {
+          const newW = Math.max(TEXT_MIN_W, resizeStartW.current + (e.clientX - resizeStartX.current) / zoom)
+          txtRef.current.commitBlockResize(resizeTextId.current, newW)
+          resizeTextId.current = null
         }
         isResizing.current = false
         resizeCardId.current = null
@@ -468,10 +556,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = true;  setCtrlHeld(true)  } }
-    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { ctrlHeldRef.current = false; setCtrlHeld(false); lastCtrlPos.current = null } }
-    // reset if window loses focus mid-hold so Ctrl never gets stuck
-    const onBlur = () => { ctrlHeldRef.current = false; setCtrlHeld(false); lastCtrlPos.current = null }
+    const setCursor = (c: string) => { if (canvasRef.current) canvasRef.current.style.cursor = c }
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Control') setCursor('move') }
+    const onKeyUp   = (e: KeyboardEvent) => { if (e.key === 'Control') { lastCtrlPos.current = null; setCursor('crosshair') } }
+    const onBlur = () => { lastCtrlPos.current = null; setCursor('crosshair') }
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup',   onKeyUp)
     window.addEventListener('blur',    onBlur)
@@ -487,15 +575,24 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Guarded against drag/pan/resize so it never corrupts snap offsets.
   useEffect(() => {
     const onCtrlMove = (e: MouseEvent) => {
-      // Accept Ctrl from either our tracked ref OR the live event key state
-      if (!ctrlHeldRef.current && !e.ctrlKey) { lastCtrlPos.current = null; return }
-      // Never pan while a drag, canvas-pan, or resize is active
-      if (isDragging.current || isPanning.current || isResizing.current) {
-        lastCtrlPos.current = null; return
+      if (!e.ctrlKey || e.buttons !== 0) {
+        lastCtrlPos.current = null
+        if (canvasRef.current) canvasRef.current.style.cursor = 'crosshair'
+        return
       }
       if (lastCtrlPos.current) {
-        setPanX(px => px + (e.clientX - lastCtrlPos.current!.x))
-        setPanY(py => py + (e.clientY - lastCtrlPos.current!.y))
+        const dx = e.clientX - lastCtrlPos.current.x
+        const dy = e.clientY - lastCtrlPos.current.y
+        setPanX(px => px + dx)
+        setPanY(py => py + dy)
+        if (canvasRef.current && (Math.abs(dx) > 1 || Math.abs(dy) > 1)) {
+          canvasRef.current.style.cursor =
+            Math.abs(dx) >= Math.abs(dy)
+              ? (dx > 0 ? 'e-resize' : 'w-resize')
+              : (dy > 0 ? 's-resize' : 'n-resize')
+        }
+      } else {
+        if (canvasRef.current) canvasRef.current.style.cursor = 'move'
       }
       lastCtrlPos.current = { x: e.clientX, y: e.clientY }
     }
@@ -741,9 +838,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               onClick={() => setFrameworkDropdownOpen(o => !o)}
               style={{ height: 28, padding: '0 10px', borderRadius: 20, border: `1.5px solid ${dark ? '#49B6E5' : '#263D5B'}`, background: 'transparent', color: dark ? '#49B6E5' : '#263D5B', cursor: 'pointer', fontSize: 10, fontFamily: "'Delius Swash Caps',cursive", display: 'flex', alignItems: 'center', gap: 5 }}
             >
-              {fw.framework.type === 'blank'      && 'Blank Board'}
-              {fw.framework.type === 'eisenhower' && 'Eisenhower Matrix'}
-              {fw.framework.type === 'ooda'       && 'OODA Loop'}
+              {FRAMEWORK_LABELS[fw.framework.type]}
               <span style={{ fontSize: 9 }}>▾</span>
             </button>
 
@@ -755,21 +850,23 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   onClick={() => setFrameworkDropdownOpen(false)}
                 />
                 {/* Dropdown panel */}
-                <div style={{ position: 'absolute', top: 34, left: 0, zIndex: 999, background: dark ? '#1A1A24' : 'white', border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflow: 'hidden', minWidth: 190 }}>
-                  {([
-                    { key: 'blank',      label: 'Blank Board',        desc: 'Clean canvas, no overlay' },
-                    { key: 'eisenhower', label: 'Eisenhower Matrix',  desc: 'Urgent / Important grid' },
-                    { key: 'ooda',       label: 'OODA Loop',          desc: 'Observe → Orient → Decide → Act' },
-                  ] as { key: FrameworkType; label: string; desc: string }[]).map(opt => (
-                    <button
-                      key={opt.key}
-                      onClick={() => { fw.setType(opt.key); setFrameworkDropdownOpen(false) }}
-                      style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: fw.framework.type === opt.key ? (dark ? 'rgba(108,99,255,.15)' : 'rgba(108,99,255,.08)') : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
-                    >
-                      <div style={{ fontSize: 12, fontWeight: 600, color: fw.framework.type === opt.key ? '#6C63FF' : (dark ? '#ddd' : '#1A1A2E') }}>{opt.label}</div>
-                      <div style={{ fontSize: 10, color: dark ? '#666' : '#999', marginTop: 1 }}>{opt.desc}</div>
-                    </button>
-                  ))}
+                <div style={{ position: 'absolute', top: 34, left: 0, zIndex: 999, background: dark ? '#1A1A24' : 'white', border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflow: 'hidden', minWidth: 220, maxHeight: 420, overflowY: 'auto' }}>
+                  {FRAMEWORK_DROPDOWN.map((entry, i) =>
+                    'sep' in entry ? (
+                      <div key={entry.sep + i} style={{ padding: '8px 14px 3px', fontSize: 8, letterSpacing: '0.1em', color: dark ? '#555' : '#aaa', fontFamily: "'DM Sans',sans-serif", fontWeight: 700 }}>
+                        {entry.sep}
+                      </div>
+                    ) : (
+                      <button
+                        key={entry.key}
+                        onClick={() => { fw.setType(entry.key); setFrameworkDropdownOpen(false) }}
+                        style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: fw.framework.type === entry.key ? (dark ? 'rgba(108,99,255,.15)' : 'rgba(108,99,255,.08)') : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 600, color: fw.framework.type === entry.key ? '#6C63FF' : (dark ? '#ddd' : '#1A1A2E') }}>{entry.label}</div>
+                        <div style={{ fontSize: 10, color: dark ? '#666' : '#999', marginTop: 1 }}>{entry.desc}</div>
+                      </button>
+                    )
+                  )}
                 </div>
               </>
             )}
@@ -779,6 +876,26 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
             Double-click to add · Scroll to zoom · Ctrl+move to pan · Press ? for shortcuts
           </span>
+          <button
+            onClick={() => {
+              const cr = canvasRef.current?.getBoundingClientRect()
+              if (!cr) return
+              const cx = (cr.width  / 2 - panX) / zoom
+              const cy = (cr.height / 2 - panY) / zoom
+              txtRef.current.addBlock({
+                id: crypto.randomUUID(),
+                board_id: board.id,
+                html: '',
+                x: cx - 130,
+                y: cy - 40,
+                width: 260,
+                created_at: new Date().toISOString(),
+              })
+            }}
+            style={{ height: 30, padding: '0 14px', borderRadius: 8, border: `2px solid ${dark ? '#49B6E5' : '#263D5B'}`, background: dark ? 'transparent' : 'white', color: dark ? '#49B6E5' : '#263D5B', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700 }}
+          >
+            + Add Text
+          </button>
           <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
             style={{ height: 30, padding: '0 14px', borderRadius: 8, border: '2px solid #263D5B', background: '#49B6E5', color: 'white', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, boxShadow: '2px 2px 0 #263D5B' }}>
             + Add Card
@@ -798,7 +915,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             backgroundImage: `radial-gradient(circle, ${dotClr} 1px, transparent 1px)`,
             backgroundSize: `${24 * zoom}px ${24 * zoom}px`,
             backgroundPosition: `${panX % (24 * zoom)}px ${panY % (24 * zoom)}px`,
-            cursor: ctrlHeld ? 'grab' : 'crosshair',
+            cursor: 'crosshair',
           }}
         >
           {/* THE WORLD */}
@@ -823,6 +940,19 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 dark={dark}
                 onMoveStart={onTileMoveStart}
                 onDelete={handleDeleteTile}
+              />
+            ))}
+
+            {/* Text blocks */}
+            {txt.blocks.map(block => (
+              <TextBlockItem
+                key={block.id}
+                block={block}
+                dark={dark}
+                onMoveStart={onTextMoveStart}
+                onUpdateHtml={(id, html) => txtRef.current.updateBlockHtml(id, html)}
+                onResizeStart={onTextResizeStart}
+                onRemove={id => txtRef.current.removeBlock(id)}
               />
             ))}
 

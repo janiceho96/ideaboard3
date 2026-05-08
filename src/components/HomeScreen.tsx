@@ -1,7 +1,8 @@
 // src/components/HomeScreen.tsx
 import { useState, useEffect, useRef } from 'react'
-import type { LocalUser, Board, Group, BoardGroup } from '../types'
+import type { LocalUser, Board, Card, Group, BoardGroup } from '../types'
 import * as db from '../lib/db'
+import BoardThumbnail from './BoardThumbnail'
 
 interface Props {
   user: LocalUser
@@ -31,10 +32,11 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const dragGroupId = useRef<string | null>(null)
   const dragOrderRef = useRef<string[]>([])
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
+  const [allCards, setAllCards] = useState<Card[]>([])
 
   useEffect(() => {
-    Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups()]).then(
-      ([b, g, bg]) => { setBoards(b); setGroups(g); setBoardGroups(bg); setLoading(false) }
+    Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups(), db.fetchAllCards()]).then(
+      ([b, g, bg, ac]) => { setBoards(b); setGroups(g); setBoardGroups(bg); setAllCards(ac); setLoading(false) }
     )
   }, [])
 
@@ -152,6 +154,12 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
     }
   }, [])
 
+  const cardsForBoard = (boardId: string): Card[] =>
+    allCards
+      .filter(c => c.board_id === boardId)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .slice(0, 3)
+
   const bg   = dark ? '#0F0F14' : '#ECEAE3'
   const card = dark ? '#1A1A24' : '#FFFFFF'
   const bdr  = dark ? '#2A2A38' : 'rgba(0,0,0,.1)'
@@ -168,11 +176,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = bdr; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}
       onClick={() => editingId !== b.id && onOpenBoard(b)}
     >
-      <div style={{ height: 80, borderRadius: 10, marginBottom: 14, background: dark ? '#25252F' : '#F5F0E8', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 8 }}>
-        {['#D4EDD8','#FFF3B0','#FFD6C2','#E8E0F5'].map((c,i) => (
-          <div key={i} style={{ background: c, borderRadius: 5, opacity: .8 }}/>
-        ))}
-      </div>
+      <BoardThumbnail cards={cardsForBoard(b.id)} dark={dark} />
       {editingId === b.id ? (
         <input autoFocus value={editName}
           onChange={e => setEditName(e.target.value)}

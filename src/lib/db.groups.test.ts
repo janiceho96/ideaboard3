@@ -12,6 +12,7 @@ vi.stubGlobal('localStorage', {
 import {
   fetchGroups, createGroup, updateGroup, deleteGroup, reorderGroups,
   fetchBoardGroups, addBoardToGroup, removeBoardFromGroup,
+  fetchAllCards,
 } from './db'
 
 beforeEach(() => { store = {} })
@@ -100,5 +101,22 @@ describe('removeBoardFromGroup', () => {
     const bgs = await fetchBoardGroups()
     expect(bgs).toHaveLength(1)
     expect(bgs[0].board_id).toBe('b2')
+  })
+})
+
+describe('fetchAllCards', () => {
+  it('returns [] when key missing', async () => {
+    expect(await fetchAllCards()).toEqual([])
+  })
+  it('returns cards from all boards', async () => {
+    store['ideaboard_cards'] = JSON.stringify([
+      { id: 'c1', board_id: 'b1', title: 'Alpha' },
+      { id: 'c2', board_id: 'b2', title: 'Beta' },
+    ])
+    const all = await fetchAllCards()
+    expect(all).toHaveLength(2)
+    expect(all.map((c: { id: string }) => c.id)).toEqual(
+      expect.arrayContaining(['c1', 'c2'])
+    )
   })
 })

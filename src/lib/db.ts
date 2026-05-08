@@ -94,6 +94,12 @@ export async function deleteGoalTag(id: string): Promise<void> {
   save(TAGS_KEY, load<GoalTag>(TAGS_KEY).filter(t => t.id !== id))
 }
 
+// ── ALL CARDS (cross-board) ───────────────────────────────────
+
+export async function fetchAllCards(): Promise<Card[]> {
+  return load<Card>(CARDS_KEY)
+}
+
 // ── GROUPS ────────────────────────────────────────────────────
 
 export async function fetchGroups(): Promise<Group[]> {

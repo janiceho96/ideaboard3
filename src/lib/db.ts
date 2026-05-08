@@ -97,7 +97,7 @@ export async function deleteGoalTag(id: string): Promise<void> {
 // ── ALL CARDS (cross-board) ───────────────────────────────────
 
 export async function fetchAllCards(): Promise<Card[]> {
-  return load<Card>(CARDS_KEY)
+  return load<Card>(CARDS_KEY).map(c => normaliseCard(c as unknown as Record<string, unknown>))
 }
 
 // ── GROUPS ────────────────────────────────────────────────────

@@ -473,9 +473,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           txtRef.current.commitBlockResize(resizeTextId.current, newW)
           resizeTextId.current = null
         }
-        isResizing.current = false
-        resizeCardId.current = null
-        resizeTarget.current = 'card'
+        isResizing.current    = false
+        resizeCardId.current  = null
+        resizeFrameId.current = null
+        resizeTarget.current  = 'card'
       }
     }
 
@@ -869,7 +870,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                         onClick={() => {
                           const cr = canvasRef.current?.getBoundingClientRect()
                           if (!cr) return
-                          frm.addFrame(entry.key!, cr.left + cr.width / 2, cr.top + cr.height / 2, zoom, panX, panY)
+                          frm.addFrame(entry.key!, cr.width / 2, cr.height / 2, zoom, panX, panY)
                           setAddFrameMenuOpen(false)
                         }}
                         style={{

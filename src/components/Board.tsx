@@ -576,7 +576,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [brd, screenToWorld, selectedCardId])
+  }, [brd, screenToWorld, selectedCardId, selectedFrameId, modalOpen])
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {

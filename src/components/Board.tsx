@@ -1118,7 +1118,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </div>{/* end world */}
 
           {/* Empty state */}
-          {frm.frames.length === 0 && brd.cards.length === 0 && (
+          {frm.frames.length === 0 && brd.cards.length === 0 && sld.tiles.length === 0 && txt.blocks.length === 0 && (
             <div style={{
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',

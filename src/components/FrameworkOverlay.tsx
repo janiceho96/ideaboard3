@@ -56,6 +56,7 @@ export default function FrameworkOverlay({
               if (e.key === 'Enter') { onRename(id, (e.target as HTMLInputElement).value); setEditing(false) }
               if (e.key === 'Escape') { setEditing(false) }
             }}
+            onMouseDown={e => e.stopPropagation()}
             onClick={e => e.stopPropagation()}
             className="no-drag"
             style={{

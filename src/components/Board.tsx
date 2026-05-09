@@ -975,6 +975,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 onDelete={id => { frmRef.current.deleteFrame(id); setSelectedFrameId(null) }}
                 onSelect={setSelectedFrameId}
                 onTypeChange={(id, type) => frmRef.current.changeFrameType(id, type)}
+                onRename={(id, name) => frmRef.current.renameFrame(id, name)}
               />
             ))}
 
@@ -1115,6 +1116,25 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             })()}
 
           </div>{/* end world */}
+
+          {/* Empty state */}
+          {frm.frames.length === 0 && brd.cards.length === 0 && (
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+              gap: 8,
+            }}>
+              <div style={{ fontSize: 28, opacity: 0.2, color: dark ? 'white' : '#263D5B' }}>✦</div>
+              <div style={{ fontSize: 13, color: dark ? 'rgba(255,255,255,.25)' : 'rgba(38,61,91,.35)', letterSpacing: '0.03em' }}>
+                Your board is empty
+              </div>
+              <div style={{ fontSize: 11, color: dark ? 'rgba(255,255,255,.15)' : 'rgba(38,61,91,.25)' }}>
+                Click <span style={{ color: '#49B6E5', opacity: 0.7 }}>+</span> in the sidebar to add a frame
+              </div>
+            </div>
+          )}
 
           {/* ── HUD ── */}
           {/* Zoom controls */}

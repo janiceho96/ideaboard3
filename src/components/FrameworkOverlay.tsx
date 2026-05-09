@@ -11,14 +11,17 @@ interface FrameworkOverlayProps {
   onDelete: (id: string) => void
   onSelect: (id: string) => void
   onTypeChange: (id: string, type: FrameworkType) => void
+  onRename: (id: string, name: string) => void
 }
 
 export default function FrameworkOverlay({
   frame, dark, selected,
-  onMoveStart, onResizeStart, onDelete, onSelect, onTypeChange,
+  onMoveStart, onResizeStart, onDelete, onSelect, onTypeChange, onRename,
 }: FrameworkOverlayProps) {
   const [typePickerOpen, setTypePickerOpen] = useState(false)
-  const { id, type, x, y, width, height } = frame
+  const [editing, setEditing] = useState(false)
+  const { id, type, name, x, y, width, height } = frame
+  const label = name ? `${FRAMEWORK_LABELS[type]} — ${name}` : FRAMEWORK_LABELS[type]
 
   return (
     <div
@@ -44,13 +47,38 @@ export default function FrameworkOverlay({
           style={{ cursor: 'grab', opacity: 0.6, fontSize: 14, lineHeight: 1, flexShrink: 0, color: 'white' }}
         >⠿</span>
 
-        <span style={{
-          flex: 1, fontSize: 9, letterSpacing: '0.07em',
-          color: 'rgba(255,255,255,.8)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {FRAMEWORK_LABELS[type]}
-        </span>
+        {editing ? (
+          <input
+            autoFocus
+            defaultValue={name ?? ''}
+            onBlur={e => { onRename(id, e.target.value); setEditing(false) }}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { onRename(id, (e.target as HTMLInputElement).value); setEditing(false) }
+              if (e.key === 'Escape') { setEditing(false) }
+            }}
+            onClick={e => e.stopPropagation()}
+            className="no-drag"
+            style={{
+              flex: 1, background: 'transparent', border: 'none',
+              borderBottom: '1px solid rgba(255,255,255,.4)',
+              color: 'rgba(255,255,255,.9)', fontSize: 9, letterSpacing: '0.07em',
+              outline: 'none', padding: 0, fontFamily: 'inherit', width: 0,
+            }}
+          />
+        ) : (
+          <span
+            onDoubleClick={e => { e.stopPropagation(); setEditing(true) }}
+            title="Double-click to rename"
+            style={{
+              flex: 1, fontSize: 9, letterSpacing: '0.07em',
+              color: 'rgba(255,255,255,.8)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              cursor: 'text',
+            }}
+          >
+            {label}
+          </span>
+        )}
 
         <div style={{ position: 'relative' }} className="no-drag">
           <button

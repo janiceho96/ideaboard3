@@ -80,3 +80,19 @@ export interface BoardGroup {
   board_id: string
   group_id: string
 }
+
+export type FrameworkType =
+  | 'blank' | 'eisenhower' | 'ooda'
+  | 'ikigai' | 'wheel-of-life' | 'grow' | 'smart-goals'
+  | 'start-stop-continue' | 'personal-kanban' | 'five-whys'
+  | 'daily-reflection' | 'okr' | 'energy-audit'
+  | 'eat-that-frog' | 'gtd'
+
+export interface FrameInstance {
+  id: string
+  type: FrameworkType
+  x: number        // world-space position (inside the transformed worldRef div)
+  y: number
+  width: number    // world-space size
+  height: number
+}

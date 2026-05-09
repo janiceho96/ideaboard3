@@ -1,40 +1,94 @@
 @echo off
-title Ideaboard v3 - Full Feature Edition
+title Ideaboard
 color 0A
+
+cd /d "%~dp0"
+set SCRIPT_PATH=%~dp0launch-ideaboard.bat
+set SHORTCUT_DESKTOP=%USERPROFILE%\Desktop\Ideaboard.lnk
+set SHORTCUT_START=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Ideaboard.lnk
+
 echo.
-echo  ==========================================
-echo    IDEABOARD v3 - Full Feature Edition
-echo  ==========================================
+echo  =============================
+echo    Ideaboard - Starting up...
+echo  =============================
 echo.
-set "BAT_DIR=%~dp0"
-if exist "%BAT_DIR%ideaboard3\package.json" (set "APP_DIR=%BAT_DIR%ideaboard3" & goto :found)
-if exist "%BAT_DIR%package.json" (set "APP_DIR=%BAT_DIR%" & goto :found)
-echo  [ERROR] Cannot find ideaboard3 folder. Place this .bat next to the ideaboard3 folder.
-pause & exit /b 1
-:found
-cd /d "%APP_DIR%"
-echo  Project: %APP_DIR%
-echo.
-where node >nul 2>&1
-if %errorlevel% neq 0 (echo  [ERROR] Install Node.js from https://nodejs.org & pause & exit /b 1)
-for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
-echo  Node.js: %NODE_VER%
-if not exist "node_modules\" (
-    echo. & echo  Installing packages (first run ~2 min)...
-    call npm install
-    if %errorlevel% neq 0 (echo  [ERROR] npm install failed. & pause & exit /b 1)
-    echo  Done!
-) else (echo  Packages ready.)
-echo.
-if not exist ".env.local" (
-    if exist ".env.example" copy ".env.example" ".env.local" >nul
-    echo  Add Supabase credentials to .env.local
-    echo  (supabase.com - Settings - API)
+
+:: ── Offer to create shortcuts on first run ───────────────────────────────────
+if not exist "%SHORTCUT_DESKTOP%" (
+    echo  Tip: Add Ideaboard as a shortcut for easy access.
+    set /p CREATE_SHORTCUT= Create Desktop ^& Start Menu shortcut now? [y/N]:
+    if /i "%CREATE_SHORTCUT%"=="y" (
+        call :create_shortcuts
+    )
     echo.
 )
-echo  Starting at http://localhost:5173
-echo  Close this window to stop.
+
+:: ── Check Node.js ─────────────────────────────────────────────────────────────
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo  ERROR: Node.js is not installed.
+    echo  Download it from https://nodejs.org
+    echo.
+    pause
+    exit /b 1
+)
+
+:: ── Install packages on first run ─────────────────────────────────────────────
+if not exist "node_modules\" (
+    echo  First run - installing packages, please wait...
+    echo.
+    call npm install
+    echo.
+)
+
+echo  Starting server... browser will open in a few seconds.
+echo  Keep this window open while using Ideaboard.
+echo  Close this window to stop the app.
 echo.
-start "" cmd /c "timeout /t 3 /nobreak >nul && start http://localhost:5173"
+
+start "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:5180"
 call npm run dev
-echo. & pause
+
+pause
+exit /b 0
+
+:: ── Subroutine: create shortcuts via PowerShell ───────────────────────────────
+:create_shortcuts
+echo.
+echo  Creating shortcuts...
+
+:: Desktop shortcut
+powershell -NoProfile -Command ^
+  "$ws = New-Object -ComObject WScript.Shell;" ^
+  "$s = $ws.CreateShortcut('%SHORTCUT_DESKTOP%');" ^
+  "$s.TargetPath = '%SCRIPT_PATH%';" ^
+  "$s.WorkingDirectory = '%~dp0';" ^
+  "$s.Description = 'Launch Ideaboard';" ^
+  "$s.Save()"
+
+:: Start Menu shortcut
+powershell -NoProfile -Command ^
+  "$ws = New-Object -ComObject WScript.Shell;" ^
+  "$s = $ws.CreateShortcut('%SHORTCUT_START%');" ^
+  "$s.TargetPath = '%SCRIPT_PATH%';" ^
+  "$s.WorkingDirectory = '%~dp0';" ^
+  "$s.Description = 'Launch Ideaboard';" ^
+  "$s.Save()"
+
+if exist "%SHORTCUT_DESKTOP%" (
+    echo  [OK] Desktop shortcut created
+) else (
+    echo  [!] Desktop shortcut failed
+)
+if exist "%SHORTCUT_START%" (
+    echo  [OK] Start Menu shortcut created
+) else (
+    echo  [!] Start Menu shortcut failed
+)
+
+echo.
+echo  You can now pin Ideaboard to your Taskbar:
+echo    1. Open the Start Menu and search for Ideaboard
+echo    2. Right-click it and choose "Pin to taskbar"
+echo.
+goto :eof

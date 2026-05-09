@@ -70,7 +70,15 @@ export function parseFrameInstances(
   if (newRaw) {
     try {
       const parsed = JSON.parse(newRaw)
-      if (Array.isArray(parsed)) return parsed as FrameInstance[]
+      if (Array.isArray(parsed) && parsed.every(f =>
+        f !== null && typeof f === 'object' &&
+        typeof f.id === 'string' &&
+        typeof f.type === 'string' &&
+        typeof f.x === 'number' &&
+        typeof f.y === 'number' &&
+        typeof f.width === 'number' &&
+        typeof f.height === 'number'
+      )) return parsed as FrameInstance[]
     } catch { /* fall through */ }
   }
   if (oldRaw) {

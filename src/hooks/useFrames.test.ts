@@ -54,4 +54,9 @@ describe('parseFrameInstances', () => {
   it('returns [] for malformed JSON', () => {
     expect(parseFrameInstances('not-json', null)).toEqual([])
   })
+
+  it('returns [] for array with structurally invalid frame objects', () => {
+    const bad = JSON.stringify([{ id: 'f1', type: 'eisenhower', x: 'not-a-number', y: 40, width: 640, height: 540 }])
+    expect(parseFrameInstances(bad, null)).toEqual([])
+  })
 })

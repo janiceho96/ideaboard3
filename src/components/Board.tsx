@@ -6,8 +6,7 @@ import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
 import { snapPosition, snapPositionGeneric } from '../lib/snapPosition'
 import { playSnapSound } from '../lib/snapSound'
-import { useFramework } from '../hooks/useFramework'
-import type { FrameworkType } from '../hooks/useFramework'
+import { useFrames, FRAMEWORK_LABELS, FRAMEWORK_GROUPS } from '../hooks/useFrames'
 import FrameworkOverlay from './FrameworkOverlay'
 import { useSlides } from '../hooks/useSlides'
 import { importPdf } from '../lib/pdfImport'
@@ -37,44 +36,6 @@ interface BoardProps {
   onToggleDark: () => void
 }
 
-const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
-  blank:                 'Blank Board',
-  eisenhower:            'Eisenhower Matrix',
-  ooda:                  'OODA Loop',
-  ikigai:                'Ikigai',
-  'wheel-of-life':       'Wheel of Life',
-  grow:                  'GROW Model',
-  'smart-goals':         'SMART Goals',
-  'start-stop-continue': 'Start / Stop / Continue',
-  'personal-kanban':     'Personal Kanban',
-  'five-whys':           '5 Whys',
-  'daily-reflection':    'Daily Reflection',
-  okr:                   'OKR',
-  'energy-audit':        'Energy Audit',
-  'eat-that-frog':       'Eat That Frog',
-  gtd:                   'GTD',
-}
-
-type DropdownEntry =
-  | { key: FrameworkType; label: string; desc: string }
-  | { sep: string }
-
-const FRAMEWORK_DROPDOWN: DropdownEntry[] = [
-  { key: 'blank',      label: 'Blank Board',       desc: 'Clean canvas, no overlay' },
-  { key: 'eisenhower', label: 'Eisenhower Matrix',  desc: 'Urgent / Important grid' },
-  { key: 'ooda',       label: 'OODA Loop',          desc: 'Observe → Orient → Decide → Act' },
-  { sep: 'PERSONAL GROWTH' },
-  { key: 'ikigai',                label: 'Ikigai',                  desc: 'Find your reason for being' },
-  { key: 'wheel-of-life',         label: 'Wheel of Life',           desc: 'Balance across 8 life areas' },
-  { key: 'grow',                  label: 'GROW Model',              desc: 'Goal → Reality → Options → Will' },
-  { key: 'smart-goals',           label: 'SMART Goals',             desc: 'Specific · Measurable · Achievable · Relevant · Time-bound' },
-  { key: 'start-stop-continue',   label: 'Start / Stop / Continue', desc: 'Retrospective for habits & actions' },
-  { key: 'personal-kanban',       label: 'Personal Kanban',         desc: 'Backlog → In Progress → Done' },
-  { key: 'five-whys',             label: '5 Whys',                  desc: 'Drill down to root causes' },
-  { key: 'daily-reflection',      label: 'Daily Reflection',        desc: 'Gratitude · Focus · Wins · Lessons' },
-  { key: 'okr',                   label: 'OKR',                     desc: 'Objective + Key Results' },
-  { key: 'energy-audit',          label: 'Energy Audit',            desc: 'Map activities by energy level' },
-]
 
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3
@@ -86,7 +47,9 @@ const TEXT_HEIGHT_ESTIMATE = 80
 
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
   const brd = useBoard(board.id)
-  const fw = useFramework(board.id)
+  const frm = useFrames(board.id)
+  const frmRef = useRef(frm)
+  useEffect(() => { frmRef.current = frm }, [frm])
   const sld = useSlides(board.id)
   const sldRef = useRef(sld)
   useEffect(() => { sldRef.current = sld }, [sld])
@@ -126,13 +89,13 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeStartY = useRef(0)
   const resizeStartW = useRef(185)
   const resizeStartH = useRef<number | null>(null)
-  const resizeTarget = useRef<'card' | 'framework' | 'textblock'>('card')
-  const dragTileId   = useRef<string | null>(null)
-  const lastSnapId   = useRef<string | null>(null)
-  const dragTextId   = useRef<string | null>(null)
-  const resizeTextId = useRef<string | null>(null)
-  const fwRef = useRef(fw)
-  useEffect(() => { fwRef.current = fw }, [fw])
+  const resizeTarget  = useRef<'card' | 'framework' | 'textblock'>('card')
+  const dragTileId    = useRef<string | null>(null)
+  const lastSnapId    = useRef<string | null>(null)
+  const dragTextId    = useRef<string | null>(null)
+  const resizeTextId  = useRef<string | null>(null)
+  const dragFrameId   = useRef<string | null>(null)
+  const resizeFrameId = useRef<string | null>(null)
 
   // Selection
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
@@ -150,7 +113,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // Colour picker
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
-  const [frameworkDropdownOpen, setFrameworkDropdownOpen] = useState(false)
+  const [selectedFrameId,  setSelectedFrameId]  = useState<string | null>(null)
+  const [addFrameMenuOpen, setAddFrameMenuOpen]  = useState(false)
+  const addFrameBtnRef = useRef<HTMLDivElement>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
@@ -191,6 +156,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     if (e.button !== 0) return
     if ((e.target as HTMLElement).closest('.world-item')) return
     setSelectedCardId(null)
+    setSelectedFrameId(null)
     if (e.ctrlKey) { e.preventDefault(); return }
     isPanning.current = true
     panStart.current = { x: e.clientX, y: e.clientY, px: panX, py: panY }
@@ -238,13 +204,33 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     resizeStartH.current  = startH
   }, [])
 
-  const onFrameworkResizeStart = useCallback((e: React.MouseEvent) => {
-    isResizing.current   = true
-    resizeTarget.current = 'framework'
-    resizeStartX.current = e.clientX
-    resizeStartY.current = e.clientY
-    resizeStartW.current = fwRef.current.framework.width
-    resizeStartH.current = fwRef.current.framework.height
+  const onFrameMoveStart = useCallback((id: string, e: React.MouseEvent) => {
+    const frame = frmRef.current.frames.find(f => f.id === id)
+    if (!frame) return
+    isDragging.current  = true
+    dragFrameId.current = id
+    dragCardId.current  = null
+    dragTagId.current   = null
+    dragTileId.current  = null
+    dragTextId.current  = null
+    snapZoom.current    = zoom
+    snapPanX.current    = panX
+    snapPanY.current    = panY
+    const cr = canvasRef.current!.getBoundingClientRect()
+    dragOffWX.current = (e.clientX - cr.left - panX) / zoom - frame.x
+    dragOffWY.current = (e.clientY - cr.top  - panY) / zoom - frame.y
+  }, [zoom, panX, panY])
+
+  const onFrameResizeStart = useCallback((id: string, e: React.MouseEvent) => {
+    const frame = frmRef.current.frames.find(f => f.id === id)
+    if (!frame) return
+    isResizing.current    = true
+    resizeTarget.current  = 'framework'
+    resizeFrameId.current = id
+    resizeStartX.current  = e.clientX
+    resizeStartY.current  = e.clientY
+    resizeStartW.current  = frame.width
+    resizeStartH.current  = frame.height
   }, [])
 
   const onTileMoveStart = useCallback((id: string, cx: number, cy: number) => {
@@ -403,13 +389,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             lastSnapId.current = snap.snappedToId
           }
         }
+        if (dragFrameId.current) frmRef.current.moveFrame(dragFrameId.current, wx, wy)
         return
       }
       if (isResizing.current) {
         const dx = (e.clientX - resizeStartX.current) / zoom
         const dy = (e.clientY - resizeStartY.current) / zoom
-        if (resizeTarget.current === 'framework') {
-          fwRef.current.setSize(
+        if (resizeTarget.current === 'framework' && resizeFrameId.current) {
+          frmRef.current.setFrameSize(
+            resizeFrameId.current,
             Math.max(FRAMEWORK_MIN_W, resizeStartW.current + dx),
             Math.max(FRAMEWORK_MIN_H, (resizeStartH.current ?? 540) + dy),
           )
@@ -451,23 +439,29 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           txtRef.current.moveBlock(dragTextId.current, finalPos.x, finalPos.y)
           txtRef.current.commitBlockMove(dragTextId.current, finalPos.x, finalPos.y)
         }
-        isDragging.current = false
-        dragCardId.current = null
-        dragTagId.current = null
-        dragTileId.current = null
-        dragTextId.current = null
-        lastSnapId.current = null
+        if (dragFrameId.current) {
+          frmRef.current.commitFrameMove(dragFrameId.current, wx, wy)
+        }
+        isDragging.current  = false
+        dragCardId.current  = null
+        dragTagId.current   = null
+        dragTileId.current  = null
+        dragTextId.current  = null
+        dragFrameId.current = null
+        lastSnapId.current  = null
         setSnapGhost(null)
         return
       }
       if (isResizing.current) {
         const dx = (e.clientX - resizeStartX.current) / zoom
         const dy = (e.clientY - resizeStartY.current) / zoom
-        if (resizeTarget.current === 'framework') {
-          fwRef.current.commitSize(
+        if (resizeTarget.current === 'framework' && resizeFrameId.current) {
+          frmRef.current.commitFrameResize(
+            resizeFrameId.current,
             Math.max(FRAMEWORK_MIN_W, resizeStartW.current + dx),
             Math.max(FRAMEWORK_MIN_H, (resizeStartH.current ?? 540) + dy),
           )
+          resizeFrameId.current = null
         } else if (resizeCardId.current) {
           const newW = Math.max(CARD_MIN_W, resizeStartW.current + dx)
           const newH = resizeStartH.current !== null
@@ -553,8 +547,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
       if (e.key === 'Escape') {
         setColourPicker(null)
-        setFrameworkDropdownOpen(false)
+        setAddFrameMenuOpen(false)
         setSelectedCardId(null)
+        setSelectedFrameId(null)
         setModalOpen(false)
         setShowShortcuts(false)
       }
@@ -565,6 +560,11 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           e.preventDefault()
           brd.removeCard(selectedCardId).then(() => showToast('Card deleted'))
           setSelectedCardId(null)
+        }
+        if (selectedFrameId) {
+          e.preventDefault()
+          frmRef.current.deleteFrame(selectedFrameId)
+          setSelectedFrameId(null)
         }
       }
       if (e.key === 'n' && !e.ctrlKey && !e.metaKey) {
@@ -833,6 +833,63 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
         </SbBtn>
 
+        <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
+
+        <div ref={addFrameBtnRef} style={{ position: 'relative' }}>
+          <SbBtn title="Add Frame" onClick={() => setAddFrameMenuOpen(o => !o)} dark={dark}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M12 8v8M8 12h8"/>
+            </svg>
+          </SbBtn>
+          {addFrameMenuOpen && (() => {
+            const rect = addFrameBtnRef.current?.getBoundingClientRect()
+            return (
+              <>
+                <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setAddFrameMenuOpen(false)} />
+                <div style={{
+                  position: 'fixed',
+                  left: 76,
+                  top: rect ? Math.min(rect.top, window.innerHeight - 420) : 200,
+                  zIndex: 999,
+                  background: dark ? '#1A1A24' : 'white',
+                  border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`,
+                  borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)',
+                  minWidth: 200, maxHeight: 400, overflowY: 'auto',
+                }}>
+                  <div style={{ padding: '8px 14px 4px', fontSize: 10, fontWeight: 700, color: dark ? '#666' : '#aaa', letterSpacing: '0.08em' }}>ADD FRAME</div>
+                  {FRAMEWORK_GROUPS.map((entry, i) =>
+                    'sep' in entry ? (
+                      <div key={entry.sep + i} style={{ padding: '7px 14px 2px', fontSize: 8, letterSpacing: '0.1em', color: dark ? '#555' : '#aaa', fontWeight: 700 }}>
+                        {entry.sep}
+                      </div>
+                    ) : (
+                      <button
+                        key={entry.key}
+                        onClick={() => {
+                          const cr = canvasRef.current?.getBoundingClientRect()
+                          if (!cr) return
+                          frm.addFrame(entry.key!, cr.left + cr.width / 2, cr.top + cr.height / 2, zoom, panX, panY)
+                          setAddFrameMenuOpen(false)
+                        }}
+                        style={{
+                          display: 'block', width: '100%', padding: '9px 14px',
+                          border: 'none', background: 'transparent', cursor: 'pointer',
+                          textAlign: 'left', fontSize: 12, fontWeight: 500,
+                          color: dark ? '#ddd' : '#1A1A2E',
+                          fontFamily: "'DM Sans',sans-serif",
+                        }}
+                      >
+                        {FRAMEWORK_LABELS[entry.key!]}
+                      </button>
+                    )
+                  )}
+                </div>
+              </>
+            )
+          })()}
+        </div>
+
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 28, height: 1, background: '#1A1A22', marginBottom: 4 }}/>
           <SbBtn title="Toggle dark mode" onClick={onToggleDark} dark={dark}>
@@ -854,46 +911,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: topBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${topBdr}`, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, zIndex: 50 }}>
           <span style={{ fontSize: 12, color: subC, fontFamily: "'Delius',cursive" }}>Boards /</span>
           <span style={{ fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, fontSize: 15, color: dark ? '#F0EEE8' : '#263D5B' }}>{board.name}</span>
-
-          {/* Framework picker dropdown */}
-          <div style={{ position: 'relative' }}>
-            <button
-              onClick={() => setFrameworkDropdownOpen(o => !o)}
-              style={{ height: 28, padding: '0 10px', borderRadius: 20, border: `1.5px solid ${dark ? '#49B6E5' : '#263D5B'}`, background: 'transparent', color: dark ? '#49B6E5' : '#263D5B', cursor: 'pointer', fontSize: 10, fontFamily: "'Delius Swash Caps',cursive", display: 'flex', alignItems: 'center', gap: 5 }}
-            >
-              {FRAMEWORK_LABELS[fw.framework.type]}
-              <span style={{ fontSize: 9 }}>▾</span>
-            </button>
-
-            {frameworkDropdownOpen && (
-              <>
-                {/* Click-outside overlay */}
-                <div
-                  style={{ position: 'fixed', inset: 0, zIndex: 998 }}
-                  onClick={() => setFrameworkDropdownOpen(false)}
-                />
-                {/* Dropdown panel */}
-                <div style={{ position: 'absolute', top: 34, left: 0, zIndex: 999, background: dark ? '#1A1A24' : 'white', border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)', overflow: 'hidden', minWidth: 220, maxHeight: 420, overflowY: 'auto' }}>
-                  {FRAMEWORK_DROPDOWN.map((entry, i) =>
-                    'sep' in entry ? (
-                      <div key={entry.sep + i} style={{ padding: '8px 14px 3px', fontSize: 8, letterSpacing: '0.1em', color: dark ? '#555' : '#aaa', fontFamily: "'DM Sans',sans-serif", fontWeight: 700 }}>
-                        {entry.sep}
-                      </div>
-                    ) : (
-                      <button
-                        key={entry.key}
-                        onClick={() => { fw.setType(entry.key); setFrameworkDropdownOpen(false) }}
-                        style={{ display: 'block', width: '100%', padding: '10px 14px', border: 'none', background: fw.framework.type === entry.key ? (dark ? 'rgba(108,99,255,.15)' : 'rgba(108,99,255,.08)') : 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: "'DM Sans',sans-serif" }}
-                      >
-                        <div style={{ fontSize: 12, fontWeight: 600, color: fw.framework.type === entry.key ? '#6C63FF' : (dark ? '#ddd' : '#1A1A2E') }}>{entry.label}</div>
-                        <div style={{ fontSize: 10, color: dark ? '#666' : '#999', marginTop: 1 }}>{entry.desc}</div>
-                      </button>
-                    )
-                  )}
-                </div>
-              </>
-            )}
-          </div>
 
           <div style={{ flex: 1 }}/>
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
@@ -945,14 +962,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <div ref={worldRef}
             style={{ position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: `translate(${panX}px,${panY}px) scale(${zoom})` }}>
 
-            {/* Framework overlay */}
-            <FrameworkOverlay
-              type={fw.framework.type}
-              width={fw.framework.width}
-              height={fw.framework.height}
-              dark={dark}
-              onResizeStart={onFrameworkResizeStart}
-            />
+            {/* Frame overlays */}
+            {frm.frames.map(frame => (
+              <FrameworkOverlay
+                key={frame.id}
+                frame={frame}
+                dark={dark}
+                selected={selectedFrameId === frame.id}
+                onMoveStart={onFrameMoveStart}
+                onResizeStart={onFrameResizeStart}
+                onDelete={id => { frmRef.current.deleteFrame(id); setSelectedFrameId(null) }}
+                onSelect={setSelectedFrameId}
+                onTypeChange={(id, type) => frmRef.current.changeFrameType(id, type)}
+              />
+            ))}
 
             {/* Slide tiles */}
             {sld.tiles.map(tile => (

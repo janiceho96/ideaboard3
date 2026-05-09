@@ -161,6 +161,17 @@ export function useFrames(boardId: string) {
     })
   }, [boardId])
 
+  const renameFrame = useCallback((id: string, name: string) => {
+    const trimmed = name.trim()
+    setFrames(prev => {
+      const next = prev.map(f =>
+        f.id === id ? { ...f, name: trimmed || undefined } : f
+      )
+      save(boardId, next)
+      return next
+    })
+  }, [boardId])
+
   const deleteFrame = useCallback((id: string) => {
     setFrames(prev => {
       const next = prev.filter(f => f.id !== id)
@@ -169,5 +180,5 @@ export function useFrames(boardId: string) {
     })
   }, [boardId])
 
-  return { frames, addFrame, moveFrame, commitFrameMove, setFrameSize, commitFrameResize, changeFrameType, deleteFrame }
+  return { frames, addFrame, moveFrame, commitFrameMove, setFrameSize, commitFrameResize, changeFrameType, renameFrame, deleteFrame }
 }

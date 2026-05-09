@@ -91,6 +91,7 @@ export type FrameworkType =
 export interface FrameInstance {
   id: string
   type: FrameworkType
+  name?: string     // user-defined label; absent = show type name only
   x: number        // world-space position (inside the transformed worldRef div)
   y: number
   width: number    // world-space size

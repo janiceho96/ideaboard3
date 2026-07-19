@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useLayoutEffect, useEffect } from 'react'
 import type { TextBlock } from '../types'
+import { sanitizeHtml } from '../lib/sanitizeHtml'
 
 const TEXT_MIN_W = 120
 
@@ -27,7 +28,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
   // Skip update while the element is focused to avoid clobbering the cursor
   useLayoutEffect(() => {
     if (editRef.current && !editRef.current.matches(':focus')) {
-      editRef.current.innerHTML = block.html
+      editRef.current.innerHTML = sanitizeHtml(block.html)
       setIsEmpty(!block.html)
     }
   }, [block.html])
@@ -64,12 +65,12 @@ const TextBlockItem = React.memo(function TextBlockItem({
     const newRange = document.createRange()
     newRange.selectNodeContents(span)
     sel.addRange(newRange)
-    onUpdateHtml(block.id, editRef.current?.innerHTML ?? '')
+    onUpdateHtml(block.id, sanitizeHtml(editRef.current?.innerHTML ?? ''))
   }, [block.id, onUpdateHtml])
 
   const borderColor = focused
     ? '#49B6E5'
-    : dark ? '#2A2A38' : '#e8e4d9'
+    : dark ? '#1E3451' : '#e8e4d9'
 
   return (
     <>
@@ -94,8 +95,8 @@ const TextBlockItem = React.memo(function TextBlockItem({
             left: 0,
             right: 0,
             height: 32,
-            background: dark ? '#1A1A24' : 'white',
-            border: `1.5px solid ${dark ? '#2A2A38' : '#e8e4d9'}`,
+            background: dark ? '#152336' : 'white',
+            border: `1.5px solid ${dark ? '#1E3451' : '#e8e4d9'}`,
             borderRadius: 6,
             display: 'flex',
             alignItems: 'center',
@@ -118,7 +119,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
             style={{ fontSize: 13, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'larger' ? 'snapBounce 240ms ease-out' : 'none' }}
           >A⁺</button>
           {/* Size/format divider */}
-          <div style={{ width: 1, height: 14, background: dark ? '#2A2A38' : '#e8e4d9', margin: '0 4px' }} />
+          <div style={{ width: 1, height: 14, background: dark ? '#1E3451' : '#e8e4d9', margin: '0 4px' }} />
           {/* Bold */}
           <button
             onMouseDown={e => { e.preventDefault(); setBouncing('bold'); if (bounceTimer.current) clearTimeout(bounceTimer.current); bounceTimer.current = setTimeout(() => setBouncing(null), 240); execFormat('bold') }}
@@ -138,7 +139,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
             style={{ fontSize: 12, color: dark ? '#E8E6E0' : '#263D5B', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 7px', borderRadius: 4, animation: bouncing === 'highlight' ? 'snapBounce 240ms ease-out' : 'none' }}
           ><span style={{ background: '#ffe082', padding: '0 3px', borderRadius: 2 }}>H</span></button>
           {/* Divider */}
-          <div style={{ width: 1, height: 14, background: dark ? '#2A2A38' : '#e8e4d9', margin: '0 4px' }} />
+          <div style={{ width: 1, height: 14, background: dark ? '#1E3451' : '#e8e4d9', margin: '0 4px' }} />
           {/* Delete */}
           <button
             className="text-no-drag"
@@ -156,8 +157,8 @@ const TextBlockItem = React.memo(function TextBlockItem({
           border: `1.5px solid ${borderColor}`,
           borderRadius: 8,
           boxShadow: '2px 2px 0 rgba(38,61,91,0.08)',
-          minHeight: 70,
-          padding: '24px 14px 12px 14px',
+          minHeight: 74,
+          padding: '30px 14px 12px 14px',
           position: 'relative',
           cursor: focused ? 'text' : 'grab',
           transition: 'border-color 0.15s',
@@ -166,11 +167,15 @@ const TextBlockItem = React.memo(function TextBlockItem({
       >
         {/* Grab handle — always draggable, not text-no-drag */}
         <div
+          title="Drag text block"
           style={{
-            position: 'absolute', top: 0, left: 0, right: 0, height: 20,
+            position: 'absolute', top: 0, left: 0, right: 0, height: 26,
             cursor: 'grab',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: '8px 8px 0 0',
+            background: focused
+              ? dark ? 'rgba(73,182,229,0.12)' : 'rgba(73,182,229,0.08)'
+              : 'transparent',
           }}
         >
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 4px)', gap: '3px 4px' }}>
@@ -182,7 +187,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
         {/* Placeholder */}
         {isEmpty && !focused && (
           <div style={{
-            position: 'absolute', top: 24, left: 14,
+            position: 'absolute', top: 30, left: 14,
             fontSize: 14, color: dark ? '#555' : '#bbb',
             pointerEvents: 'none',
             fontFamily: "'Delius', cursive",
@@ -201,7 +206,7 @@ const TextBlockItem = React.memo(function TextBlockItem({
           onBlur={() => {
             setFocused(false)
             const hasText = !!editRef.current?.textContent?.trim()
-            const html = hasText ? (editRef.current?.innerHTML ?? '') : ''
+            const html = hasText ? sanitizeHtml(editRef.current?.innerHTML ?? '') : ''
             setIsEmpty(!hasText)
             onUpdateHtml(block.id, html)
           }}

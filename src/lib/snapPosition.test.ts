@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { snapPosition } from './snapPosition'
+import { snapPosition, snapPositionGeneric } from './snapPosition'
 import type { Card } from '../types'
 
 function makeCard(overrides: Partial<Card> & { id: string; x: number; y: number }): Card {
@@ -72,5 +72,34 @@ describe('snapPosition — magnetic snap', () => {
   it('falls back to grid snap when card list is empty', () => {
     const result = snapPosition(50, 90, dragging, [])
     expect(result).toEqual({ x: 40, y: 80, snappedToId: null })
+  })
+})
+
+describe('snapPositionGeneric options', () => {
+  const draggingText = { id: 'text-drag', x: 0, y: 0, w: 220, h: 80 }
+  const nearbyText = { id: 'text-near', x: 100, y: 100, w: 220, h: 80 }
+
+  it('keeps the exact position when grid fallback is disabled and no target is close', () => {
+    const result = snapPositionGeneric(
+      53,
+      77,
+      draggingText,
+      [{ id: 'far', x: 2000, y: 2000, w: 220, h: 80 }],
+      { radius: 110, gridSize: null },
+    )
+
+    expect(result).toEqual({ x: 53, y: 77, snappedToId: null })
+  })
+
+  it('still magnetically docks when a target is inside the custom radius', () => {
+    const result = snapPositionGeneric(
+      100,
+      190,
+      draggingText,
+      [nearbyText],
+      { radius: 110, gridSize: null },
+    )
+
+    expect(result).toEqual({ x: 100, y: 186, snappedToId: 'text-near' })
   })
 })

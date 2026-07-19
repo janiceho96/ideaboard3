@@ -1,1 +1,13 @@
 .worktrees/
+dist/
+node_modules/
+.vite/
+.env
+.env.local
+*.log
+coverage/
+.DS_Store
+.claude/
+.superpowers/
+.sixth/
+.vscode/

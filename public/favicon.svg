@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none" stroke="#1a1a1a" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Three spiral rings (open C shapes at bottom) -->
+  <path d="M152 72 C120 72 108 52 108 36 C108 20 120 8 152 8 C184 8 196 20 196 36 C196 52 184 64 164 68"/>
+  <path d="M248 72 C216 72 204 52 204 36 C204 20 216 8 248 8 C280 8 292 20 292 36 C292 52 280 64 260 68"/>
+  <path d="M344 72 C312 72 300 52 300 36 C300 20 312 8 344 8 C376 8 388 20 388 36 C388 52 376 64 356 68"/>
+
+  <!-- Stacked pages on right -->
+  <rect x="390" y="72" width="24" height="320" rx="4"/>
+  <rect x="414" y="80" width="18" height="308" rx="4"/>
+
+  <!-- Main notebook body -->
+  <rect x="82" y="72" width="312" height="320" rx="10"/>
+
+  <!-- Bottom bookmark flap -->
+  <path d="M82 360 L82 460 Q82 490 112 490 L428 490 L428 392"/>
+  <!-- Flap curve at bottom-left -->
+</svg>

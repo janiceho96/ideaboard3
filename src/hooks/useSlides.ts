@@ -23,7 +23,9 @@ export interface UseSlidesReturn {
   tiles: SlideTile[]
   addTiles: (newTiles: SlideTile[]) => void
   moveTile: (id: string, x: number, y: number) => void
+  moveTiles: (positions: Record<string, { x: number; y: number }>) => void
   commitTileMove: (id: string, x: number, y: number) => void
+  commitTileMoves: (positions: Record<string, { x: number; y: number }>) => void
   removeTile: (id: string) => void
 }
 
@@ -45,10 +47,28 @@ export function useSlides(boardId: string): UseSlidesReturn {
     setTiles(prev => prev.map(t => t.id === id ? { ...t, x, y } : t))
   }, [])
 
+  const moveTiles = useCallback((positions: Record<string, { x: number; y: number }>) => {
+    setTiles(prev => prev.map(t => {
+      const pos = positions[t.id]
+      return pos ? { ...t, x: pos.x, y: pos.y } : t
+    }))
+  }, [])
+
   // Saves final position to localStorage — call on mouse-up
   const commitTileMove = useCallback((id: string, x: number, y: number) => {
     setTiles(prev => {
       const next = prev.map(t => t.id === id ? { ...t, x, y } : t)
+      saveTiles(boardId, next)
+      return next
+    })
+  }, [boardId])
+
+  const commitTileMoves = useCallback((positions: Record<string, { x: number; y: number }>) => {
+    setTiles(prev => {
+      const next = prev.map(t => {
+        const pos = positions[t.id]
+        return pos ? { ...t, x: pos.x, y: pos.y } : t
+      })
       saveTiles(boardId, next)
       return next
     })
@@ -62,5 +82,5 @@ export function useSlides(boardId: string): UseSlidesReturn {
     })
   }, [boardId])
 
-  return { tiles, addTiles, moveTile, commitTileMove, removeTile }
+  return { tiles, addTiles, moveTile, moveTiles, commitTileMove, commitTileMoves, removeTile }
 }

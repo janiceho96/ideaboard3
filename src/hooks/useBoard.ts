@@ -1,6 +1,6 @@
 // src/hooks/useBoard.ts
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Card, CardInsert, GoalTag, TagType } from '../types'
+import type { Card, CardInsert, GoalTag, GoalTagInsert, TagType } from '../types'
 import * as db from '../lib/db'
 
 interface UseBoardReturn {
@@ -19,6 +19,7 @@ interface UseBoardReturn {
   removeCard: (id: string) => Promise<void>
   duplicateCard: (id: string) => Promise<void>
   bulkImportCards: (inserts: CardInsert[]) => Promise<void>
+  bulkImportGoalTags: (inserts: GoalTagInsert[]) => Promise<void>
   moveGoalTag: (id: string, x: number, y: number) => void
   commitGoalTagMove: (id: string, x: number, y: number) => Promise<void>
   removeGoalTag: (id: string) => Promise<void>
@@ -30,7 +31,7 @@ export function useBoard(boardId: string | null): UseBoardReturn {
   const [cards, setCards] = useState<Card[]>([])
   const [goalTags, setGoalTags] = useState<GoalTag[]>([])
   const [activeBoardId, setActiveBoardId] = useState<string | null>(boardId)
-  const [boardName, setBoardName] = useState('')
+  const [boardName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const historyRef = useRef<Array<{ cards: Card[]; goalTags: GoalTag[] }>>([])
@@ -144,6 +145,12 @@ export function useBoard(boardId: string | null): UseBoardReturn {
     const newCards = await Promise.all(inserts.map(insert => db.createCard(insert)))
     setCards(prev => [...prev, ...newCards])
   }, [activeBoardId, goalTags, pushHistory])
+  const bulkImportGoalTags = useCallback(async (inserts: GoalTagInsert[]) => {
+    if (!activeBoardId || !inserts.length) return
+    setGoalTags(prev => { pushHistory(cards, prev); return prev })
+    const newTags = await db.createGoalTags(inserts)
+    setGoalTags(prev => [...prev, ...newTags])
+  }, [activeBoardId, cards, pushHistory])
 
   const moveGoalTag = useCallback((id: string, x: number, y: number) => {
     setGoalTags(prev => prev.map(t => t.id === id ? { ...t, x, y } : t))
@@ -163,7 +170,7 @@ export function useBoard(boardId: string | null): UseBoardReturn {
     boardId: activeBoardId, boardName, loading, error,
     addCard, updateCard, moveCard, commitCardMove,
     resizeCard, commitCardResize, removeCard, duplicateCard,
-    bulkImportCards,
+    bulkImportCards, bulkImportGoalTags,
     moveGoalTag, commitGoalTagMove, removeGoalTag,
     undo, canUndo,
   }

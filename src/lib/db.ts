@@ -85,6 +85,12 @@ export async function createGoalTag(payload: GoalTagInsert): Promise<GoalTag> {
   save(TAGS_KEY, [...load<GoalTag>(TAGS_KEY), tag])
   return tag
 }
+export async function createGoalTags(payloads: GoalTagInsert[]): Promise<GoalTag[]> {
+  const ts = now()
+  const tags: GoalTag[] = payloads.map(payload => ({ ...payload, id: uid(), created_at: ts }))
+  save(TAGS_KEY, [...load<GoalTag>(TAGS_KEY), ...tags])
+  return tags
+}
 
 export async function moveGoalTag(id: string, x: number, y: number): Promise<void> {
   save(TAGS_KEY, load<GoalTag>(TAGS_KEY).map(t => t.id === id ? { ...t, x, y } : t))

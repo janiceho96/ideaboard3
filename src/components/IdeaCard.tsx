@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect } from 'react'
 import type { Card, TagType } from '../types'
 import { marked } from 'marked'
+import { sanitizeHtml } from '../lib/sanitizeHtml'
 
 // Configure marked: safe, no wrapping <p> for single lines
 marked.setOptions({ breaks: true })
@@ -59,14 +60,14 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
   const dotColor  = DOT_COLORS[card.tag] ?? '#6C63FF'
   const dueStatus = getDueStatus(card.due_date)
 
-  const isDark    = card.bg === '#1A1A2E'
-  const textColor = isDark ? 'white' : (dark ? '#F0EEE8' : '#1A1A2E')
+  const isDark    = card.bg === '#152336'
+  const textColor = isDark ? 'white' : (dark ? '#F0EEE8' : '#152336')
   const mutedColor= isDark ? 'rgba(255,255,255,0.6)' : (dark ? '#aaa' : '#666')
 
   // Border colour: overdue = red, soon = amber, default = dark
   const borderColor = dueStatus === 'overdue' ? '#EF4444'
                     : dueStatus === 'soon'    ? '#F59E0B'
-                    : '#1A1A2E'
+                    : '#152336'
 
   // Inline title editing
   const [editing, setEditing]   = useState(false)
@@ -84,11 +85,12 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
 
   // Render markdown body safely
   const markdownHtml = card.body
-    ? (marked.parse(card.body) as string)
+    ? sanitizeHtml((marked.parse(card.body) as string)
         .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
+      )
     : ''
 
-  const cardBg = card.bg === '#1A1A2E' ? '#1A1A2E'
+  const cardBg = card.bg === '#152336' ? '#152336'
                : dark && card.bg === 'white' ? '#1E1E2A'
                : card.bg || 'white'
 

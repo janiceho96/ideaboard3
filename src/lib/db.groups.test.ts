@@ -10,7 +10,7 @@ vi.stubGlobal('localStorage', {
 })
 
 import {
-  fetchGroups, createGroup, updateGroup, deleteGroup, reorderGroups,
+  fetchGroups, createGroup, deleteGroup, reorderGroups,
   fetchBoardGroups, addBoardToGroup, removeBoardFromGroup,
   fetchAllCards,
 } from './db'

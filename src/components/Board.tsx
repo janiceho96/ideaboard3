@@ -1,6 +1,6 @@
 // src/components/Board.tsx
-import { useState, useRef, useEffect, useCallback, Fragment } from 'react'
-import type { LocalUser, Board as BoardType, Card, TagType } from '../types'
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
+import type { LocalUser, Board as BoardType, Card, GoalTagInsert, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
@@ -16,6 +16,13 @@ import type { SlideTile as SlideTileType } from '../types'
 import TextBlockItem, { TEXT_MIN_W } from './TextBlockItem'
 import { useTextBlocks } from '../hooks/useTextBlocks'
 import type { UseTextBlocksReturn } from '../hooks/useTextBlocks'
+import { buildExportBounds, type BoardRect } from '../lib/boardGeometry'
+import { colors, fonts } from '../lib/designTokens'
+import { buildBulkDeleteItems, type BulkDeleteItem } from '../lib/bulkDelete'
+import { buildWhiteboardExport } from '../lib/whiteboardExport'
+import { buildWhiteboardImport } from '../lib/whiteboardImport'
+import { buildBoardNavigationItems, filterCardsForBoard, type BoardNavigationItem } from '../lib/boardNavigation'
+import { normalizeSelectionRect, selectCardIdsInRect, selectSlideIdsInRect, type SelectionRect } from '../lib/multiSelect'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
@@ -25,7 +32,7 @@ const COLOUR_SWATCHES = [
   { value: '#D0E8FF', label: 'Blue'   },
   { value: '#E8E0F5', label: 'Purple' },
   { value: '#FFD6C2', label: 'Peach'  },
-  { value: '#1A1A2E', label: 'Dark'   },
+  { value: '#152336', label: 'Dark'   },
 ]
 
 interface BoardProps {
@@ -36,6 +43,13 @@ interface BoardProps {
   onToggleDark: () => void
 }
 
+interface SlideGroup {
+  id: string
+  board_id: string
+  name: string
+  tileIds: string[]
+  created_at: string
+}
 
 const MIN_ZOOM = 0.15
 const MAX_ZOOM = 3
@@ -44,6 +58,35 @@ const CARD_MIN_H = 100
 const FRAMEWORK_MIN_W = 400
 const FRAMEWORK_MIN_H = 200
 const TEXT_HEIGHT_ESTIMATE = 80
+const TEXT_SNAP_RADIUS = 110
+const EXPORT_PADDING = 80
+const SLIDE_GROUP_PADDING = 26
+
+function slideGroupStorageKey(boardId: string): string {
+  return `ideaboard_slide_groups_${boardId}`
+}
+
+function getSlideHeight(tile: SlideTileType): number {
+  return tile.aspect_ratio > 0 ? tile.width / tile.aspect_ratio : tile.width
+}
+
+function getSlideGroupBounds(tiles: SlideTileType[]): BoardRect | null {
+  if (!tiles.length) return null
+  const left = Math.min(...tiles.map(tile => tile.x))
+  const top = Math.min(...tiles.map(tile => tile.y))
+  const right = Math.max(...tiles.map(tile => tile.x + tile.width))
+  const bottom = Math.max(...tiles.map(tile => tile.y + getSlideHeight(tile)))
+  return {
+    x: left - SLIDE_GROUP_PADDING,
+    y: top - SLIDE_GROUP_PADDING - 34,
+    width: right - left + SLIDE_GROUP_PADDING * 2,
+    height: bottom - top + SLIDE_GROUP_PADDING * 2 + 34,
+  }
+}
+
+function pointInRect(x: number, y: number, rect: BoardRect): boolean {
+  return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height
+}
 
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
   const brd = useBoard(board.id)
@@ -53,6 +96,19 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const sld = useSlides(board.id)
   const sldRef = useRef(sld)
   useEffect(() => { sldRef.current = sld }, [sld])
+  const [slideGroups, setSlideGroups] = useState<SlideGroup[]>(() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(slideGroupStorageKey(board.id)) ?? '[]')
+      return Array.isArray(parsed) ? parsed as SlideGroup[] : []
+    } catch {
+      return []
+    }
+  })
+  const [focusGroupId, setFocusGroupId] = useState<string | null>(null)
+  const [focusSlideIndex, setFocusSlideIndex] = useState(0)
+  useEffect(() => {
+    localStorage.setItem(slideGroupStorageKey(board.id), JSON.stringify(slideGroups))
+  }, [board.id, slideGroups])
   const txt = useTextBlocks(board.id)
   const txtRef = useRef<UseTextBlocksReturn>(txt)
   useEffect(() => { txtRef.current = txt }, [txt])
@@ -78,6 +134,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const dragTagId    = useRef<string | null>(null)
   const dragOffWX    = useRef(0)
   const dragOffWY    = useRef(0)
+  const dragStartWX  = useRef(0)
+  const dragStartWY  = useRef(0)
+  const multiDragStart = useRef<Record<string, { x: number; y: number }>>({})
+  const multiTileDragStart = useRef<Record<string, { x: number; y: number }>>({})
   const snapZoom     = useRef(1)
   const snapPanX     = useRef(0)
   const snapPanY     = useRef(0)
@@ -96,9 +156,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const resizeTextId  = useRef<string | null>(null)
   const dragFrameId   = useRef<string | null>(null)
   const resizeFrameId = useRef<string | null>(null)
+  const moveRaf = useRef<number | null>(null)
+  const pendingMove = useRef<{ clientX: number; clientY: number } | null>(null)
 
   // Selection
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [selectedCardIds, setSelectedCardIds] = useState<string[]>([])
+  const [selectedTileIds, setSelectedTileIds] = useState<string[]>([])
+  const [draggingTileId, setDraggingTileId] = useState<string | null>(null)
+  const isSelecting = useRef(false)
+  const selectionStart = useRef<{ x: number; y: number } | null>(null)
+  const selectionRectRef = useRef<SelectionRect | null>(null)
+  const [selectionRect, setSelectionRect] = useState<SelectionRect | null>(null)
 
   // Modal
   const [modalOpen, setModalOpen]     = useState(false)
@@ -117,6 +186,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [addFrameMenuOpen, setAddFrameMenuOpen]  = useState(false)
   const addFrameBtnRef = useRef<HTMLDivElement>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [bulkDeleteSelection, setBulkDeleteSelection] = useState<Record<string, boolean>>({})
+  const [boardSearch, setBoardSearch] = useState('')
+  const [hideDoneRemove, setHideDoneRemove] = useState(false)
+  const [overdueOnly, setOverdueOnly] = useState(false)
+  const [showBoardPanel, setShowBoardPanel] = useState(true)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
@@ -151,11 +226,155 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     return { x: (sx - cr.left - panX) / zoom, y: (sy - cr.top - panY) / zoom }
   }, [panX, panY, zoom])
 
+  const panBoard = useCallback((dx: number, dy: number) => {
+    setPanX(px => px + dx)
+    setPanY(py => py + dy)
+  }, [])
+
+  const cardRects = useMemo(() => brd.cards.map(card => ({
+    rect: {
+      x: card.x,
+      y: card.y,
+      width: card.card_width ?? 185,
+      height: card.card_height ?? (card.collapsed ? 54 : 160),
+    },
+  })), [brd.cards])
+
+  const tileRects = useMemo(() => sld.tiles.map(tile => ({
+    rect: {
+      x: tile.x,
+      y: tile.y,
+      width: tile.width,
+      height: tile.width / tile.aspect_ratio,
+    },
+  })), [sld.tiles])
+
+  const textRects = useMemo(() => txt.blocks.map(block => ({
+    rect: {
+      x: block.x,
+      y: block.y,
+      width: block.width,
+      height: TEXT_HEIGHT_ESTIMATE,
+    },
+  })), [txt.blocks])
+
+  const frameRects = useMemo(() => frm.frames.map(frame => ({
+    rect: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+  })), [frm.frames])
+
+  const tagRects = useMemo(() => brd.goalTags.map(tag => ({
+    rect: { x: tag.x, y: tag.y, width: Math.max(90, tag.label.length * 9 + 48), height: 38 },
+  })), [brd.goalTags])
+
+  const exportBounds = useMemo(() => {
+    const rects: BoardRect[] = [
+      ...cardRects.map(({ rect }) => rect),
+      ...tileRects.map(({ rect }) => rect),
+      ...textRects.map(({ rect }) => rect),
+      ...frameRects.map(({ rect }) => rect),
+      ...tagRects.map(({ rect }) => rect),
+    ]
+    return buildExportBounds(rects, EXPORT_PADDING)
+  }, [cardRects, frameRects, tagRects, textRects, tileRects])
+
+  const bulkDeleteItems = useMemo(() => buildBulkDeleteItems({
+    cards: brd.cards,
+    slides: sld.tiles,
+    textBlocks: txt.blocks,
+    frames: frm.frames,
+    tags: brd.goalTags,
+    frameLabel: type => FRAMEWORK_LABELS[type],
+  }), [brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks])
+
+  const selectedBulkItems = useMemo(
+    () => bulkDeleteItems.filter(item => bulkDeleteSelection[item.key]),
+    [bulkDeleteItems, bulkDeleteSelection],
+  )
+
+  const toggleBulkItem = useCallback((key: string) => {
+    setBulkDeleteSelection(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  const setBulkKind = useCallback((kind: BulkDeleteItem['kind'], selected: boolean) => {
+    setBulkDeleteSelection(prev => {
+      const next = { ...prev }
+      for (const item of bulkDeleteItems) {
+        if (item.kind === kind) next[item.key] = selected
+      }
+      return next
+    })
+  }, [bulkDeleteItems])
+
+  const clearBulkDelete = useCallback(() => setBulkDeleteSelection({}), [])
+
+  const visibleCards = useMemo(() => filterCardsForBoard(brd.cards, {
+    query: boardSearch,
+    hideDoneRemove,
+    overdueOnly,
+  }), [boardSearch, brd.cards, hideDoneRemove, overdueOnly])
+
+  const selectedCards = useMemo(
+    () => brd.cards.filter(card => selectedCardIds.includes(card.id)),
+    [brd.cards, selectedCardIds],
+  )
+  const selectedTiles = useMemo(
+    () => sld.tiles.filter(tile => selectedTileIds.includes(tile.id)),
+    [sld.tiles, selectedTileIds],
+  )
+  const selectedBoardItemCount = selectedCardIds.length + selectedTileIds.length
+  const slideGroupViews = useMemo(() => slideGroups.map(group => {
+    const tiles = sld.tiles.filter(tile => group.tileIds.includes(tile.id))
+    return { group, tiles, bounds: getSlideGroupBounds(tiles) }
+  }).filter(view => view.bounds), [slideGroups, sld.tiles])
+  const focusGroup = focusGroupId ? slideGroups.find(group => group.id === focusGroupId) ?? null : null
+  const focusSlides = focusGroup ? sld.tiles.filter(tile => focusGroup.tileIds.includes(tile.id)) : []
+
+  const navigationItems = useMemo(() => buildBoardNavigationItems({
+    cards: brd.cards,
+    textBlocks: txt.blocks,
+    slides: sld.tiles,
+    frames: frm.frames,
+    tags: brd.goalTags,
+    frameLabel: type => FRAMEWORK_LABELS[type],
+  }), [brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks])
+
+  const outlineItems = useMemo(() => {
+    const q = boardSearch.trim().toLowerCase()
+    if (!q) return navigationItems
+    return navigationItems.filter(item => item.searchText.includes(q))
+  }, [boardSearch, navigationItems])
+
+  const jumpToItem = useCallback((item: BoardNavigationItem) => {
+    const cr = canvasRef.current?.getBoundingClientRect()
+    if (!cr) return
+    const nextZoom = Math.max(zoomRef.current, 0.75)
+    setZoom(nextZoom)
+    setPanX(cr.width / 2 - item.x * nextZoom)
+    setPanY(cr.height / 2 - item.y * nextZoom)
+    if (item.kind === 'card') setSelectedCardId(item.id)
+    if (item.kind === 'frame') setSelectedFrameId(item.id)
+  }, [])
+
   // ── Mouse handlers ──────────────────────────────────────────
   const onCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return
+    if (e.button !== 0 && e.button !== 2) return
     if ((e.target as HTMLElement).closest('.world-item')) return
+    if (e.shiftKey || e.button === 2) {
+      const start = screenToWorld(e.clientX, e.clientY)
+      isSelecting.current = true
+      selectionStart.current = start
+      const rect = { x: start.x, y: start.y, width: 0, height: 0 }
+      selectionRectRef.current = rect
+      setSelectionRect(rect)
+      setSelectedCardId(null)
+      setSelectedTileIds([])
+      setSelectedFrameId(null)
+      e.preventDefault()
+      return
+    }
     setSelectedCardId(null)
+    setSelectedCardIds([])
+    setSelectedTileIds([])
     setSelectedFrameId(null)
     if (e.ctrlKey) { e.preventDefault(); return }
     isPanning.current = true
@@ -165,6 +384,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const onCardMoveStart = useCallback((id: string, cx: number, cy: number) => {
     setSelectedCardId(id)
+    if (!selectedCardIds.includes(id)) setSelectedCardIds([id])
     isDragging.current  = true
     dragCardId.current  = id
     dragTagId.current   = null
@@ -176,9 +396,22 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     const cr = canvasRef.current!.getBoundingClientRect()
     const mwx = (cx - cr.left - panX) / zoom
     const mwy = (cy - cr.top  - panY) / zoom
+    dragStartWX.current = card.x
+    dragStartWY.current = card.y
+    const ids = selectedCardIds.includes(id) ? selectedCardIds : [id]
+    multiDragStart.current = Object.fromEntries(
+      brd.cards
+        .filter(c => ids.includes(c.id))
+        .map(c => [c.id, { x: c.x, y: c.y }]),
+    )
+    multiTileDragStart.current = Object.fromEntries(
+      sldRef.current.tiles
+        .filter(t => selectedTileIds.includes(t.id))
+        .map(t => [t.id, { x: t.x, y: t.y }]),
+    )
     dragOffWX.current = mwx - card.x
     dragOffWY.current = mwy - card.y
-  }, [zoom, panX, panY, brd.cards])
+  }, [zoom, panX, panY, brd.cards, selectedCardIds, selectedTileIds])
 
   const onTagMoveStart = useCallback((id: string, cx: number, cy: number, tx: number, ty: number) => {
     isDragging.current = true
@@ -234,13 +467,35 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [])
 
   const onTileMoveStart = useCallback((id: string, cx: number, cy: number) => {
-    const tile = sld.tiles.find(t => t.id === id)
+    const tile = sldRef.current.tiles.find(t => t.id === id)
     if (!tile) return
+    if (!selectedTileIds.includes(id)) {
+      setSelectedTileIds([id])
+      setSelectedCardIds([])
+    }
     isDragging.current  = true
     dragTileId.current  = id
     dragCardId.current  = null
     dragTagId.current   = null
     dragTextId.current  = null
+    dragFrameId.current = null
+    dragStartWX.current = tile.x
+    dragStartWY.current = tile.y
+    multiDragStart.current = Object.fromEntries(
+      brd.cards
+        .filter(c => selectedTileIds.includes(id) && selectedCardIds.includes(c.id))
+        .map(c => [c.id, { x: c.x, y: c.y }]),
+    )
+    const tileIds = selectedTileIds.includes(id) ? selectedTileIds : [id]
+    multiTileDragStart.current = Object.fromEntries(
+      sldRef.current.tiles
+        .filter(t => tileIds.includes(t.id))
+        .map(t => [t.id, { x: t.x, y: t.y }]),
+    )
+    setDraggingTileId(id)
+    setSelectedCardId(null)
+    setSelectedFrameId(null)
+    setSnapGhost(null)
     snapZoom.current    = zoom
     snapPanX.current    = panX
     snapPanY.current    = panY
@@ -249,7 +504,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     const mwy = (cy - cr.top  - panY) / zoom
     dragOffWX.current = mwx - tile.x
     dragOffWY.current = mwy - tile.y
-  }, [zoom, panX, panY, sld.tiles])
+  }, [zoom, panX, panY, brd.cards, selectedCardIds, selectedTileIds])
 
   const onTextMoveStart = useCallback((id: string, cx: number, cy: number) => {
     const block = txtRef.current.blocks.find(b => b.id === id)
@@ -292,6 +547,31 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       return next
     })
   }, [])
+
+  const deleteSelectedBulkItems = useCallback(async () => {
+    const items = selectedBulkItems
+    if (!items.length) return
+
+    for (const item of items) {
+      if (item.kind === 'card') {
+        if (item.id === selectedCardId) setSelectedCardId(null)
+        await brd.removeCard(item.id)
+      } else if (item.kind === 'slide') {
+        await handleDeleteTile(item.id)
+      } else if (item.kind === 'text') {
+        txtRef.current.removeBlock(item.id)
+      } else if (item.kind === 'frame') {
+        frmRef.current.deleteFrame(item.id)
+        if (item.id === selectedFrameId) setSelectedFrameId(null)
+      } else if (item.kind === 'tag') {
+        await brd.removeGoalTag(item.id)
+      }
+    }
+
+    setBulkDeleteSelection({})
+    setBulkDeleteOpen(false)
+    showToast(`Deleted ${items.length} item${items.length !== 1 ? 's' : ''}`)
+  }, [brd, handleDeleteTile, selectedBulkItems, selectedCardId, selectedFrameId])
 
   const handleImportPdf = useCallback(async (files: FileList | null) => {
     if (!files || !files.length) return
@@ -355,36 +635,142 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
   }, [board.id, screenToWorld])
 
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (isPanning.current) {
-        setPanX(panStart.current.px + (e.clientX - panStart.current.x))
-        setPanY(panStart.current.py + (e.clientY - panStart.current.y))
-        return
+  const deleteSelectedCards = useCallback(async () => {
+    const ids = selectedCardIds
+    if (!ids.length) return
+    await Promise.all(ids.map(id => brd.removeCard(id)))
+    setSelectedCardIds([])
+    setSelectedCardId(null)
+    showToast(`Deleted ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
+  }, [brd, selectedCardIds])
+
+  const deleteSelectedBoardItems = useCallback(async () => {
+    const cardIds = selectedCardIds
+    const tileIds = selectedTileIds
+    if (!cardIds.length && !tileIds.length) return
+    await Promise.all(cardIds.map(id => brd.removeCard(id)))
+    tileIds.forEach(id => sldRef.current.removeTile(id))
+    setSelectedCardIds([])
+    setSelectedTileIds([])
+    setSelectedCardId(null)
+    showToast(`Deleted ${cardIds.length + tileIds.length} item${cardIds.length + tileIds.length !== 1 ? 's' : ''}`)
+  }, [brd, selectedCardIds, selectedTileIds])
+
+  const createSlideGroupFromSelection = useCallback(() => {
+    if (!selectedTileIds.length) return
+    setSlideGroups(prev => {
+      const existingIds = new Set(selectedTileIds)
+      const next = prev.map(group => ({
+        ...group,
+        tileIds: group.tileIds.filter(id => !existingIds.has(id)),
+      })).filter(group => group.tileIds.length)
+      return [
+        ...next,
+        {
+          id: crypto.randomUUID(),
+          board_id: board.id,
+          name: `Slide Group ${next.length + 1}`,
+          tileIds: selectedTileIds,
+          created_at: new Date().toISOString(),
+        },
+      ]
+    })
+    showToast(`Grouped ${selectedTileIds.length} slide${selectedTileIds.length !== 1 ? 's' : ''}`)
+  }, [board.id, selectedTileIds])
+
+  const syncSlideGroupsAfterDrop = useCallback((tileIds: string[], positions: Record<string, { x: number; y: number }> = {}) => {
+    if (!tileIds.length) return
+    const currentTiles = sldRef.current.tiles.map(tile => positions[tile.id] ? { ...tile, ...positions[tile.id] } : tile)
+    const dropped = currentTiles.filter(tile => tileIds.includes(tile.id))
+    setSlideGroups(prev => {
+      let next = prev.map(group => ({ ...group, tileIds: group.tileIds.filter(id => !tileIds.includes(id)) }))
+      for (const tile of dropped) {
+        const cx = tile.x + tile.width / 2
+        const cy = tile.y + getSlideHeight(tile) / 2
+        const target = next.find(group => {
+          const tiles = currentTiles.filter(t => group.tileIds.includes(t.id))
+          const bounds = getSlideGroupBounds(tiles)
+          return bounds ? pointInRect(cx, cy, bounds) : false
+        })
+        if (target) target.tileIds = [...target.tileIds, tile.id]
       }
+      next = next.filter(group => group.tileIds.length)
+      return next
+    })
+  }, [])
+
+  const duplicateSelectedCards = useCallback(async () => {
+    const ids = selectedCardIds
+    if (!ids.length) return
+    await Promise.all(ids.map(id => brd.duplicateCard(id)))
+    showToast(`Duplicated ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
+  }, [brd, selectedCardIds])
+
+  const updateSelectedCards = useCallback(async (changes: Partial<Card>) => {
+    const ids = selectedCardIds
+    if (!ids.length) return
+    await Promise.all(ids.map(id => brd.updateCard(id, changes)))
+    showToast(`Updated ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
+  }, [brd, selectedCardIds])
+
+  useEffect(() => {
+    const applyPointerMove = (clientX: number, clientY: number) => {
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
-        const wx = (e.clientX - cr.left - snapPanX.current) / snapZoom.current - dragOffWX.current
-        const wy = (e.clientY - cr.top  - snapPanY.current) / snapZoom.current - dragOffWY.current
+        const wx = (clientX - cr.left - snapPanX.current) / snapZoom.current - dragOffWX.current
+        const wy = (clientY - cr.top  - snapPanY.current) / snapZoom.current - dragOffWY.current
         if (dragCardId.current) {
-          brd.moveCard(dragCardId.current, wx, wy)
-          const draggingCard = brd.cards.find(c => c.id === dragCardId.current)
-          if (draggingCard) {
+          const starts = multiDragStart.current
+          const tileStarts = multiTileDragStart.current
+          const ids = Object.keys(starts)
+          const tileIds = Object.keys(tileStarts)
+          if (ids.length > 1 || tileIds.length) {
+            const dx = wx - dragStartWX.current
+            const dy = wy - dragStartWY.current
+            for (const id of ids) brd.moveCard(id, starts[id].x + dx, starts[id].y + dy)
+            const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
+            if (tileIds.length) sldRef.current.moveTiles(tilePositions)
+            setSnapGhost(null)
+          } else {
+            brd.moveCard(dragCardId.current, wx, wy)
+            const draggingCard = brd.cards.find(c => c.id === dragCardId.current)
+            if (draggingCard) {
             const snap = snapPosition(wx, wy, draggingCard, brd.cards)
             setSnapGhost(snap)
             if (snap.snappedToId && snap.snappedToId !== lastSnapId.current) playSnapSound()
             lastSnapId.current = snap.snappedToId
+            }
           }
         }
         if (dragTagId.current) brd.moveGoalTag(dragTagId.current, wx, wy)
-        if (dragTileId.current) sldRef.current.moveTile(dragTileId.current, wx, wy)
+        if (dragTileId.current) {
+          const tileStarts = multiTileDragStart.current
+          const cardStarts = multiDragStart.current
+          const tileIds = Object.keys(tileStarts)
+          const cardIds = Object.keys(cardStarts)
+          if (tileIds.length > 1 || cardIds.length) {
+            const dx = wx - dragStartWX.current
+            const dy = wy - dragStartWY.current
+            const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
+            sldRef.current.moveTiles(tilePositions)
+            for (const id of cardIds) brd.moveCard(id, cardStarts[id].x + dx, cardStarts[id].y + dy)
+          } else {
+            sldRef.current.moveTile(dragTileId.current, wx, wy)
+          }
+        }
         if (dragTextId.current) {
           txtRef.current.moveBlock(dragTextId.current, wx, wy)
           const draggingBlock = txtRef.current.blocks.find(b => b.id === dragTextId.current)
           if (draggingBlock) {
             const targets = txtRef.current.blocks.map(b => ({ id: b.id, x: b.x, y: b.y, w: b.width, h: TEXT_HEIGHT_ESTIMATE }))
-            const snap = snapPositionGeneric(wx, wy, { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE }, targets)
-            setSnapGhost(snap)
+            const snap = snapPositionGeneric(
+              wx,
+              wy,
+              { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE },
+              targets,
+              { radius: TEXT_SNAP_RADIUS, gridSize: null },
+            )
+            setSnapGhost(snap.snappedToId ? snap : null)
             if (snap.snappedToId && snap.snappedToId !== lastSnapId.current) playSnapSound()
             lastSnapId.current = snap.snappedToId
           }
@@ -393,8 +779,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         return
       }
       if (isResizing.current) {
-        const dx = (e.clientX - resizeStartX.current) / zoom
-        const dy = (e.clientY - resizeStartY.current) / zoom
+        const dx = (clientX - resizeStartX.current) / zoom
+        const dy = (clientY - resizeStartY.current) / zoom
         if (resizeTarget.current === 'framework' && resizeFrameId.current) {
           frmRef.current.setFrameSize(
             resizeFrameId.current,
@@ -408,13 +794,65 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             : Math.max(CARD_MIN_H, 160 + dy)
           brd.resizeCard(resizeCardId.current, newW, newH)
         } else if (resizeTarget.current === 'textblock' && resizeTextId.current) {
-          const newW = Math.max(TEXT_MIN_W, resizeStartW.current + (e.clientX - resizeStartX.current) / zoom)
+          const newW = Math.max(TEXT_MIN_W, resizeStartW.current + (clientX - resizeStartX.current) / zoom)
           txtRef.current.resizeBlock(resizeTextId.current, newW)
         }
       }
     }
 
+    const schedulePointerMove = (e: MouseEvent) => {
+      pendingMove.current = { clientX: e.clientX, clientY: e.clientY }
+      if (moveRaf.current !== null) return
+      moveRaf.current = requestAnimationFrame(() => {
+        moveRaf.current = null
+        const point = pendingMove.current
+        pendingMove.current = null
+        if (point) applyPointerMove(point.clientX, point.clientY)
+      })
+    }
+
+    const onMove = (e: MouseEvent) => {
+      if (isSelecting.current && selectionStart.current) {
+        const cr = canvasRef.current?.getBoundingClientRect()
+        if (!cr) return
+        const wx = (e.clientX - cr.left - panX) / zoom
+        const wy = (e.clientY - cr.top - panY) / zoom
+        const rect = {
+          x: selectionStart.current.x,
+          y: selectionStart.current.y,
+          width: wx - selectionStart.current.x,
+          height: wy - selectionStart.current.y,
+        }
+        selectionRectRef.current = rect
+        setSelectionRect(rect)
+        return
+      }
+      if (isPanning.current) {
+        setPanX(panStart.current.px + (e.clientX - panStart.current.x))
+        setPanY(panStart.current.py + (e.clientY - panStart.current.y))
+        return
+      }
+      if (isDragging.current || isResizing.current) {
+        schedulePointerMove(e)
+      }
+    }
+
     const onUp = (e: MouseEvent) => {
+      if (isSelecting.current) {
+        const rect = selectionRectRef.current
+        const cardIds = rect ? selectCardIdsInRect(visibleCards, rect) : []
+        const tileIds = rect ? selectSlideIdsInRect(sldRef.current.tiles, rect) : []
+        setSelectedCardIds(cardIds)
+        setSelectedTileIds(tileIds)
+        setSelectedCardId(cardIds[0] ?? null)
+        setSelectionRect(null)
+        selectionRectRef.current = null
+        selectionStart.current = null
+        isSelecting.current = false
+        const count = cardIds.length + tileIds.length
+        if (count) showToast(`Selected ${count} item${count !== 1 ? 's' : ''}`)
+        return
+      }
       if (isPanning.current) { isPanning.current = false; return }
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -422,19 +860,66 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         const wy = (e.clientY - cr.top  - snapPanY.current) / snapZoom.current - dragOffWY.current
         if (dragCardId.current) {
           const draggingCard = brd.cards.find(c => c.id === dragCardId.current)
-          const finalPos = draggingCard
-            ? snapPosition(wx, wy, draggingCard, brd.cards)
-            : { x: wx, y: wy }
-          brd.moveCard(dragCardId.current, finalPos.x, finalPos.y)
-          brd.commitCardMove(dragCardId.current, finalPos.x, finalPos.y)
+          const starts = multiDragStart.current
+          const tileStarts = multiTileDragStart.current
+          const ids = Object.keys(starts)
+          const tileIds = Object.keys(tileStarts)
+          if (ids.length > 1 || tileIds.length) {
+            const dx = wx - dragStartWX.current
+            const dy = wy - dragStartWY.current
+            for (const id of ids) {
+              const next = { x: starts[id].x + dx, y: starts[id].y + dy }
+              brd.moveCard(id, next.x, next.y)
+              brd.commitCardMove(id, next.x, next.y)
+            }
+            const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
+            if (tileIds.length) {
+              sldRef.current.commitTileMoves(tilePositions)
+              syncSlideGroupsAfterDrop(tileIds, tilePositions)
+            }
+          } else {
+            const finalPos = draggingCard
+              ? snapPosition(wx, wy, draggingCard, brd.cards)
+              : { x: wx, y: wy }
+            brd.moveCard(dragCardId.current, finalPos.x, finalPos.y)
+            brd.commitCardMove(dragCardId.current, finalPos.x, finalPos.y)
+          }
         }
         if (dragTagId.current) brd.commitGoalTagMove(dragTagId.current, wx, wy)
-        if (dragTileId.current) sldRef.current.commitTileMove(dragTileId.current, wx, wy)
+        if (dragTileId.current) {
+          const tileStarts = multiTileDragStart.current
+          const cardStarts = multiDragStart.current
+          const tileIds = Object.keys(tileStarts)
+          const cardIds = Object.keys(cardStarts)
+          if (tileIds.length > 1 || cardIds.length) {
+            const dx = wx - dragStartWX.current
+            const dy = wy - dragStartWY.current
+            const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
+            if (tileIds.length) {
+              sldRef.current.commitTileMoves(tilePositions)
+              syncSlideGroupsAfterDrop(tileIds, tilePositions)
+            }
+            for (const id of cardIds) {
+              const next = { x: cardStarts[id].x + dx, y: cardStarts[id].y + dy }
+              brd.moveCard(id, next.x, next.y)
+              brd.commitCardMove(id, next.x, next.y)
+            }
+          } else {
+            sldRef.current.commitTileMove(dragTileId.current, wx, wy)
+            syncSlideGroupsAfterDrop([dragTileId.current], { [dragTileId.current]: { x: wx, y: wy } })
+          }
+        }
         if (dragTextId.current) {
           const draggingBlock = txtRef.current.blocks.find(b => b.id === dragTextId.current)
           const targets = draggingBlock ? txtRef.current.blocks.map(b => ({ id: b.id, x: b.x, y: b.y, w: b.width, h: TEXT_HEIGHT_ESTIMATE })) : []
           const finalPos = draggingBlock
-            ? snapPositionGeneric(wx, wy, { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE }, targets)
+            ? snapPositionGeneric(
+                wx,
+                wy,
+                { id: draggingBlock.id, x: wx, y: wy, w: draggingBlock.width, h: TEXT_HEIGHT_ESTIMATE },
+                targets,
+                { radius: TEXT_SNAP_RADIUS, gridSize: null },
+              )
             : { x: wx, y: wy }
           txtRef.current.moveBlock(dragTextId.current, finalPos.x, finalPos.y)
           txtRef.current.commitBlockMove(dragTextId.current, finalPos.x, finalPos.y)
@@ -448,6 +933,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         dragTileId.current  = null
         dragTextId.current  = null
         dragFrameId.current = null
+        multiDragStart.current = {}
+        multiTileDragStart.current = {}
+        setDraggingTileId(null)
         lastSnapId.current  = null
         setSnapGhost(null)
         return
@@ -482,8 +970,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
-  }, [brd, zoom])
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+      if (moveRaf.current !== null) cancelAnimationFrame(moveRaf.current)
+      moveRaf.current = null
+      pendingMove.current = null
+    }
+  }, [brd, panX, panY, selectionRect, syncSlideGroupsAfterDrop, visibleCards, zoom])
 
   // ── Scroll to zoom ──────────────────────────────────────────
   const onWheel = useCallback((e: React.WheelEvent) => {
@@ -510,10 +1004,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         if (e.metaKey) return  // let browser handle Cmd+arrow
         e.preventDefault()
         const step = e.shiftKey ? 100 : 20
-        if (e.key === 'ArrowLeft')  setPanX(px => px + step)
-        if (e.key === 'ArrowRight') setPanX(px => px - step)
-        if (e.key === 'ArrowUp')    setPanY(py => py + step)
-        if (e.key === 'ArrowDown')  setPanY(py => py - step)
+        if (e.key === 'ArrowLeft')  panBoard(step, 0)
+        if (e.key === 'ArrowRight') panBoard(-step, 0)
+        if (e.key === 'ArrowUp')    panBoard(0, step)
+        if (e.key === 'ArrowDown')  panBoard(0, -step)
         return
       }
 
@@ -550,11 +1044,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         setColourPicker(null)
         setAddFrameMenuOpen(false)
         setSelectedCardId(null)
+        setSelectedCardIds([])
+        setSelectedTileIds([])
         setSelectedFrameId(null)
         setModalOpen(false)
         setShowShortcuts(false)
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
+        if (selectedBoardItemCount > 1 && !modalOpen) {
+          e.preventDefault()
+          deleteSelectedBoardItems()
+          return
+        }
         if (selectedCardId && !modalOpen) {
           const card = brd.cards.find(c => c.id === selectedCardId)
           if (!card || card.locked) return
@@ -576,7 +1077,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [brd, screenToWorld, selectedCardId, selectedFrameId, modalOpen])
+  }, [brd, deleteSelectedBoardItems, panBoard, screenToWorld, selectedBoardItemCount, selectedCardId, selectedCardIds, selectedFrameId, modalOpen])
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
@@ -646,20 +1147,44 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── PDF Export ──────────────────────────────────────────────
   const exportPDF = async () => {
-    if (!canvasRef.current) return
+    if (!worldRef.current || !exportBounds) {
+      showToast('Nothing to export yet')
+      return
+    }
     setExporting(true)
-    showToast('Generating PDF…')
+    showToast('Generating board PDF…')
     try {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import('html2canvas'),
         import('jspdf'),
       ])
-      const canvas = await html2canvas(canvasRef.current, {
+      const worldEl = worldRef.current
+      const previous = {
+        transform: worldEl.style.transform,
+        width: worldEl.style.width,
+        height: worldEl.style.height,
+      }
+      worldEl.style.transform = `translate(${-exportBounds.x}px, ${-exportBounds.y}px) scale(1)`
+      worldEl.style.width = `${exportBounds.width}px`
+      worldEl.style.height = `${exportBounds.height}px`
+
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+
+      const canvas = await html2canvas(worldEl, {
         scale: 1.5,
-        backgroundColor: dark ? '#0F0F14' : '#faf8f0',
+        backgroundColor: dark ? '#0D1B2E' : '#faf8f0',
+        width: Math.ceil(exportBounds.width),
+        height: Math.ceil(exportBounds.height),
+        windowWidth: Math.ceil(exportBounds.width),
+        windowHeight: Math.ceil(exportBounds.height),
         useCORS: true,
         logging: false,
       })
+
+      worldEl.style.transform = previous.transform
+      worldEl.style.width = previous.width
+      worldEl.style.height = previous.height
+
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] })
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
@@ -669,55 +1194,87 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       console.error('Export failed:', err)
       showToast('Export failed — try again')
     } finally {
+      if (worldRef.current) {
+        worldRef.current.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`
+        worldRef.current.style.width = ''
+        worldRef.current.style.height = ''
+      }
       setExporting(false)
     }
   }
 
-  // ── JSON card export ────────────────────────────────────────
-  const exportCards = () => {
+  // ── Full whiteboard JSON export ─────────────────────────────
+  const exportWhiteboard = async () => {
     const slug = board.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()
     const date = new Date().toISOString().slice(0, 10)
-    const data = {
-      exportedAt: new Date().toISOString(),
-      boardName: board.name,
+    showToast('Preparing whiteboard backup…')
+
+    const slideImages: Record<string, string | null> = {}
+    await Promise.all(sld.tiles.map(async tile => {
+      try {
+        slideImages[tile.id] = await getImage(tile.id)
+      } catch {
+        slideImages[tile.id] = null
+      }
+    }))
+
+    const data = buildWhiteboardExport({
+      board,
       cards: brd.cards,
-    }
+      goalTags: brd.goalTags,
+      frames: frm.frames,
+      textBlocks: txt.blocks,
+      slides: sld.tiles,
+      slideImages,
+    })
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${slug}-${date}.json`
+    a.download = `${slug || 'whiteboard'}-whiteboard-${date}.json`
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 100)
-    showToast('Cards exported ✓')
+    showToast('Whiteboard backup exported ✓')
   }
 
-  // ── JSON card import ────────────────────────────────────────
-  const importCards = async (files: FileList | null) => {
+  // ── JSON whiteboard import ──────────────────────────────────
+  const importWhiteboardJson = async (files: FileList | null) => {
     if (!files || !files.length) return
     const file = files[0]
     try {
       const text = await file.text()
       const data = JSON.parse(text)
-      if (!Array.isArray(data.cards)) throw new Error('missing cards array')
-      const inserts: import('../types').CardInsert[] = data.cards.map((c: import('../types').Card) => ({
-        board_id: board.id,
-        title: c.title ?? '',
-        body: c.body ?? '',
-        date_label: c.date_label ?? '',
-        due_date: c.due_date ?? null,
-        tag: c.tag ?? 'idea',
-        bg: c.bg ?? 'white',
-        x: typeof c.x === 'number' ? c.x : 100,
-        y: typeof c.y === 'number' ? c.y : 100,
-        rotation: typeof c.rotation === 'number' ? c.rotation : 0,
-        card_width: typeof c.card_width === 'number' ? c.card_width : 185,
-        card_height: typeof c.card_height === 'number' ? c.card_height : null,
-        collapsed: c.collapsed ?? false,
-        locked: c.locked ?? false,
-      }))
-      await brd.bulkImportCards(inserts)
-      showToast(`Imported ${inserts.length} card${inserts.length !== 1 ? 's' : ''} ✓`)
+      const imported = buildWhiteboardImport({ data, targetBoardId: board.id })
+
+      await brd.bulkImportCards(imported.cards)
+      if (imported.kind === 'whiteboard') {
+        const tagInserts: GoalTagInsert[] = imported.goalTags.map(tag => ({
+          board_id: board.id,
+          label: tag.label,
+          bg: tag.bg,
+          color: tag.color,
+          x: tag.x,
+          y: tag.y,
+        }))
+        await brd.bulkImportGoalTags(tagInserts)
+        frmRef.current.importFrames(imported.frames)
+        txtRef.current.addBlocks(imported.textBlocks)
+        await Promise.all(Object.entries(imported.slideImages).map(([id, dataUrl]) => saveImage(id, dataUrl)))
+        sldRef.current.addTiles(imported.slides)
+        setTileImages(prev => ({ ...prev, ...imported.slideImages }))
+      }
+
+      if (imported.kind === 'cards') {
+        showToast(`Imported ${imported.cards.length} card${imported.cards.length !== 1 ? 's' : ''} ✓`)
+        return
+      }
+      const count =
+        imported.cards.length +
+        imported.goalTags.length +
+        imported.frames.length +
+        imported.textBlocks.length +
+        imported.slides.length
+      showToast(`Imported whiteboard backup (${count} item${count !== 1 ? 's' : ''}) ✓`)
     } catch (err) {
       const msg = err instanceof Error && err.message === 'missing cards array'
         ? "Could not read file — make sure it's a valid Ideaboard export"
@@ -756,18 +1313,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }
 
   // ── Theme colours ───────────────────────────────────────────
-  const sbBg   = dark ? '#0D0D12' : '#141418'
+  const sbBg   = dark ? colors.sidebar : '#0D1929'
   const topBg  = dark ? 'rgba(13,13,18,.94)' : 'rgba(253,252,245,0.97)'
-  const topBdr = dark ? 'rgba(255,255,255,.06)' : '#e8e4d9'
+  const topBdr = dark ? 'rgba(255,255,255,.06)' : colors.borderLight
   const subC   = dark ? '#666'    : '#999'
-  const cvBg   = dark ? '#0F0F14' : '#faf8f0'
+  const cvBg   = dark ? colors.canvasDark : colors.canvasLight
   const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)'
 
   if (brd.loading) return <Centered dark={dark}>Loading board…</Centered>
   if (brd.error)   return <Centered dark={dark} error>{brd.error}</Centered>
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: "'DM Sans',sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: fonts.ui }}>
 
       {/* ── SIDEBAR ── */}
       <aside style={{ width: 68, background: sbBg, borderRight: '1px solid #1A1A22', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 2, flexShrink: 0, zIndex: 100 }}>
@@ -797,7 +1354,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10v6m0 0l-3-3m3 3l3-3"/><path d="M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
         </SbBtn>
 
-        <SbBtn title="Export cards as JSON backup" onClick={exportCards} dark={dark}>
+        <SbBtn title="Export full whiteboard as JSON backup" onClick={exportWhiteboard} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
             <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
@@ -816,7 +1373,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           onChange={e => { handleImportPdf(e.target.files); e.target.value = '' }}
         />
 
-        <SbBtn title="Import cards from JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
+        <SbBtn title="Import JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
             <line x1="12" y1="12" x2="12" y2="18"/><polyline points="15 15 12 12 9 15"/>
@@ -827,11 +1384,17 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           type="file"
           accept=".json"
           style={{ display: 'none' }}
-          onChange={e => { importCards(e.target.files); e.target.value = '' }}
+          onChange={e => { importWhiteboardJson(e.target.files); e.target.value = '' }}
         />
 
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+        </SbBtn>
+
+        <SbBtn title="Bulk delete items" onClick={() => setBulkDeleteOpen(true)} dark={dark}>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 11h6"/><path d="M9 15h6"/>
+          </svg>
         </SbBtn>
 
         <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
@@ -853,8 +1416,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   left: 76,
                   top: rect ? Math.min(rect.top, window.innerHeight - 420) : 200,
                   zIndex: 999,
-                  background: dark ? '#1A1A24' : 'white',
-                  border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`,
+                  background: dark ? '#152336' : 'white',
+                  border: `1px solid ${dark ? '#1E3451' : '#ddd'}`,
                   borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.18)',
                   minWidth: 200, maxHeight: 400, overflowY: 'auto',
                 }}>
@@ -877,7 +1440,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                           display: 'block', width: '100%', padding: '9px 14px',
                           border: 'none', background: 'transparent', cursor: 'pointer',
                           textAlign: 'left', fontSize: 12, fontWeight: 500,
-                          color: dark ? '#ddd' : '#1A1A2E',
+                          color: dark ? '#ddd' : '#152336',
                           fontFamily: "'DM Sans',sans-serif",
                         }}
                       >
@@ -899,7 +1462,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
             }
           </SbBtn>
-          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6C63FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'white', border: `2px solid ${dark ? '#1A1A22' : '#2A2A32'}` }}>
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6C63FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'white', border: `2px solid ${dark ? '#1A1A22' : '#1E3451'}` }}>
             {user.email?.[0]?.toUpperCase() ?? 'U'}
           </div>
         </div>
@@ -917,6 +1480,19 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
             Double-click to add · Scroll to zoom · Ctrl+move to pan · Press ? for shortcuts
           </span>
+          <button
+            onClick={() => setShowBoardPanel(open => !open)}
+            title={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
+            aria-label={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
+            style={{ height: 30, padding: '0 10px', borderRadius: 8, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: dark ? '#152336' : 'white', color: dark ? '#DCE8F5' : '#263D5B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 800, fontFamily: fonts.ui }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="16" rx="2"/>
+              <path d="M15 4v16"/>
+              <path d={showBoardPanel ? 'M10 9l-3 3 3 3' : 'M7 9l3 3-3 3'}/>
+            </svg>
+            {showBoardPanel ? 'Hide Find' : 'Show Find'}
+          </button>
           <button
             onClick={() => {
               const cr = canvasRef.current?.getBoundingClientRect()
@@ -943,10 +1519,54 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </button>
         </div>
 
+        {selectedBoardItemCount > 1 && (
+          <div style={{
+            position: 'absolute',
+            top: 62,
+            left: 18,
+            zIndex: 80,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '9px 10px',
+            borderRadius: 10,
+            background: dark ? '#152336' : 'white',
+            border: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`,
+            boxShadow: '0 8px 24px rgba(0,0,0,.16)',
+            color: dark ? '#F0EEE8' : '#263D5B',
+            fontFamily: fonts.ui,
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 900 }}>{selectedBoardItemCount} selected</span>
+            {selectedCardIds.length > 1 && <button onClick={duplicateSelectedCards} style={{ height: 28, padding: '0 10px', borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: 12 }}>Duplicate cards</button>}
+            {selectedTileIds.length > 0 && <button onClick={createSlideGroupFromSelection} style={{ height: 28, padding: '0 10px', borderRadius: 7, border: `1px solid ${dark ? '#49B6E5' : '#49B6E5'}`, background: 'transparent', color: 'inherit', cursor: 'pointer', fontSize: 12 }}>Group slides</button>}
+            <button onClick={deleteSelectedBoardItems} style={{ height: 28, padding: '0 10px', borderRadius: 7, border: 'none', background: '#D64545', color: 'white', cursor: 'pointer', fontSize: 12 }}>Delete</button>
+            <select
+              title="Assign tag"
+              defaultValue=""
+              onChange={e => { if (e.target.value) updateSelectedCards({ tag: e.target.value as TagType }); e.currentTarget.value = '' }}
+              style={{ height: 28, borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: dark ? '#0D1B2E' : 'white', color: 'inherit', fontSize: 12 }}
+            >
+              <option value="">Tag</option>
+              {(['idea','critical','planned','delegate','remove','done'] as TagType[]).map(tag => <option key={tag} value={tag}>{tag}</option>)}
+            </select>
+            <select
+              title="Recolor"
+              defaultValue=""
+              onChange={e => { if (e.target.value) updateSelectedCards({ bg: e.target.value }); e.currentTarget.value = '' }}
+              style={{ height: 28, borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: dark ? '#0D1B2E' : 'white', color: 'inherit', fontSize: 12 }}
+            >
+              <option value="">Color</option>
+              {COLOUR_SWATCHES.map(sw => <option key={sw.value} value={sw.value}>{sw.label}</option>)}
+            </select>
+            <button onClick={() => { setSelectedCardIds([]); setSelectedTileIds([]); setSelectedCardId(null) }} style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: 'transparent', color: 'inherit', cursor: 'pointer' }}>×</button>
+          </div>
+        )}
+
         {/* ── CANVAS ── */}
         <div
           ref={canvasRef}
           onMouseDown={onCanvasMouseDown}
+          onContextMenu={e => e.preventDefault()}
           onDoubleClick={onCanvasDblClick}
           onWheel={onWheel}
           style={{
@@ -976,7 +1596,52 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 onSelect={setSelectedFrameId}
                 onTypeChange={(id, type) => frmRef.current.changeFrameType(id, type)}
                 onRename={(id, name) => frmRef.current.renameFrame(id, name)}
+                onUpdateNotes={(id, notes) => frmRef.current.updateFrameNotes(id, notes)}
+                onUpdateNoteArea={(id, areaId, notes) => frmRef.current.updateFrameNoteArea(id, areaId, notes)}
               />
+            ))}
+
+            {/* Slide groups */}
+            {slideGroupViews.map(({ group, bounds, tiles }) => bounds && (
+              <div
+                key={group.id}
+                className="world-item"
+                style={{
+                  position: 'absolute',
+                  left: bounds.x,
+                  top: bounds.y,
+                  width: bounds.width,
+                  height: bounds.height,
+                  borderRadius: 10,
+                  border: `2px dashed ${dark ? '#49B6E5' : '#263D5B'}`,
+                  background: dark ? 'rgba(73,182,229,0.06)' : 'rgba(73,182,229,0.07)',
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none',
+                  zIndex: 5,
+                }}
+              >
+                <div style={{
+                  position: 'absolute',
+                  top: 8,
+                  left: 10,
+                  right: 10,
+                  height: 24,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  pointerEvents: 'auto',
+                  fontFamily: fonts.ui,
+                  color: dark ? '#E8F4FF' : '#263D5B',
+                }}>
+                  <strong style={{ fontSize: 12 }}>{group.name}</strong>
+                  <span style={{ fontSize: 11, opacity: .7 }}>{tiles.length} slide{tiles.length !== 1 ? 's' : ''}</span>
+                  <button
+                    onMouseDown={e => e.stopPropagation()}
+                    onClick={() => { setFocusGroupId(group.id); setFocusSlideIndex(0) }}
+                    style={{ marginLeft: 'auto', height: 22, padding: '0 8px', borderRadius: 7, border: 'none', background: '#49B6E5', color: 'white', fontSize: 11, cursor: 'pointer', fontWeight: 800 }}
+                  >Focus</button>
+                </div>
+              </div>
             ))}
 
             {/* Slide tiles */}
@@ -986,6 +1651,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 tile={tile}
                 imageUrl={tileImages[tile.id] ?? null}
                 dark={dark}
+                dragging={draggingTileId === tile.id}
+                selected={selectedTileIds.includes(tile.id)}
                 onMoveStart={onTileMoveStart}
                 onDelete={handleDeleteTile}
               />
@@ -1005,7 +1672,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             ))}
 
             {/* Cards */}
-            {brd.cards.map(card => (
+            {visibleCards.map(card => (
               <div key={card.id} className="world-item">
                 <IdeaCard
                   card={card} dark={dark}
@@ -1014,6 +1681,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   onEdit={openEdit}
                   onDelete={async id => {
                     if (id === selectedCardId) setSelectedCardId(null)
+                    setSelectedCardIds(prev => prev.filter(cardId => cardId !== id))
                     await brd.removeCard(id)
                     showToast('Card deleted')
                   }}
@@ -1038,7 +1706,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   onTagMoveStart(tag.id, e.clientX, e.clientY, tag.x, tag.y)
                   e.preventDefault(); e.stopPropagation()
                 }}
-                style={{ position:'absolute', left:tag.x, top:tag.y, borderRadius:20, border:'2px solid #1A1A2E', padding:'7px 14px', fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, cursor:'grab', boxShadow:'3px 3px 0 #1A1A2E', zIndex:20, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', background:tag.bg, color:tag.color, userSelect:'none' }}
+                style={{ position:'absolute', left:tag.x, top:tag.y, borderRadius:20, border:'2px solid #152336', padding:'7px 14px', fontFamily:"'Syne',sans-serif", fontSize:12, fontWeight:700, cursor:'grab', boxShadow:'3px 3px 0 #152336', zIndex:20, display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', background:tag.bg, color:tag.color, userSelect:'none' }}
               >
                 {tag.label}
                 <button className="no-drag"
@@ -1047,6 +1715,41 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   style={{ width:16,height:16,borderRadius:'50%',background:'rgba(0,0,0,.12)',border:'none',cursor:'pointer',fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',color:'inherit' }}
                 >×</button>
               </div>
+            ))}
+
+            {selectionRect && (() => {
+              const rect = normalizeSelectionRect(selectionRect)
+              return (
+                <div style={{
+                  position: 'absolute',
+                  left: rect.x,
+                  top: rect.y,
+                  width: rect.width,
+                  height: rect.height,
+                  border: '1.5px solid #49B6E5',
+                  background: 'rgba(73,182,229,.10)',
+                  pointerEvents: 'none',
+                  zIndex: 18,
+                }} />
+              )
+            })()}
+
+            {selectedCards.map(card => (
+              <div key={`multi-${card.id}`} style={{
+                position: 'absolute',
+                left: card.x - 6,
+                top: card.y - 6,
+                width: (card.card_width ?? 185) + 12,
+                height: (card.card_height ?? (card.collapsed ? 54 : 160)) + 12,
+                border: '2px solid #6C63FF',
+                borderRadius: 18,
+                pointerEvents: 'none',
+                zIndex: 21,
+                boxSizing: 'border-box',
+                boxShadow: '0 0 0 3px rgba(108,99,255,.16)',
+                transform: card.rotation ? `rotate(${card.rotation}deg)` : undefined,
+                transformOrigin: 'top left',
+              }} />
             ))}
 
             {/* Snap ghost — cards */}
@@ -1093,7 +1796,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
             {/* Selection ring */}
             {selectedCardId && (() => {
-              const card = brd.cards.find(c => c.id === selectedCardId)
+              const card = visibleCards.find(c => c.id === selectedCardId)
               if (!card) return null
               return (
                 <div style={{
@@ -1138,7 +1841,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           {/* ── HUD ── */}
           {/* Zoom controls */}
-          <div style={{ position:'absolute', right:18, bottom:22, display:'flex', flexDirection:'column', gap:1, background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}>
+          <div style={{ position:'absolute', right:18, bottom:22, display:'flex', flexDirection:'column', gap:1, background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}>
             {['+','−'].map((sym,i)=>(
               <button key={sym} onClick={() => {
                 const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (i===0?1.2:0.8)))
@@ -1147,9 +1850,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 setPanX(px => cx-(cx-px)*(nz/zoom)); setPanY(py => cy-(cy-py)*(nz/zoom)); setZoom(nz)
               }} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:17,color:dark?'#ccc':'#555',background:'none',border:'none' }}>{sym}</button>
             ))}
-            <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
+            <div style={{ height:1, background: dark?'#1E3451':'#e8e8e8' }}/>
             <div style={{ width:34,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:dark?'#666':'#888',fontFamily:"'Delius Swash Caps',cursive" }}>{Math.round(zoom*100)}%</div>
-            <div style={{ height:1, background: dark?'#2A2A38':'#e8e8e8' }}/>
+            <div style={{ height:1, background: dark?'#1E3451':'#e8e8e8' }}/>
             <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#666':'#888',background:'none',border:'none' }}>1:1</button>
           </div>
 
@@ -1158,12 +1861,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             onClick={() => setShowShortcuts(s => !s)}
             title="Keyboard shortcuts (?)"
             aria-label="Toggle keyboard shortcuts"
-            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, fontWeight:700, color: dark?'#ccc':'#555', background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}
+            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, fontWeight:700, color: dark?'#ccc':'#555', background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}
           >?</button>
 
           {/* Minimap */}
-          <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#1A1A24':'white', borderRadius:9, border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>
-            <div style={{ width:'100%',height:'100%',background: dark?'#0F0F14':'#f0ede5',position:'relative' }}>
+          <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>
+            <div style={{ width:'100%',height:'100%',background: dark?'#0D1B2E':'#f0ede5',position:'relative' }}>
               {[['12%','8%','#D4EDD8'],['52%','8%','#FFF3B0'],['12%','52%','#FFD6C2'],['52%','52%','#E8E0F5']].map(([l,t,bg],i)=>(
                 <div key={i} style={{ position:'absolute',left:l,top:t,width:'36%',height:'40%',background:bg,border:'1px solid rgba(0,0,0,.1)',borderRadius:3,opacity: dark?.5:1 }}/>
               ))}
@@ -1172,7 +1875,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </div>
 
           {/* World coords */}
-          <div style={{ position:'absolute',left:18,bottom:22,fontSize:10,color:dark?'#444':subC,fontFamily:"'JetBrains Mono',monospace",background: dark?'rgba(26,26,36,.8)':'rgba(255,255,255,.8)',padding:'3px 8px',borderRadius:6,border:`1px solid ${dark?'#2A2A38':'rgba(0,0,0,.06)'}` }}>
+          <div style={{ position:'absolute',left:18,bottom:22,fontSize:10,color:dark?'#444':subC,fontFamily:"'JetBrains Mono',monospace",background: dark?'rgba(26,26,36,.8)':'rgba(255,255,255,.8)',padding:'3px 8px',borderRadius:6,border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.06)'}` }}>
             {Math.round(-panX/zoom)}, {Math.round(-panY/zoom)}
           </div>
 
@@ -1184,6 +1887,120 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           )}
         </div>
       </div>
+
+      {/* ── SEARCH + OUTLINE ── */}
+      {showBoardPanel && (
+      <aside style={{
+        width: 306,
+        flexShrink: 0,
+        background: dark ? '#101F34' : '#fffdf7',
+        borderLeft: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`,
+        display: 'flex',
+        flexDirection: 'column',
+        color: dark ? '#F0EEE8' : '#263D5B',
+        zIndex: 80,
+      }}>
+        <div style={{ padding: '14px 14px 12px', borderBottom: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+            <div style={{ fontFamily: fonts.display, fontWeight: 800, fontSize: 14 }}>Find Board Items</div>
+            <div style={{ flex: 1 }} />
+            <button
+              onClick={() => setShowBoardPanel(false)}
+              style={{ height: 26, padding: '0 9px', borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: dark ? '#0D1B2E' : 'white', color: dark ? '#DCE8F5' : '#263D5B', cursor: 'pointer', fontSize: 11, fontWeight: 800 }}
+            >
+              Hide
+            </button>
+          </div>
+          <div style={{ position: 'relative', marginBottom: 10 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: 10, top: 9, color: dark ? '#8EA5C0' : '#77879A' }}>
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <input
+              value={boardSearch}
+              onChange={e => setBoardSearch(e.target.value)}
+              placeholder="Search cards, tags, dates..."
+              style={{
+                width: '100%',
+                height: 34,
+                padding: '0 10px 0 32px',
+                borderRadius: 8,
+                border: `1px solid ${dark ? '#1E3451' : '#ddd8ca'}`,
+                background: dark ? '#0D1B2E' : 'white',
+                color: dark ? '#F0EEE8' : '#263D5B',
+                outline: 'none',
+                boxSizing: 'border-box',
+                fontFamily: fonts.ui,
+                fontSize: 12,
+              }}
+            />
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 8, color: dark ? '#C8D7EA' : '#465F7C', cursor: 'pointer' }}>
+            <input type="checkbox" checked={hideDoneRemove} onChange={e => setHideDoneRemove(e.target.checked)} style={{ accentColor: '#49B6E5' }} />
+            Hide done/remove cards
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: dark ? '#C8D7EA' : '#465F7C', cursor: 'pointer' }}>
+            <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} style={{ accentColor: '#49B6E5' }} />
+            Show overdue cards only
+          </label>
+          <div style={{ marginTop: 11, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {[
+              ['Cards', visibleCards.length, '#49B6E5'],
+              ['Text', txt.blocks.length, '#A78BFA'],
+              ['Slides', sld.tiles.length, '#F59E0B'],
+            ].map(([label, count, color]) => (
+              <div key={label} style={{ border: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`, borderRadius: 7, padding: '7px 6px', background: dark ? '#0D1B2E' : '#faf8f0' }}>
+                <div style={{ fontSize: 9, color: dark ? '#8EA5C0' : '#77879A', fontWeight: 800, textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: 15, color: color as string, fontWeight: 900, marginTop: 1 }}>{count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 14px 8px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', color: dark ? '#8EA5C0' : '#77879A' }}>Outline</div>
+          <div style={{ flex: 1, height: 1, background: dark ? '#1E3451' : '#e8e4d9' }} />
+          <div style={{ fontSize: 11, color: dark ? '#8EA5C0' : '#77879A' }}>{outlineItems.length}</div>
+        </div>
+
+        <div style={{ overflow: 'auto', padding: '0 10px 14px', display: 'grid', gap: 6 }}>
+          {outlineItems.length === 0 ? (
+            <div style={{ padding: 18, textAlign: 'center', fontSize: 12, color: dark ? '#8EA5C0' : '#77879A' }}>No matching board items</div>
+          ) : outlineItems.map(item => {
+            const chip = item.kind === 'card' ? '#49B6E5'
+              : item.kind === 'text' ? '#A78BFA'
+              : item.kind === 'slide' ? '#F59E0B'
+              : item.kind === 'frame' ? '#22C55E'
+              : '#EF4444'
+            return (
+              <button
+                key={item.key}
+                onClick={() => jumpToItem(item)}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '8px 1fr',
+                  gap: 9,
+                  alignItems: 'center',
+                  textAlign: 'left',
+                  border: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`,
+                  background: dark ? '#0D1B2E' : 'white',
+                  color: 'inherit',
+                  borderRadius: 8,
+                  padding: '9px 10px',
+                  cursor: 'pointer',
+                  fontFamily: fonts.ui,
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 99, background: chip }} />
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontSize: 12, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                  <span style={{ display: 'block', fontSize: 10, color: dark ? '#8EA5C0' : '#77879A', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.detail}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </aside>
+      )}
 
       {/* Markdown styles */}
       <style>{`
@@ -1209,8 +2026,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             left: Math.min(colourPicker.x, window.innerWidth - 180),
             top: Math.min(colourPicker.y, window.innerHeight - 80),
             zIndex: 901,
-            background: dark ? '#1A1A24' : 'white',
-            border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`,
+            background: dark ? '#152336' : 'white',
+            border: `1px solid ${dark ? '#1E3451' : '#ddd'}`,
             borderRadius: 12,
             padding: '10px 12px',
             boxShadow: '0 8px 24px rgba(0,0,0,.22)',
@@ -1244,8 +2061,162 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
       <CardModal card={editingCard} isOpen={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave} onDelete={editingCard ? handleDelete : undefined} dark={dark} />
 
+      {bulkDeleteOpen && (
+        <div
+          role="dialog"
+          aria-modal={true}
+          aria-label="Bulk delete"
+          style={{ position: 'fixed', inset: 0, zIndex: 1800, background: 'rgba(0,0,0,.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onMouseDown={e => {
+            if (e.target === e.currentTarget) setBulkDeleteOpen(false)
+          }}
+        >
+          <div style={{
+            width: 'min(680px, 92vw)',
+            maxHeight: 'min(720px, 86vh)',
+            background: dark ? '#152336' : '#fff',
+            color: dark ? '#F0EEE8' : '#263D5B',
+            border: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`,
+            borderRadius: 10,
+            boxShadow: '0 24px 80px rgba(0,0,0,.35)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            fontFamily: fonts.ui,
+          }}>
+            <div style={{ padding: '16px 18px', borderBottom: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div style={{ fontFamily: fonts.display, fontSize: 17, fontWeight: 700 }}>Bulk Delete</div>
+                <div style={{ fontSize: 12, color: dark ? '#8EA5C0' : '#77879A', marginTop: 3 }}>
+                  Select imported slides or other board items to delete together.
+                </div>
+              </div>
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={() => setBulkDeleteOpen(false)}
+                aria-label="Close bulk delete"
+                style={{ width: 30, height: 30, borderRadius: 6, border: 'none', background: dark ? '#0D1B2E' : '#f2f0e8', color: 'inherit', cursor: 'pointer', fontSize: 18 }}
+              >×</button>
+            </div>
+
+            <div style={{ padding: 14, overflow: 'auto' }}>
+              {bulkDeleteItems.length === 0 ? (
+                <div style={{ padding: 28, textAlign: 'center', color: dark ? '#8EA5C0' : '#77879A', fontSize: 13 }}>
+                  Nothing on this board can be deleted yet.
+                </div>
+              ) : (
+                ([
+                  ['slide', 'Imported Slides'],
+                  ['card', 'Cards'],
+                  ['text', 'Text Blocks'],
+                  ['frame', 'Frames'],
+                  ['tag', 'Goal Tags'],
+                ] as Array<[BulkDeleteItem['kind'], string]>).map(([kind, title]) => {
+                  const entries = bulkDeleteItems.filter(item => item.kind === kind)
+                  if (!entries.length) return null
+                  const selectedCount = entries.filter(item => bulkDeleteSelection[item.key]).length
+                  return (
+                    <section key={kind} style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 7 }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: dark ? '#8EA5C0' : '#77879A' }}>
+                          {title} · {selectedCount}/{entries.length}
+                        </div>
+                        <div style={{ flex: 1, height: 1, background: dark ? '#1E3451' : '#e8e4d9' }} />
+                        <button
+                          onClick={() => setBulkKind(kind, true)}
+                          style={{ border: 'none', background: 'transparent', color: '#49B6E5', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                        >Select all</button>
+                        <button
+                          onClick={() => setBulkKind(kind, false)}
+                          style={{ border: 'none', background: 'transparent', color: dark ? '#8EA5C0' : '#77879A', cursor: 'pointer', fontSize: 11, fontWeight: 700 }}
+                        >Clear</button>
+                      </div>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        {entries.map(item => (
+                          <label
+                            key={item.key}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '18px 1fr',
+                              gap: 10,
+                              alignItems: 'center',
+                              padding: '9px 10px',
+                              borderRadius: 8,
+                              border: `1px solid ${bulkDeleteSelection[item.key] ? '#49B6E5' : (dark ? '#1E3451' : '#e8e4d9')}`,
+                              background: bulkDeleteSelection[item.key]
+                                ? (dark ? 'rgba(73,182,229,.12)' : 'rgba(73,182,229,.10)')
+                                : (dark ? '#0D1B2E' : '#faf8f0'),
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!bulkDeleteSelection[item.key]}
+                              onChange={() => toggleBulkItem(item.key)}
+                              style={{ width: 15, height: 15, accentColor: '#49B6E5' }}
+                            />
+                            <span>
+                              <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: dark ? '#F0EEE8' : '#263D5B' }}>{item.label}</span>
+                              <span style={{ display: 'block', fontSize: 11, color: dark ? '#8EA5C0' : '#77879A', marginTop: 2 }}>{item.detail}</span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </section>
+                  )
+                })
+              )}
+            </div>
+
+            <div style={{ padding: '13px 18px', borderTop: `1px solid ${dark ? '#1E3451' : '#e8e4d9'}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, color: dark ? '#8EA5C0' : '#77879A' }}>
+                {selectedBulkItems.length} selected
+              </span>
+              <div style={{ flex: 1 }} />
+              <button
+                onClick={clearBulkDelete}
+                disabled={!selectedBulkItems.length}
+                style={{ height: 34, padding: '0 12px', borderRadius: 7, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: 'transparent', color: dark ? '#DCE8F5' : '#263D5B', cursor: selectedBulkItems.length ? 'pointer' : 'not-allowed', opacity: selectedBulkItems.length ? 1 : .5 }}
+              >Clear selection</button>
+              <button
+                onClick={deleteSelectedBulkItems}
+                disabled={!selectedBulkItems.length}
+                style={{ height: 34, padding: '0 14px', borderRadius: 7, border: 'none', background: selectedBulkItems.length ? '#D64545' : '#999', color: 'white', cursor: selectedBulkItems.length ? 'pointer' : 'not-allowed', fontWeight: 800 }}
+              >Delete selected</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {focusGroup && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 1900, background: dark ? 'rgba(4,10,18,.92)' : 'rgba(20,28,38,.86)', display: 'flex', flexDirection: 'column', padding: 24, boxSizing: 'border-box' }}
+          onMouseDown={e => e.stopPropagation()}
+        >
+          <div style={{ height: 42, display: 'flex', alignItems: 'center', gap: 12, color: 'white', fontFamily: fonts.ui }}>
+            <strong style={{ fontSize: 16 }}>{focusGroup.name}</strong>
+            <span style={{ fontSize: 12, opacity: .75 }}>{focusSlides.length ? focusSlideIndex + 1 : 0}/{focusSlides.length}</span>
+            <button onClick={() => setFocusSlideIndex(i => Math.max(0, i - 1))} disabled={focusSlideIndex <= 0} style={{ marginLeft: 'auto', height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: 'white', cursor: focusSlideIndex <= 0 ? 'not-allowed' : 'pointer', opacity: focusSlideIndex <= 0 ? .5 : 1 }}>Prev</button>
+            <button onClick={() => setFocusSlideIndex(i => Math.min(focusSlides.length - 1, i + 1))} disabled={focusSlideIndex >= focusSlides.length - 1} style={{ height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,.25)', background: 'transparent', color: 'white', cursor: focusSlideIndex >= focusSlides.length - 1 ? 'not-allowed' : 'pointer', opacity: focusSlideIndex >= focusSlides.length - 1 ? .5 : 1 }}>Next</button>
+            <button onClick={() => setFocusGroupId(null)} style={{ height: 30, padding: '0 12px', borderRadius: 8, border: 'none', background: '#49B6E5', color: 'white', cursor: 'pointer', fontWeight: 800 }}>Close</button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {focusSlides[focusSlideIndex] && tileImages[focusSlides[focusSlideIndex].id] ? (
+              <img
+                src={tileImages[focusSlides[focusSlideIndex].id]}
+                alt={`${focusSlides[focusSlideIndex].filename} p.${focusSlides[focusSlideIndex].page_number}`}
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,.35)', borderRadius: 8 }}
+                draggable={false}
+              />
+            ) : (
+              <div style={{ color: 'white', fontFamily: fonts.ui, opacity: .75 }}>No slide preview available</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {toast && (
-        <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background: dark?'#25252F':'#1A1A2E',color:'white',borderRadius:10,padding:'10px 20px',fontSize:13,fontFamily:"'DM Sans',sans-serif",zIndex:2000,display:'flex',alignItems:'center',gap:10,boxShadow:'0 8px 24px rgba(0,0,0,.2)' }}>
+        <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background: dark?'#162845':'#152336',color:'white',borderRadius:10,padding:'10px 20px',fontSize:13,fontFamily:"'DM Sans',sans-serif",zIndex:2000,display:'flex',alignItems:'center',gap:10,boxShadow:'0 8px 24px rgba(0,0,0,.2)' }}>
           {toast}
           <button onClick={() => { brd.undo(); showToast('Undone ↩') }} style={{ background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,padding:'2px 9px',cursor:'pointer',fontSize:11,color:'white',fontFamily:"'DM Sans',sans-serif" }}>Undo</button>
         </div>
@@ -1334,7 +2305,7 @@ function SbBtn({ children, title, onClick }: { children: React.ReactNode; title:
 
 function Centered({ children, dark, error }: { children: React.ReactNode; dark: boolean; error?: boolean }) {
   return (
-    <div style={{ height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif",color: error?'#C53030':(dark?'#888':'#aaa'),background: dark?'#0F0F14':'#ECEAE3' }}>
+    <div style={{ height:'100vh',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'DM Sans',sans-serif",color: error?'#C53030':(dark?'#888':'#aaa'),background: dark?'#0D1B2E':'#ECEAE3' }}>
       {children}
     </div>
   )

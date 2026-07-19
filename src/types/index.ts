@@ -87,11 +87,15 @@ export type FrameworkType =
   | 'start-stop-continue' | 'personal-kanban' | 'five-whys'
   | 'daily-reflection' | 'okr' | 'energy-audit'
   | 'eat-that-frog' | 'gtd'
+  | 'stp' | 'marketing-mix' | 'aida' | 'swot' | 'customer-journey'
+  | 'first-principles' | 'six-thinking-hats' | 'scamper' | 'pros-cons' | 'impact-effort'
 
 export interface FrameInstance {
   id: string
   type: FrameworkType
   name?: string     // user-defined label; absent = show type name only
+  notes?: string    // editable text written directly on the framework
+  noteAreas?: Record<string, string> // editable text keyed by framework section
   x: number        // world-space position (inside the transformed worldRef div)
   y: number
   width: number    // world-space size

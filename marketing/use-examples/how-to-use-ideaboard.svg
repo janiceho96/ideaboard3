@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#263D5B" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .title { font: 800 62px Arial, Helvetica, sans-serif; fill: #161616; }
+      .subtitle { font: 400 26px Arial, Helvetica, sans-serif; fill: #667085; }
+      .cardTitle { font: 800 30px Arial, Helvetica, sans-serif; fill: #263D5B; }
+      .label { font: 700 21px Arial, Helvetica, sans-serif; fill: #111827; }
+      .small { font: 500 18px Arial, Helvetica, sans-serif; fill: #667085; }
+      .tiny { font: 600 15px Arial, Helvetica, sans-serif; fill: #667085; }
+      .button { font: 800 18px Arial, Helvetica, sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1200" fill="#f6f4ec"/>
+  <text x="900" y="92" text-anchor="middle" class="title">How People Use Ideaboard</text>
+  <text x="900" y="136" text-anchor="middle" class="subtitle">Four simple ways to turn messy ideas, PDFs, plans, and research into visual boards.</text>
+
+  <g transform="translate(100 205)" filter="url(#shadow)">
+    <rect width="760" height="420" rx="18" fill="#ffffff"/>
+    <rect width="760" height="74" rx="18" fill="#e9f7fd"/>
+    <text x="36" y="48" class="cardTitle">1. Brainstorm a project</text>
+    <text x="36" y="104" class="small">Capture raw ideas as cards, then drag them into groups.</text>
+    <rect x="36" y="145" width="688" height="226" rx="14" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <g opacity="0.35" stroke="#d8d0bb">
+      <path d="M86 145v226 M136 145v226 M186 145v226 M236 145v226 M286 145v226 M336 145v226 M386 145v226 M436 145v226 M486 145v226 M536 145v226 M586 145v226 M636 145v226 M686 145v226"/>
+      <path d="M36 195h688 M36 245h688 M36 295h688 M36 345h688"/>
+    </g>
+    <rect x="75" y="183" width="170" height="82" rx="10" fill="#fff48a" stroke="#263D5B" stroke-width="2"/>
+    <text x="94" y="218" class="label">Audience</text>
+    <text x="94" y="244" class="tiny">Who is it for?</text>
+    <rect x="282" y="250" width="174" height="82" rx="10" fill="#e9f7fd" stroke="#263D5B" stroke-width="2"/>
+    <text x="301" y="285" class="label">Problem</text>
+    <text x="301" y="311" class="tiny">What hurts?</text>
+    <rect x="497" y="184" width="178" height="82" rx="10" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="516" y="219" class="label">Solution</text>
+    <text x="516" y="245" class="tiny">What helps?</text>
+  </g>
+
+  <g transform="translate(940 205)" filter="url(#shadow)">
+    <rect width="760" height="420" rx="18" fill="#ffffff"/>
+    <rect width="760" height="74" rx="18" fill="#fff7a6"/>
+    <text x="36" y="48" class="cardTitle">2. Plan a campaign</text>
+    <text x="36" y="104" class="small">Map goals, channels, content ideas, and launch tasks.</text>
+    <rect x="36" y="145" width="688" height="226" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+    <rect x="70" y="183" width="146" height="142" rx="12" fill="#263D5B"/>
+    <text x="94" y="219" class="button">Goal</text>
+    <text x="94" y="251" class="tiny" fill="#ffffff">500 signups</text>
+    <rect x="250" y="183" width="150" height="54" rx="10" fill="#e9f7fd"/>
+    <text x="272" y="216" class="label">TikTok</text>
+    <rect x="250" y="256" width="150" height="54" rx="10" fill="#fff48a"/>
+    <text x="272" y="289" class="label">Email</text>
+    <rect x="436" y="183" width="240" height="127" rx="12" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <text x="462" y="220" class="label">Content ideas</text>
+    <path d="M462 248h158 M462 274h114" stroke="#49B6E5" stroke-width="9" stroke-linecap="round"/>
+  </g>
+
+  <g transform="translate(100 690)" filter="url(#shadow)">
+    <rect width="760" height="420" rx="18" fill="#ffffff"/>
+    <rect width="760" height="74" rx="18" fill="#263D5B"/>
+    <text x="36" y="48" class="cardTitle" fill="#ffffff">3. Work with PDFs or slides</text>
+    <text x="36" y="104" class="small">Import pages, place notes beside them, and reorder visually.</text>
+    <rect x="36" y="145" width="688" height="226" rx="14" fill="#f8fafc" stroke="#e5e7eb" stroke-width="2"/>
+    <rect x="76" y="180" width="132" height="160" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+    <rect x="238" y="180" width="132" height="160" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+    <rect x="400" y="180" width="132" height="160" rx="10" fill="#ffffff" stroke="#d1d5db" stroke-width="2"/>
+    <path d="M100 224h84 M100 254h72 M262 224h84 M262 254h70 M424 224h84 M424 254h70" stroke="#49B6E5" stroke-width="8" stroke-linecap="round"/>
+    <rect x="566" y="206" width="120" height="98" rx="8" fill="#fff48a" stroke="#263D5B" stroke-width="2"/>
+    <text x="584" y="244" class="label">Use this</text>
+    <text x="584" y="270" class="tiny">first</text>
+  </g>
+
+  <g transform="translate(940 690)" filter="url(#shadow)">
+    <rect width="760" height="420" rx="18" fill="#ffffff"/>
+    <rect width="760" height="74" rx="18" fill="#e9f7fd"/>
+    <text x="36" y="48" class="cardTitle">4. Organize research</text>
+    <text x="36" y="104" class="small">Group sources, notes, arguments, and next actions.</text>
+    <rect x="36" y="145" width="688" height="226" rx="14" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <rect x="76" y="184" width="178" height="128" rx="12" fill="#ffffff" stroke="#263D5B" stroke-width="3"/>
+    <text x="100" y="222" class="label">Sources</text>
+    <text x="100" y="254" class="tiny">Articles, books</text>
+    <text x="100" y="280" class="tiny">and PDFs</text>
+    <rect x="300" y="184" width="178" height="128" rx="12" fill="#fff48a" stroke="#263D5B" stroke-width="3"/>
+    <text x="324" y="222" class="label">Evidence</text>
+    <text x="324" y="254" class="tiny">Quotes and</text>
+    <text x="324" y="280" class="tiny">key points</text>
+    <rect x="524" y="184" width="160" height="128" rx="12" fill="#e9f7fd" stroke="#49B6E5" stroke-width="3"/>
+    <text x="548" y="222" class="label">Answer</text>
+    <text x="548" y="254" class="tiny">Final outline</text>
+    <path d="M254 248h46 M478 248h46" stroke="#1747d4" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

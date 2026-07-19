@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1600" viewBox="0 0 1800 1600">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#263D5B" flood-opacity="0.14"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#263D5B" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M0 0 L12 6 L0 12 z" fill="#1747d4"/>
+    </marker>
+    <style>
+      .title { font: 800 58px Arial, Helvetica, sans-serif; fill: #161616; }
+      .subtitle { font: 400 25px Arial, Helvetica, sans-serif; fill: #667085; }
+      .panelTitle { font: 800 28px Arial, Helvetica, sans-serif; fill: #263D5B; }
+      .persona { font: 700 18px Arial, Helvetica, sans-serif; fill: #49B6E5; }
+      .body { font: 500 17px Arial, Helvetica, sans-serif; fill: #475467; }
+      .cardTitle { font: 800 18px Arial, Helvetica, sans-serif; fill: #111827; }
+      .cardText { font: 500 14px Arial, Helvetica, sans-serif; fill: #667085; }
+      .chip { font: 800 13px Arial, Helvetica, sans-serif; fill: #263D5B; }
+      .darkText { font: 800 15px Arial, Helvetica, sans-serif; fill: #ffffff; }
+      .small { font: 600 13px Arial, Helvetica, sans-serif; fill: #667085; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1600" fill="#f6f4ec"/>
+  <text x="900" y="86" text-anchor="middle" class="title">Real World Ways to Use Ideaboard</text>
+  <text x="900" y="126" text-anchor="middle" class="subtitle">Use these examples in your website, help guide, sales deck, or demo video.</text>
+
+  <!-- 1 Teacher -->
+  <g transform="translate(90 185)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#e9f7fd"/>
+    <text x="28" y="43" class="panelTitle">Lesson Planning</text>
+    <text x="28" y="104" class="persona">Teacher / tutor</text>
+    <text x="28" y="132" class="body">Build a 60-minute class from notes, PDFs,</text>
+    <text x="28" y="155" class="body">activities, examples, and homework tasks.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <rect x="52" y="210" width="118" height="76" rx="9" fill="#fff48a" stroke="#263D5B" stroke-width="2"/>
+    <text x="66" y="238" class="cardTitle">Warm-up</text>
+    <text x="66" y="262" class="cardText">5 min quiz</text>
+    <rect x="196" y="210" width="132" height="76" rx="9" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="210" y="238" class="cardTitle">PDF page 3</text>
+    <text x="210" y="262" class="cardText">main diagram</text>
+    <rect x="354" y="210" width="114" height="76" rx="9" fill="#e9f7fd" stroke="#263D5B" stroke-width="2"/>
+    <text x="368" y="238" class="cardTitle">Activity</text>
+    <text x="368" y="262" class="cardText">pairs</text>
+    <path d="M170 248h26 M328 248h26" stroke="#1747d4" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="62" y="306" width="390" height="22" rx="11" fill="#263D5B"/>
+    <text x="257" y="322" text-anchor="middle" class="darkText">Outcome: clear class flow before teaching</text>
+  </g>
+
+  <!-- 2 Small business -->
+  <g transform="translate(640 185)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#fff7a6"/>
+    <text x="28" y="43" class="panelTitle">Local Launch Campaign</text>
+    <text x="28" y="104" class="persona">Cafe owner / small business</text>
+    <text x="28" y="132" class="body">Plan a weekend promotion across posters,</text>
+    <text x="28" y="155" class="body">Instagram, email, and staff reminders.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+    <rect x="52" y="210" width="112" height="92" rx="10" fill="#263D5B"/>
+    <text x="70" y="239" class="darkText">Goal</text>
+    <text x="70" y="266" class="cardText" fill="#ffffff">100 orders</text>
+    <rect x="188" y="210" width="118" height="40" rx="8" fill="#e9f7fd"/>
+    <text x="202" y="236" class="chip">Instagram</text>
+    <rect x="188" y="264" width="118" height="40" rx="8" fill="#fff48a"/>
+    <text x="202" y="290" class="chip">Flyer</text>
+    <rect x="330" y="210" width="130" height="94" rx="10" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <text x="348" y="239" class="cardTitle">Offer</text>
+    <text x="348" y="263" class="cardText">Buy 2 drinks</text>
+    <text x="348" y="284" class="cardText">get pastry</text>
+    <rect x="72" y="306" width="370" height="22" rx="11" fill="#49B6E5"/>
+    <text x="257" y="322" text-anchor="middle" class="darkText">Outcome: all launch tasks in one place</text>
+  </g>
+
+  <!-- 3 Consultant -->
+  <g transform="translate(1190 185)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#263D5B"/>
+    <text x="28" y="43" class="panelTitle" fill="#ffffff">Client Workshop Map</text>
+    <text x="28" y="104" class="persona">Coach / consultant</text>
+    <text x="28" y="132" class="body">Design a workshop with agenda blocks,</text>
+    <text x="28" y="155" class="body">client problems, exercises, and follow-ups.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <rect x="52" y="214" width="106" height="62" rx="9" fill="#fff48a" stroke="#263D5B" stroke-width="2"/>
+    <text x="65" y="240" class="cardTitle">Agenda</text>
+    <text x="65" y="260" class="cardText">9am-12pm</text>
+    <rect x="182" y="214" width="142" height="62" rx="9" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="195" y="240" class="cardTitle">Pain points</text>
+    <text x="195" y="260" class="cardText">from interview</text>
+    <rect x="348" y="214" width="112" height="62" rx="9" fill="#e9f7fd" stroke="#263D5B" stroke-width="2"/>
+    <text x="361" y="240" class="cardTitle">Actions</text>
+    <text x="361" y="260" class="cardText">next 7 days</text>
+    <path d="M158 245h24 M324 245h24" stroke="#1747d4" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="55" y="306" width="410" height="22" rx="11" fill="#263D5B"/>
+    <text x="260" y="322" text-anchor="middle" class="darkText">Outcome: workshop structure clients can follow</text>
+  </g>
+
+  <!-- 4 Student -->
+  <g transform="translate(90 635)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#e9f7fd"/>
+    <text x="28" y="43" class="panelTitle">Research Assignment</text>
+    <text x="28" y="104" class="persona">Student / researcher</text>
+    <text x="28" y="132" class="body">Collect sources, extract evidence, and turn</text>
+    <text x="28" y="155" class="body">rough notes into a final essay outline.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+    <rect x="52" y="212" width="110" height="78" rx="9" fill="#ffffff" stroke="#263D5B" stroke-width="3"/>
+    <text x="67" y="240" class="cardTitle">Sources</text>
+    <text x="67" y="264" class="cardText">PDFs + links</text>
+    <rect x="202" y="212" width="110" height="78" rx="9" fill="#fff48a" stroke="#263D5B" stroke-width="3"/>
+    <text x="217" y="240" class="cardTitle">Evidence</text>
+    <text x="217" y="264" class="cardText">quotes</text>
+    <rect x="352" y="212" width="110" height="78" rx="9" fill="#e9f7fd" stroke="#49B6E5" stroke-width="3"/>
+    <text x="367" y="240" class="cardTitle">Outline</text>
+    <text x="367" y="264" class="cardText">intro-body</text>
+    <path d="M162 250h40 M312 250h40" stroke="#1747d4" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="62" y="306" width="390" height="22" rx="11" fill="#49B6E5"/>
+    <text x="257" y="322" text-anchor="middle" class="darkText">Outcome: research becomes a clear argument</text>
+  </g>
+
+  <!-- 5 Creator -->
+  <g transform="translate(640 635)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#fff7a6"/>
+    <text x="28" y="43" class="panelTitle">Content Calendar</text>
+    <text x="28" y="104" class="persona">YouTuber / creator</text>
+    <text x="28" y="132" class="body">Plan video ideas, hooks, scripts, thumbnails,</text>
+    <text x="28" y="155" class="body">and publishing dates without losing the thread.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <rect x="54" y="210" width="126" height="42" rx="9" fill="#fff48a"/>
+    <text x="70" y="237" class="chip">Tutorial</text>
+    <rect x="54" y="266" width="126" height="42" rx="9" fill="#e9f7fd"/>
+    <text x="70" y="293" class="chip">Case study</text>
+    <rect x="216" y="210" width="120" height="98" rx="9" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="232" y="240" class="cardTitle">Hook</text>
+    <text x="232" y="264" class="cardText">first 5 sec</text>
+    <rect x="370" y="210" width="90" height="98" rx="9" fill="#263D5B"/>
+    <text x="389" y="240" class="darkText">Post</text>
+    <text x="389" y="265" class="cardText" fill="#ffffff">Fri</text>
+    <rect x="65" y="306" width="384" height="22" rx="11" fill="#263D5B"/>
+    <text x="257" y="322" text-anchor="middle" class="darkText">Outcome: idea to video plan in one board</text>
+  </g>
+
+  <!-- 6 Product team -->
+  <g transform="translate(1190 635)" filter="url(#shadow)">
+    <rect width="520" height="390" rx="18" fill="#ffffff"/>
+    <rect width="520" height="72" rx="18" fill="#e9f7fd"/>
+    <text x="28" y="43" class="panelTitle">Product Roadmap</text>
+    <text x="28" y="104" class="persona">Founder / product team</text>
+    <text x="28" y="132" class="body">Sort feature requests by user need, effort,</text>
+    <text x="28" y="155" class="body">priority, and launch sequence.</text>
+    <rect x="28" y="185" width="464" height="158" rx="14" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+    <rect x="54" y="208" width="112" height="102" rx="9" fill="#fff48a" stroke="#263D5B" stroke-width="2"/>
+    <text x="69" y="237" class="cardTitle">Import</text>
+    <text x="69" y="261" class="cardText">PDF notes</text>
+    <rect x="204" y="208" width="112" height="102" rx="9" fill="#e9f7fd" stroke="#263D5B" stroke-width="2"/>
+    <text x="219" y="237" class="cardTitle">Group</text>
+    <text x="219" y="261" class="cardText">by user</text>
+    <rect x="354" y="208" width="112" height="102" rx="9" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="369" y="237" class="cardTitle">Decide</text>
+    <text x="369" y="261" class="cardText">next sprint</text>
+    <path d="M166 258h38 M316 258h38" stroke="#1747d4" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="56" y="306" width="408" height="22" rx="11" fill="#49B6E5"/>
+    <text x="260" y="322" text-anchor="middle" class="darkText">Outcome: roadmap decisions feel visible</text>
+  </g>
+
+  <g transform="translate(170 1125)" filter="url(#soft)">
+    <rect width="1460" height="300" rx="20" fill="#ffffff"/>
+    <text x="48" y="58" class="panelTitle">Demo Script You Can Use</text>
+    <text x="48" y="100" class="body">"Open Ideaboard, create a board, and add cards for the pieces of your work. Import PDFs or slides when you have documents.</text>
+    <text x="48" y="128" class="body">Move things around until the plan makes sense. Use the board as a private visual workspace before you share the final result."</text>
+    <rect x="48" y="170" width="250" height="70" rx="12" fill="#263D5B"/>
+    <text x="73" y="200" class="darkText">Step 1</text>
+    <text x="73" y="224" class="cardText" fill="#ffffff">Create a board</text>
+    <rect x="338" y="170" width="250" height="70" rx="12" fill="#fff48a"/>
+    <text x="363" y="200" class="cardTitle">Step 2</text>
+    <text x="363" y="224" class="cardText">Add ideas and notes</text>
+    <rect x="628" y="170" width="250" height="70" rx="12" fill="#e9f7fd"/>
+    <text x="653" y="200" class="cardTitle">Step 3</text>
+    <text x="653" y="224" class="cardText">Import PDFs or slides</text>
+    <rect x="918" y="170" width="250" height="70" rx="12" fill="#ffffff" stroke="#49B6E5" stroke-width="3"/>
+    <text x="943" y="200" class="cardTitle">Step 4</text>
+    <text x="943" y="224" class="cardText">Arrange visually</text>
+    <rect x="1208" y="170" width="204" height="70" rx="12" fill="#263D5B"/>
+    <text x="1233" y="200" class="darkText">Step 5</text>
+    <text x="1233" y="224" class="cardText" fill="#ffffff">Use or share</text>
+  </g>
+</svg>

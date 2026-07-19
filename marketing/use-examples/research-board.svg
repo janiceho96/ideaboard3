@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#263D5B" flood-opacity="0.14"/></filter>
+    <style>.title{font:800 46px Arial;fill:#161616}.sub{font:400 24px Arial;fill:#667085}.label{font:800 24px Arial;fill:#263D5B}.tiny{font:500 18px Arial;fill:#667085}</style>
+  </defs>
+  <rect width="1200" height="800" fill="#f6f4ec"/>
+  <text x="600" y="86" text-anchor="middle" class="title">Organize Research</text>
+  <text x="600" y="126" text-anchor="middle" class="sub">Group sources, evidence, questions, and final arguments.</text>
+  <g transform="translate(125 185)" filter="url(#shadow)">
+    <rect width="950" height="500" rx="18" fill="#ffffff"/>
+    <rect x="70" y="95" width="210" height="190" rx="14" fill="#ffffff" stroke="#263D5B" stroke-width="4"/>
+    <text x="105" y="154" class="label">Sources</text>
+    <text x="105" y="196" class="tiny">Articles</text><text x="105" y="228" class="tiny">Books</text><text x="105" y="260" class="tiny">PDFs</text>
+    <rect x="370" y="95" width="210" height="190" rx="14" fill="#fff48a" stroke="#263D5B" stroke-width="4"/>
+    <text x="405" y="154" class="label">Evidence</text>
+    <text x="405" y="196" class="tiny">Quotes</text><text x="405" y="228" class="tiny">Facts</text><text x="405" y="260" class="tiny">Patterns</text>
+    <rect x="670" y="95" width="210" height="190" rx="14" fill="#e9f7fd" stroke="#49B6E5" stroke-width="4"/>
+    <text x="705" y="154" class="label">Answer</text>
+    <text x="705" y="196" class="tiny">Outline</text><text x="705" y="228" class="tiny">Conclusion</text><text x="705" y="260" class="tiny">Next steps</text>
+    <path d="M280 190h90 M580 190h90" stroke="#1747d4" stroke-width="7" stroke-linecap="round"/>
+    <rect x="335" y="365" width="280" height="52" rx="26" fill="#263D5B"/>
+    <text x="475" y="399" text-anchor="middle" font-family="Arial" font-size="20" font-weight="800" fill="#ffffff">Move from notes to structure</text>
+  </g>
+</svg>

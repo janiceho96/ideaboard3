@@ -14,7 +14,7 @@ const COLORS = [
   { value: 'white',   border: '#ddd' },
   { value: '#D4EDD8' }, { value: '#FFF3B0' }, { value: '#FFD6C2' },
   { value: '#E8E0F5' }, { value: '#FFDDE1' }, { value: '#C8E6FF' },
-  { value: '#1A1A2E' },
+  { value: '#152336' },
 ]
 
 const TEMPLATES: { label: string; title: string; body: string; tag: TagType; bg: string }[] = [
@@ -67,10 +67,10 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
     onClose()
   }
 
-  const modalBg  = dark ? '#1A1A24' : 'white'
-  const borderC  = dark ? '#2A2A38' : '#E0E0E0'
-  const textC    = dark ? '#F0EEE8' : '#1A1A2E'
-  const inputBg  = dark ? '#25252F' : 'white'
+  const modalBg  = dark ? '#152336' : 'white'
+  const borderC  = dark ? '#1E3451' : '#E0E0E0'
+  const textC    = dark ? '#F0EEE8' : '#152336'
+  const inputBg  = dark ? '#162845' : 'white'
   const labelC   = dark ? '#666'    : '#888'
 
   const inp: React.CSSProperties = { width: '100%', border: `1.5px solid ${borderC}`, borderRadius: 9, padding: '9px 12px', fontSize: 13, fontFamily: "'DM Sans',sans-serif", outline: 'none', boxSizing: 'border-box', resize: 'none', background: inputBg, color: textC }
@@ -78,11 +78,11 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isOpen ? 1 : 0, pointerEvents: isOpen ? 'all' : 'none', transition: 'opacity .2s', fontFamily: "'DM Sans',sans-serif" }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div style={{ background: modalBg, borderRadius: 20, border: `2px solid ${dark ? '#6C63FF' : '#1A1A2E'}`, width: 440, padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,.3)', transform: isOpen ? 'translateY(0) scale(1)' : 'translateY(12px) scale(.97)', transition: 'transform .22s' }}>
+      <div style={{ background: modalBg, borderRadius: 20, border: `2px solid ${dark ? '#6C63FF' : '#152336'}`, width: 440, padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,.3)', transform: isOpen ? 'translateY(0) scale(1)' : 'translateY(12px) scale(.97)', transition: 'transform .22s' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h2 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 18, color: textC }}>{card ? 'Edit Card' : 'New Card'}</h2>
-          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: dark ? '#25252F' : '#f5f5f5', border: 'none', cursor: 'pointer', fontSize: 16, color: labelC }}>×</button>
+          <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: '50%', background: dark ? '#162845' : '#f5f5f5', border: 'none', cursor: 'pointer', fontSize: 16, color: labelC }}>×</button>
         </div>
 
         {/* Template chips — only shown for new cards */}
@@ -106,7 +106,7 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
                   style={{
                     padding: '4px 10px',
                     borderRadius: 16,
-                    border: `1.5px solid ${activeTemplate === tpl.label ? '#6C63FF' : (dark ? '#2A2A38' : '#E0E0E0')}`,
+                    border: `1.5px solid ${activeTemplate === tpl.label ? '#6C63FF' : (dark ? '#1E3451' : '#E0E0E0')}`,
                     background: activeTemplate === tpl.label ? 'rgba(108,99,255,.1)' : 'transparent',
                     color: activeTemplate === tpl.label ? '#6C63FF' : (dark ? '#888' : '#555'),
                     fontSize: 11,
@@ -170,7 +170,7 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {TAG_OPTS.map(t => (
               <div key={t.key} onClick={() => setTag(t.key)}
-                style={{ padding: '5px 11px', borderRadius: 18, background: t.bg, color: t.color, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: tag === t.key ? '2px solid #1A1A2E' : '2px solid transparent' }}
+                style={{ padding: '5px 11px', borderRadius: 18, background: t.bg, color: t.color, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: tag === t.key ? '2px solid #152336' : '2px solid transparent' }}
               >{t.label}</div>
             ))}
           </div>

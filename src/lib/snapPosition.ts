@@ -13,18 +13,24 @@ export interface SnapTarget {
   h: number
 }
 
+interface SnapOptions {
+  radius?: number
+  gridSize?: number | null
+}
+
 export function snapPositionGeneric(
   wx: number,
   wy: number,
   dragging: SnapTarget,
   others: SnapTarget[],
+  options: SnapOptions = {},
 ): { x: number; y: number; snappedToId: string | null } {
   const { w: dw, h: dh } = dragging
   const dragCx = wx + dw / 2
   const dragCy = wy + dh / 2
 
   let nearest: SnapTarget | null = null
-  let nearestDist = SNAP_RADIUS
+  let nearestDist = options.radius ?? SNAP_RADIUS
 
   for (const item of others) {
     if (item.id === dragging.id) continue
@@ -50,11 +56,14 @@ export function snapPositionGeneric(
     return { ...best, snappedToId: nearest.id }
   }
 
-  return {
-    x: Math.round(wx / SNAP_GRID) * SNAP_GRID,
-    y: Math.round(wy / SNAP_GRID) * SNAP_GRID,
-    snappedToId: null,
-  }
+  const gridSize = options.gridSize === undefined ? SNAP_GRID : options.gridSize
+  return gridSize
+    ? {
+        x: Math.round(wx / gridSize) * gridSize,
+        y: Math.round(wy / gridSize) * gridSize,
+        snappedToId: null,
+      }
+    : { x: wx, y: wy, snappedToId: null }
 }
 
 export function snapPosition(

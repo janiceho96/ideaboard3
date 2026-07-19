@@ -12,16 +12,19 @@ interface FrameworkOverlayProps {
   onSelect: (id: string) => void
   onTypeChange: (id: string, type: FrameworkType) => void
   onRename: (id: string, name: string) => void
+  onUpdateNotes: (id: string, notes: string) => void
+  onUpdateNoteArea: (id: string, areaId: string, notes: string) => void
 }
 
 export default function FrameworkOverlay({
   frame, dark, selected,
-  onMoveStart, onResizeStart, onDelete, onSelect, onTypeChange, onRename,
+  onMoveStart, onResizeStart, onDelete, onSelect, onTypeChange, onRename, onUpdateNotes, onUpdateNoteArea,
 }: FrameworkOverlayProps) {
   const [typePickerOpen, setTypePickerOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const { id, type, name, x, y, width, height } = frame
   const label = name ? `${FRAMEWORK_LABELS[type]} — ${name}` : FRAMEWORK_LABELS[type]
+  const areas = getFrameNoteAreas(type)
 
   return (
     <div
@@ -92,8 +95,8 @@ export default function FrameworkOverlay({
               <div style={{ position: 'fixed', inset: 0, zIndex: 998 }} onClick={() => setTypePickerOpen(false)} />
               <div style={{
                 position: 'absolute', top: 26, left: -4, zIndex: 999,
-                background: dark ? '#1A1A24' : 'white',
-                border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`,
+                background: dark ? '#152336' : 'white',
+                border: `1px solid ${dark ? '#1E3451' : '#ddd'}`,
                 borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.2)',
                 minWidth: 200, maxHeight: 320, overflowY: 'auto',
               }}>
@@ -110,7 +113,7 @@ export default function FrameworkOverlay({
                         display: 'block', width: '100%', padding: '8px 12px', border: 'none',
                         background: type === entry.key ? (dark ? 'rgba(73,182,229,.15)' : 'rgba(73,182,229,.08)') : 'transparent',
                         cursor: 'pointer', textAlign: 'left', fontSize: 11,
-                        color: type === entry.key ? '#49B6E5' : (dark ? '#ddd' : '#1A1A2E'),
+                        color: type === entry.key ? '#49B6E5' : (dark ? '#ddd' : '#152336'),
                         fontFamily: "'DM Sans',sans-serif",
                       }}
                     >
@@ -145,6 +148,79 @@ export default function FrameworkOverlay({
       {type === 'energy-audit'          && <EnergyAudit        width={width} height={height} dark={dark} />}
       {type === 'eat-that-frog'         && <EatThatFrog        width={width} height={height} dark={dark} />}
       {type === 'gtd'                   && <GTD                width={width} height={height} dark={dark} />}
+      {type === 'stp'                   && <STPMarketing       width={width} height={height} dark={dark} />}
+      {type === 'marketing-mix'         && <MarketingMix       width={width} height={height} dark={dark} />}
+      {type === 'aida'                  && <AIDAFunnel         width={width} height={height} dark={dark} />}
+      {type === 'swot'                  && <SWOTAnalysis       width={width} height={height} dark={dark} />}
+      {type === 'customer-journey'      && <CustomerJourney    width={width} height={height} dark={dark} />}
+      {type === 'first-principles'      && <FirstPrinciples    width={width} height={height} dark={dark} />}
+      {type === 'six-thinking-hats'     && <SixThinkingHats    width={width} height={height} dark={dark} />}
+      {type === 'scamper'               && <SCAMPERFramework   width={width} height={height} dark={dark} />}
+      {type === 'pros-cons'             && <ProsCons           width={width} height={height} dark={dark} />}
+      {type === 'impact-effort'         && <ImpactEffort       width={width} height={height} dark={dark} />}
+
+      {areas.map(area => (
+        <textarea
+          key={area.id}
+          className="no-drag"
+          value={frame.noteAreas?.[area.id] ?? ''}
+          onChange={e => onUpdateNoteArea(id, area.id, e.target.value)}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onSelect(id) }}
+          placeholder={area.placeholder}
+          style={{
+            position: 'absolute',
+            left: `${area.left}%`,
+            top: `${area.top}%`,
+            width: `${area.width}%`,
+            height: `${area.height}%`,
+            resize: 'none',
+            border: selected ? '1px dashed rgba(73,182,229,.42)' : '1px solid transparent',
+            borderRadius: 7,
+            background: selected ? (dark ? 'rgba(13,27,46,.22)' : 'rgba(255,255,255,.32)') : 'transparent',
+            color: dark ? '#F0EEE8' : '#263D5B',
+            fontFamily: "'Delius', cursive",
+            fontSize: Math.max(11, Math.min(15, width / 54)),
+            lineHeight: 1.45,
+            padding: 8,
+            outline: 'none',
+            zIndex: 4,
+            opacity: selected || frame.noteAreas?.[area.id] ? 1 : 0,
+            transition: 'opacity .12s, border-color .12s, background .12s',
+            boxSizing: 'border-box',
+          }}
+        />
+      ))}
+      {!areas.length && (
+        <textarea
+          className="no-drag"
+          value={frame.notes ?? ''}
+          onChange={e => onUpdateNotes(id, e.target.value)}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onSelect(id) }}
+          placeholder="Write on this framework..."
+          style={{
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            top: 18,
+            bottom: 16,
+            resize: 'none',
+            border: selected ? '1px dashed rgba(73,182,229,.55)' : '1px solid transparent',
+            borderRadius: 8,
+            background: selected ? (dark ? 'rgba(13,27,46,.28)' : 'rgba(255,255,255,.28)') : 'transparent',
+            color: dark ? '#F0EEE8' : '#263D5B',
+            fontFamily: "'Delius', cursive",
+            fontSize: Math.max(13, Math.min(18, width / 42)),
+            lineHeight: 1.55,
+            padding: 12,
+            outline: 'none',
+            zIndex: 4,
+            opacity: selected || frame.notes ? 1 : 0,
+            transition: 'opacity .12s, border-color .12s, background .12s',
+          }}
+        />
+      )}
 
       <div
         className="no-drag"
@@ -180,13 +256,111 @@ const scaleOf = (w: number, h: number, dw: number, dh: number) =>
 
 const s = (base: number, sc: number) => Math.round(base * sc)
 
+type NoteArea = { id: string; placeholder: string; left: number; top: number; width: number; height: number }
+const area = (id: string, placeholder: string, left: number, top: number, width: number, height: number): NoteArea =>
+  ({ id, placeholder, left, top, width, height })
+function getFrameNoteAreas(type: FrameworkType): NoteArea[] {
+  if (type === 'eisenhower' || type === 'energy-audit') return [
+    area('top-left', 'Write here...', 16, 13, 39, 39), area('top-right', 'Write here...', 57, 13, 39, 39),
+    area('bottom-left', 'Write here...', 16, 55, 39, 39), area('bottom-right', 'Write here...', 57, 55, 39, 39),
+  ]
+  if (type === 'ooda') return [
+    area('observe', 'Observe...', 2, 23, 22, 68), area('orient', 'Orient...', 26, 23, 22, 68),
+    area('decide', 'Decide...', 51, 23, 22, 68), area('act', 'Act...', 76, 23, 22, 68),
+  ]
+  if (type === 'smart-goals') return [
+    area('specific', 'Specific...', 1, 28, 18, 63), area('measurable', 'Measurable...', 21, 28, 18, 63),
+    area('achievable', 'Achievable...', 41, 28, 18, 63), area('relevant', 'Relevant...', 61, 28, 18, 63),
+    area('time-bound', 'Time-bound...', 81, 28, 18, 63),
+  ]
+  if (type === 'start-stop-continue' || type === 'personal-kanban') return [
+    area('left', 'Write here...', 2, 23, 29, 70), area('middle', 'Write here...', 35, 23, 29, 70), area('right', 'Write here...', 69, 23, 29, 70),
+  ]
+  if (type === 'gtd') return [
+    area('inbox', 'Inbox...', 1, 29, 18, 62), area('next', 'Next actions...', 21, 29, 18, 62),
+    area('projects', 'Projects...', 41, 29, 18, 62), area('waiting', 'Waiting for...', 61, 29, 18, 62),
+    area('someday', 'Someday...', 81, 29, 18, 62),
+  ]
+  if (type === 'grow') return [
+    area('goal', 'Goal...', 3, 16, 44, 35), area('reality', 'Reality...', 53, 16, 44, 35),
+    area('options', 'Options...', 3, 57, 44, 35), area('will', 'Will...', 53, 57, 44, 35),
+  ]
+  if (type === 'daily-reflection') return [
+    area('grateful', 'Grateful for...', 4, 13, 92, 15), area('focus', 'Today focus...', 4, 30, 92, 15),
+    area('wins', 'Wins...', 4, 47, 92, 15), area('lessons', 'Lessons...', 4, 64, 92, 15),
+    area('tomorrow', 'Tomorrow...', 4, 81, 92, 15),
+  ]
+  if (type === 'okr') return [
+    area('objective', 'Objective...', 4, 16, 92, 24), area('kr1', 'Key result 1...', 4, 48, 28, 42),
+    area('kr2', 'Key result 2...', 36, 48, 28, 42), area('kr3', 'Key result 3...', 68, 48, 28, 42),
+  ]
+  if (type === 'five-whys') return [
+    area('problem', 'Problem...', 5, 14, 90, 12), area('why1', 'Why 1...', 12, 29, 82, 9),
+    area('why2', 'Why 2...', 12, 40, 82, 9), area('why3', 'Why 3...', 12, 51, 82, 9),
+    area('why4', 'Why 4...', 12, 62, 82, 9), area('why5', 'Why 5...', 12, 73, 82, 9),
+    area('root', 'Root cause...', 5, 86, 90, 10),
+  ]
+  if (type === 'eat-that-frog') return [
+    area('frog1', 'Most important task...', 5, 15, 90, 12), area('task2', 'Task...', 5, 31, 90, 12),
+    area('task3', 'Task...', 5, 47, 90, 12), area('task4', 'Task...', 5, 63, 90, 12), area('task5', 'Task...', 5, 79, 90, 12),
+  ]
+  if (type === 'ikigai' || type === 'wheel-of-life') return [
+    area('top', 'Top...', 36, 13, 28, 20), area('right', 'Right...', 64, 39, 28, 20),
+    area('bottom', 'Bottom...', 36, 67, 28, 20), area('left', 'Left...', 8, 39, 28, 20),
+    area('center', 'Center...', 36, 39, 28, 20),
+  ]
+  if (type === 'stp') return [
+    area('segment', 'Segments...', 3, 24, 29, 66), area('target', 'Target...', 35, 24, 29, 66), area('position', 'Positioning...', 68, 24, 29, 66),
+  ]
+  if (type === 'marketing-mix') return [
+    area('product', 'Product...', 4, 16, 42, 35), area('price', 'Price...', 54, 16, 42, 35),
+    area('place', 'Place...', 4, 57, 42, 35), area('promotion', 'Promotion...', 54, 57, 42, 35),
+  ]
+  if (type === 'aida') return [
+    area('attention', 'Attention...', 15, 17, 70, 17), area('interest', 'Interest...', 20, 37, 60, 17),
+    area('desire', 'Desire...', 25, 57, 50, 17), area('action', 'Action...', 31, 77, 38, 15),
+  ]
+  if (type === 'swot') return [
+    area('strengths', 'Strengths...', 4, 16, 42, 35), area('weaknesses', 'Weaknesses...', 54, 16, 42, 35),
+    area('opportunities', 'Opportunities...', 4, 57, 42, 35), area('threats', 'Threats...', 54, 57, 42, 35),
+  ]
+  if (type === 'customer-journey') return [
+    area('awareness', 'Awareness...', 1, 29, 18, 61), area('consideration', 'Consideration...', 21, 29, 18, 61),
+    area('purchase', 'Purchase...', 41, 29, 18, 61), area('onboarding', 'Onboarding...', 61, 29, 18, 61),
+    area('retention', 'Retention...', 81, 29, 18, 61),
+  ]
+  if (type === 'first-principles') return [
+    area('assumptions', 'Assumptions...', 4, 18, 42, 30), area('truths', 'Known truths...', 54, 18, 42, 30),
+    area('rebuild', 'Rebuild from basics...', 4, 58, 92, 30),
+  ]
+  if (type === 'six-thinking-hats') return [
+    area('white', 'Facts...', 2, 28, 14, 58), area('red', 'Feelings...', 18, 28, 14, 58),
+    area('black', 'Risks...', 34, 28, 14, 58), area('yellow', 'Benefits...', 50, 28, 14, 58),
+    area('green', 'Ideas...', 66, 28, 14, 58), area('blue', 'Process...', 82, 28, 14, 58),
+  ]
+  if (type === 'scamper') return [
+    area('substitute', 'Substitute...', 1, 30, 13, 60), area('combine', 'Combine...', 15, 30, 13, 60),
+    area('adapt', 'Adapt...', 29, 30, 13, 60), area('modify', 'Modify...', 43, 30, 13, 60),
+    area('put', 'Put to use...', 57, 30, 13, 60), area('eliminate', 'Eliminate...', 71, 30, 13, 60),
+    area('reverse', 'Reverse...', 85, 30, 13, 60),
+  ]
+  if (type === 'pros-cons') return [
+    area('pros', 'Pros...', 4, 22, 42, 68), area('cons', 'Cons...', 54, 22, 42, 68),
+  ]
+  if (type === 'impact-effort') return [
+    area('quick-wins', 'Quick wins...', 16, 13, 39, 39), area('major-projects', 'Major projects...', 57, 13, 39, 39),
+    area('fill-ins', 'Fill-ins...', 16, 55, 39, 39), area('time-sinks', 'Time sinks...', 57, 55, 39, 39),
+  ]
+  return []
+}
+
 const shell = (width: number, height: number, dark: boolean): React.CSSProperties => ({
   width, height,
   border: `2.5px solid ${NAVY}`,
   borderRadius: 8,
   boxShadow: '3px 3px 0 rgba(38,61,91,0.2)',
   overflow: 'hidden',
-  background: dark ? '#1A1A24' : 'white',
+  background: dark ? '#152336' : 'white',
   display: 'flex',
   flexDirection: 'column',
   fontFamily: FONT,
@@ -800,6 +974,133 @@ function GTD({ width, height, dark }: { width: number; height: number; dark: boo
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function ColumnFramework({ width, height, dark, title, labels }: { width: number; height: number; dark: boolean; title: string; labels: string[] }) {
+  const sc = scaleOf(width, height, 720, 400)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header(title, sc)}
+      <div style={{ flex: 1, display: 'flex' }}>
+        {labels.map((label, i) => (
+          <div key={label} style={{ flex: 1, borderRight: i < labels.length - 1 ? `1.5px solid ${NAVY_ALPHA}` : 'none' }}>
+            <div style={{ padding: `${s(8, sc)}px ${s(10, sc)}px`, borderBottom: `1px solid ${NAVY_ALPHA}`, color: dark ? 'rgba(255,255,255,.55)' : 'rgba(38,61,91,.62)', fontSize: s(10, sc), fontWeight: 700 }}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function STPMarketing(props: { width: number; height: number; dark: boolean }) {
+  return <ColumnFramework {...props} title="STP MARKETING" labels={['SEGMENTATION', 'TARGETING', 'POSITIONING']} />
+}
+
+function MarketingMix({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const sc = scaleOf(width, height, 720, 400)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('4P MARKETING MIX', sc)}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
+        {['PRODUCT', 'PRICE', 'PLACE', 'PROMOTION'].map((label, i) => (
+          <div key={label} style={{ padding: s(12, sc), borderRight: i % 2 === 0 ? `1.5px solid ${NAVY_ALPHA}` : 'none', borderBottom: i < 2 ? `1.5px solid ${NAVY_ALPHA}` : 'none' }}>
+            <div style={{ color: dark ? 'rgba(255,255,255,.55)' : 'rgba(38,61,91,.62)', fontSize: s(11, sc), fontWeight: 700 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AIDAFunnel({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const sc = scaleOf(width, height, 560, 520)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('AIDA FUNNEL', sc)}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-around', padding: s(16, sc) }}>
+        {[
+          ['ATTENTION', '82%'],
+          ['INTEREST', '68%'],
+          ['DESIRE', '54%'],
+          ['ACTION', '40%'],
+        ].map(([label, w]) => (
+          <div key={label} style={{ width: w, height: '18%', border: `1.5px solid ${NAVY_ALPHA}`, background: dark ? 'rgba(73,182,229,.08)' : 'rgba(73,182,229,.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: dark ? 'rgba(255,255,255,.55)' : 'rgba(38,61,91,.62)', fontSize: s(11, sc), fontWeight: 700 }}>
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SWOTAnalysis({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const sc = scaleOf(width, height, 640, 540)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('SWOT ANALYSIS', sc)}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
+        {['STRENGTHS', 'WEAKNESSES', 'OPPORTUNITIES', 'THREATS'].map((label, i) => (
+          <div key={label} style={{ padding: s(12, sc), borderRight: i % 2 === 0 ? `1.5px solid ${NAVY_ALPHA}` : 'none', borderBottom: i < 2 ? `1.5px solid ${NAVY_ALPHA}` : 'none', background: i === 0 || i === 2 ? 'rgba(100,200,130,.07)' : 'rgba(232,100,100,.07)' }}>
+            <div style={{ color: dark ? 'rgba(255,255,255,.55)' : 'rgba(38,61,91,.62)', fontSize: s(11, sc), fontWeight: 700 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CustomerJourney(props: { width: number; height: number; dark: boolean }) {
+  return <ColumnFramework {...props} title="CUSTOMER JOURNEY" labels={['AWARENESS', 'CONSIDERATION', 'PURCHASE', 'ONBOARDING', 'RETENTION']} />
+}
+
+function FirstPrinciples({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const sc = scaleOf(width, height, 700, 440)
+  return (
+    <div style={shell(width, height, dark)}>
+      {header('FIRST PRINCIPLES THINKING', sc)}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1.15fr' }}>
+        {['ASSUMPTIONS', 'KNOWN TRUTHS', 'REBUILD FROM BASICS'].map((label, i) => (
+          <div key={label} style={{ gridColumn: i === 2 ? '1 / 3' : undefined, padding: s(12, sc), borderRight: i === 0 ? `1.5px solid ${NAVY_ALPHA}` : 'none', borderBottom: i < 2 ? `1.5px solid ${NAVY_ALPHA}` : 'none' }}>
+            <div style={{ color: dark ? 'rgba(255,255,255,.55)' : 'rgba(38,61,91,.62)', fontSize: s(11, sc), fontWeight: 700 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function SixThinkingHats(props: { width: number; height: number; dark: boolean }) {
+  return <ColumnFramework {...props} title="SIX THINKING HATS" labels={['WHITE FACTS', 'RED FEELINGS', 'BLACK RISKS', 'YELLOW BENEFITS', 'GREEN IDEAS', 'BLUE PROCESS']} />
+}
+
+function SCAMPERFramework(props: { width: number; height: number; dark: boolean }) {
+  return <ColumnFramework {...props} title="SCAMPER" labels={['SUBSTITUTE', 'COMBINE', 'ADAPT', 'MODIFY', 'PUT TO USE', 'ELIMINATE', 'REVERSE']} />
+}
+
+function ProsCons(props: { width: number; height: number; dark: boolean }) {
+  return <ColumnFramework {...props} title="PROS / CONS" labels={['PROS', 'CONS']} />
+}
+
+function ImpactEffort({ width, height, dark }: { width: number; height: number; dark: boolean }) {
+  const sc = scaleOf(width, height, 640, 540)
+  return (
+    <div style={shell(width, height, dark)}>
+      <div style={{ height: s(28, sc), background: NAVY, display: 'flex', flexShrink: 0 }}>
+        <div style={{ width: s(90, sc), borderRight: '2px solid rgba(255,255,255,.2)' }} />
+        {['LOW EFFORT', 'HIGH EFFORT'].map((label, i) => <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: s(9, sc), color: 'rgba(255,255,255,.85)', borderRight: i === 0 ? '1.5px solid rgba(255,255,255,.15)' : 'none' }}>{label}</div>)}
+      </div>
+      <div style={{ flex: 1, display: 'flex' }}>
+        <div style={{ width: s(90, sc), display: 'flex', flexDirection: 'column', borderRight: `2px solid ${NAVY}` }}>
+          {['HIGH IMPACT', 'LOW IMPACT'].map((label, i) => <div key={label} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', writingMode: 'vertical-lr', transform: 'rotate(180deg)', fontSize: s(9, sc), color: dark ? 'rgba(255,255,255,.4)' : 'rgba(38,61,91,.55)', borderBottom: i === 0 ? `1.5px solid ${NAVY_ALPHA}` : 'none' }}>{label}</div>)}
+        </div>
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr' }}>
+          {['QUICK WINS', 'MAJOR PROJECTS', 'FILL-INS', 'TIME SINKS'].map((label, i) => <div key={label} style={{ padding: s(12, sc), borderRight: i % 2 === 0 ? `1.5px solid ${NAVY_ALPHA}` : 'none', borderBottom: i < 2 ? `1.5px solid ${NAVY_ALPHA}` : 'none' }}><div style={{ fontSize: s(10, sc), color: dark ? 'rgba(255,255,255,.45)' : 'rgba(38,61,91,.55)' }}>{label}</div></div>)}
+        </div>
       </div>
     </div>
   )

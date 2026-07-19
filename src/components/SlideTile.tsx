@@ -6,11 +6,13 @@ interface SlideTileProps {
   tile: SlideTileType
   imageUrl: string | null
   dark: boolean
+  dragging?: boolean
+  selected?: boolean
   onMoveStart: (id: string, clientX: number, clientY: number) => void
   onDelete: (id: string) => void
 }
 
-const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, onMoveStart, onDelete }: SlideTileProps) {
+const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, dragging = false, selected = false, onMoveStart, onDelete }: SlideTileProps) {
   const [hovered, setHovered] = useState(false)
   const tileHeight = tile.aspect_ratio > 0
     ? Math.round(tile.width / tile.aspect_ratio)
@@ -25,8 +27,10 @@ const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, onMoveSt
         top: tile.y,
         width: tile.width,
         userSelect: 'none',
-        cursor: 'grab',
+        cursor: dragging ? 'grabbing' : 'grab',
+        zIndex: dragging || hovered ? 35 : 12,
       }}
+      onDragStart={e => e.preventDefault()}
       onMouseDown={e => {
         if (e.button !== 0) return
         if ((e.target as HTMLElement).closest('.slide-no-drag')) return
@@ -41,10 +45,10 @@ const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, onMoveSt
       <div style={{
         width: tile.width,
         height: tileHeight,
-        background: dark ? '#1A1A24' : '#f0ede5',
+        background: dark ? '#152336' : '#f0ede5',
         borderRadius: 6,
         overflow: 'hidden',
-        border: `1px solid ${dark ? '#2A2A38' : '#ddd'}`,
+        border: selected ? '2px solid #49B6E5' : `1px solid ${dark ? '#1E3451' : '#ddd'}`,
         boxShadow: '0 2px 12px rgba(0,0,0,.18)',
         position: 'relative',
       }}>
@@ -55,6 +59,7 @@ const SlideTile = React.memo(function SlideTile({ tile, imageUrl, dark, onMoveSt
               alt={`${tile.filename} p.${tile.page_number}`}
               style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
               draggable={false}
+              onDragStart={e => e.preventDefault()}
             />
           )
           : (

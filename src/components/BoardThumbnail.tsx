@@ -6,7 +6,7 @@ interface BoardThumbnailProps {
 }
 
 export default function BoardThumbnail({ cards, dark }: BoardThumbnailProps) {
-  const bg = dark ? '#25252F' : '#F5F0E8'
+  const bg = dark ? '#162845' : '#F5F0E8'
 
   if (cards.length === 0) {
     return (

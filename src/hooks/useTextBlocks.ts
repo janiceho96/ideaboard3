@@ -21,6 +21,7 @@ function saveBlocks(boardId: string, blocks: TextBlock[]): void {
 export interface UseTextBlocksReturn {
   blocks: TextBlock[]
   addBlock: (block: TextBlock) => void
+  addBlocks: (blocks: TextBlock[]) => void
   moveBlock: (id: string, x: number, y: number) => void
   commitBlockMove: (id: string, x: number, y: number) => void
   updateBlockHtml: (id: string, html: string) => void
@@ -37,6 +38,14 @@ export function useTextBlocks(boardId: string): UseTextBlocksReturn {
   const addBlock = useCallback((block: TextBlock) => {
     setBlocks(prev => {
       const next = [...prev, block]
+      saveBlocks(boardId, next)
+      return next
+    })
+  }, [boardId])
+  const addBlocks = useCallback((newBlocks: TextBlock[]) => {
+    if (!newBlocks.length) return
+    setBlocks(prev => {
+      const next = [...prev, ...newBlocks]
       saveBlocks(boardId, next)
       return next
     })
@@ -87,5 +96,5 @@ export function useTextBlocks(boardId: string): UseTextBlocksReturn {
     })
   }, [boardId])
 
-  return { blocks, addBlock, moveBlock, commitBlockMove, updateBlockHtml, resizeBlock, commitBlockResize, removeBlock }
+  return { blocks, addBlock, addBlocks, moveBlock, commitBlockMove, updateBlockHtml, resizeBlock, commitBlockResize, removeBlock }
 }

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#263D5B" flood-opacity="0.14"/></filter>
+    <style>.title{font:800 46px Arial;fill:#161616}.sub{font:400 24px Arial;fill:#667085}.label{font:800 24px Arial;fill:#263D5B}.tiny{font:500 18px Arial;fill:#667085}</style>
+  </defs>
+  <rect width="1200" height="800" fill="#f6f4ec"/>
+  <text x="600" y="86" text-anchor="middle" class="title">Brainstorm a New Project</text>
+  <text x="600" y="126" text-anchor="middle" class="sub">Turn scattered thoughts into grouped idea cards.</text>
+  <g transform="translate(125 185)" filter="url(#shadow)">
+    <rect width="950" height="500" rx="18" fill="#ffffff"/>
+    <rect x="52" y="54" width="846" height="360" rx="16" fill="#faf8f0" stroke="#e4dfcf" stroke-width="2"/>
+    <g opacity="0.35" stroke="#d8d0bb"><path d="M102 54v360 M152 54v360 M202 54v360 M252 54v360 M302 54v360 M352 54v360 M402 54v360 M452 54v360 M502 54v360 M552 54v360 M602 54v360 M652 54v360 M702 54v360 M752 54v360 M802 54v360 M852 54v360"/><path d="M52 104h846 M52 154h846 M52 204h846 M52 254h846 M52 304h846 M52 354h846"/></g>
+    <rect x="110" y="110" width="220" height="110" rx="12" fill="#fff48a" stroke="#263D5B" stroke-width="3"/>
+    <text x="138" y="154" class="label">Audience</text><text x="138" y="188" class="tiny">Who is this for?</text>
+    <rect x="380" y="236" width="220" height="110" rx="12" fill="#e9f7fd" stroke="#263D5B" stroke-width="3"/>
+    <text x="408" y="280" class="label">Problem</text><text x="408" y="314" class="tiny">What needs fixing?</text>
+    <rect x="650" y="110" width="220" height="110" rx="12" fill="#ffffff" stroke="#49B6E5" stroke-width="4"/>
+    <text x="678" y="154" class="label">Solution</text><text x="678" y="188" class="tiny">What should we build?</text>
+    <rect x="360" y="430" width="230" height="48" rx="24" fill="#263D5B"/>
+    <text x="475" y="462" text-anchor="middle" font-family="Arial" font-size="19" font-weight="800" fill="#ffffff">Drag cards into groups</text>
+  </g>
+</svg>

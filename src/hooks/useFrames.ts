@@ -7,6 +7,8 @@ export const VALID_TYPES: FrameworkType[] = [
   'start-stop-continue', 'personal-kanban', 'five-whys',
   'daily-reflection', 'okr', 'energy-audit',
   'eat-that-frog', 'gtd',
+  'stp', 'marketing-mix', 'aida', 'swot', 'customer-journey',
+  'first-principles', 'six-thinking-hats', 'scamper', 'pros-cons', 'impact-effort',
 ]
 
 export const DEFAULTS: Record<FrameworkType, { width: number; height: number }> = {
@@ -25,6 +27,16 @@ export const DEFAULTS: Record<FrameworkType, { width: number; height: number }> 
   'energy-audit':        { width: 640, height: 540 },
   'eat-that-frog':       { width: 580, height: 440 },
   gtd:                   { width: 840, height: 260 },
+  stp:                   { width: 720, height: 400 },
+  'marketing-mix':       { width: 720, height: 400 },
+  aida:                  { width: 560, height: 520 },
+  swot:                  { width: 640, height: 540 },
+  'customer-journey':    { width: 900, height: 360 },
+  'first-principles':    { width: 700, height: 440 },
+  'six-thinking-hats':   { width: 780, height: 420 },
+  scamper:               { width: 880, height: 360 },
+  'pros-cons':           { width: 640, height: 400 },
+  'impact-effort':       { width: 640, height: 540 },
 }
 
 export const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
@@ -43,6 +55,16 @@ export const FRAMEWORK_LABELS: Record<FrameworkType, string> = {
   'energy-audit':        'Energy Audit',
   'eat-that-frog':       'Eat That Frog',
   gtd:                   'GTD',
+  stp:                   'STP Marketing',
+  'marketing-mix':       '4P Marketing Mix',
+  aida:                  'AIDA Funnel',
+  swot:                  'SWOT Analysis',
+  'customer-journey':    'Customer Journey',
+  'first-principles':    'First Principles',
+  'six-thinking-hats':   'Six Thinking Hats',
+  scamper:               'SCAMPER',
+  'pros-cons':           'Pros / Cons',
+  'impact-effort':       'Impact / Effort Matrix',
 }
 
 export type FrameworkGroupEntry = { sep: string } | { key: FrameworkType }
@@ -54,6 +76,10 @@ export const FRAMEWORK_GROUPS: FrameworkGroupEntry[] = [
   { key: 'start-stop-continue' }, { key: 'personal-kanban' }, { key: 'five-whys' },
   { key: 'daily-reflection' }, { key: 'okr' }, { key: 'energy-audit' },
   { key: 'eat-that-frog' }, { key: 'gtd' },
+  { sep: 'MARKETING' },
+  { key: 'stp' }, { key: 'marketing-mix' }, { key: 'aida' }, { key: 'swot' }, { key: 'customer-journey' },
+  { sep: 'THINKING' },
+  { key: 'first-principles' }, { key: 'six-thinking-hats' }, { key: 'scamper' }, { key: 'pros-cons' }, { key: 'impact-effort' },
 ]
 
 function framesKey(boardId: string) { return `ideaboard_frames_${boardId}` }
@@ -172,6 +198,25 @@ export function useFrames(boardId: string) {
     })
   }, [boardId])
 
+  const updateFrameNotes = useCallback((id: string, notes: string) => {
+    setFrames(prev => {
+      const next = prev.map(f => f.id === id ? { ...f, notes } : f)
+      save(boardId, next)
+      return next
+    })
+  }, [boardId])
+
+  const updateFrameNoteArea = useCallback((id: string, areaId: string, notes: string) => {
+    setFrames(prev => {
+      const next = prev.map(f => f.id === id
+        ? { ...f, noteAreas: { ...(f.noteAreas ?? {}), [areaId]: notes } }
+        : f
+      )
+      save(boardId, next)
+      return next
+    })
+  }, [boardId])
+
   const deleteFrame = useCallback((id: string) => {
     setFrames(prev => {
       const next = prev.filter(f => f.id !== id)
@@ -180,5 +225,14 @@ export function useFrames(boardId: string) {
     })
   }, [boardId])
 
-  return { frames, addFrame, moveFrame, commitFrameMove, setFrameSize, commitFrameResize, changeFrameType, renameFrame, deleteFrame }
+  const importFrames = useCallback((imported: FrameInstance[]) => {
+    if (!imported.length) return
+    setFrames(prev => {
+      const next = [...prev, ...imported]
+      save(boardId, next)
+      return next
+    })
+  }, [boardId])
+
+  return { frames, addFrame, moveFrame, commitFrameMove, setFrameSize, commitFrameResize, changeFrameType, renameFrame, updateFrameNotes, updateFrameNoteArea, deleteFrame, importFrames }
 }

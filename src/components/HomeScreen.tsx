@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import type { LocalUser, Board, Card, Group, BoardGroup } from '../types'
 import * as db from '../lib/db'
 import BoardThumbnail from './BoardThumbnail'
+import { BOARD_TEMPLATES, buildBoardTemplatePayload, type BoardTemplateId } from '../lib/boardTemplates'
 
 interface Props {
   user: LocalUser
@@ -19,6 +20,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<BoardTemplateId | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [creatingGroup, setCreatingGroup] = useState(false)
@@ -41,14 +43,36 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   }, [])
 
   const createBoard = async (groupId?: string) => {
-    if (!newName.trim()) return
-    const b = await db.createBoard(newName.trim(), user.id)
+    const template = BOARD_TEMPLATES.find(t => t.id === selectedTemplateId)
+    const name = newName.trim() || template?.name
+    if (!name) return
+    const b = await db.createBoard(name, user.id)
+    if (selectedTemplateId) {
+      const seeded = buildBoardTemplatePayload({ templateId: selectedTemplateId, boardId: b.id })
+      await Promise.all(seeded.cards.map(insert => db.createCard(insert)))
+      await db.createGoalTags(seeded.goalTags.map(tag => ({
+        board_id: b.id,
+        label: tag.label,
+        bg: tag.bg,
+        color: tag.color,
+        x: tag.x,
+        y: tag.y,
+      })))
+      localStorage.setItem(`ideaboard_frames_${b.id}`, JSON.stringify(seeded.frames))
+      localStorage.setItem(`ideaboard_textblocks_${b.id}`, JSON.stringify(seeded.textBlocks))
+      setAllCards(prev => [...prev, ...seeded.cards.map((insert, i) => ({
+        ...insert,
+        id: `template-preview-${b.id}-${i}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }))])
+    }
     if (groupId) {
       await db.addBoardToGroup(b.id, groupId)
       setBoardGroups(prev => [...prev, { board_id: b.id, group_id: groupId }])
     }
     setBoards(prev => [...prev, b])
-    setNewName(''); setCreating(false)
+    setNewName(''); setSelectedTemplateId(null); setCreating(false)
   }
 
   const renameBoard = async (id: string) => {
@@ -160,10 +184,10 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 3)
 
-  const bg   = dark ? '#0F0F14' : '#ECEAE3'
-  const card = dark ? '#1A1A24' : '#FFFFFF'
-  const bdr  = dark ? '#2A2A38' : 'rgba(0,0,0,.1)'
-  const txt  = dark ? '#F0EEE8' : '#1A1A2E'
+  const bg   = dark ? '#0D1B2E' : '#ECEAE3'
+  const card = dark ? '#152336' : '#FFFFFF'
+  const bdr  = dark ? '#1E3451' : 'rgba(0,0,0,.1)'
+  const txt  = dark ? '#F0EEE8' : '#152336'
   const sub  = dark ? '#888'    : '#999'
 
   const assignedIds = new Set(boardGroups.map(bg => bg.board_id))
@@ -183,7 +207,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
           onBlur={() => renameBoard(b.id)}
           onKeyDown={e => { if (e.key === 'Enter') renameBoard(b.id); if (e.key === 'Escape') setEditingId(null) }}
           onClick={e => e.stopPropagation()}
-          style={{ width: '100%', border: `1.5px solid #6C63FF`, borderRadius: 7, padding: '4px 8px', fontSize: 14, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#25252F' : 'white', color: txt, outline: 'none', boxSizing: 'border-box' }}
+          style={{ width: '100%', border: `1.5px solid #6C63FF`, borderRadius: 7, padding: '4px 8px', fontSize: 14, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#162845' : 'white', color: txt, outline: 'none', boxSizing: 'border-box' }}
         />
       ) : (
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: txt, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
@@ -207,9 +231,9 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       </div>
       <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 4 }}>
         <button onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name) }}
-          title="Rename" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
+          title="Rename" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
         <button onClick={e => { e.stopPropagation(); removeBoard(b.id) }}
-          title="Delete" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+          title="Delete" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
       </div>
     </div>
   )
@@ -231,10 +255,10 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
         <div style={{ flex: 1 }}/>
         <span style={{ fontSize: 13, color: sub }}>{user.email}</span>
         <button onClick={onToggleDark} title="Toggle dark mode"
-          style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+          style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
           {dark ? '☀️' : '🌙'}
         </button>
-        <button onClick={onSignOut} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', color: sub, cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Sign out</button>
+        <button onClick={onSignOut} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', color: sub, cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Sign out</button>
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
@@ -256,14 +280,37 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
         </div>
 
         {creating && (
-          <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '16px 18px', marginBottom: 16, display: 'flex', gap: 10 }}>
-            <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') createBoard(); if (e.key === 'Escape') setCreating(false) }}
-              placeholder="Board name…"
-              style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
-            />
-            <button onClick={() => createBoard()} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
-            <button onClick={() => setCreating(false)} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createBoard(); if (e.key === 'Escape') { setCreating(false); setSelectedTemplateId(null) } }}
+                placeholder={selectedTemplateId ? 'Rename template board…' : 'Board name…'}
+                style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
+              />
+              <button onClick={() => createBoard()} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
+              <button onClick={() => { setCreating(false); setSelectedTemplateId(null) }} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+            </div>
+            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+              {BOARD_TEMPLATES.map(template => (
+                <button
+                  key={template.id}
+                  onClick={() => { setSelectedTemplateId(template.id); if (!newName.trim()) setNewName(template.name) }}
+                  style={{
+                    textAlign: 'left',
+                    border: `1.5px solid ${selectedTemplateId === template.id ? '#6C63FF' : bdr}`,
+                    background: selectedTemplateId === template.id ? (dark ? '#1B2B4A' : '#F0EDFF') : (dark ? '#162845' : 'white'),
+                    color: txt,
+                    borderRadius: 10,
+                    padding: '11px 12px',
+                    cursor: 'pointer',
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
+                  <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3 }}>{template.name}</div>
+                  <div style={{ fontSize: 11, color: sub, lineHeight: 1.35 }}>{template.description}</div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -272,7 +319,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
             <input autoFocus value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateGroup(); if (e.key === 'Escape') setCreatingGroup(false) }}
               placeholder="Group name…"
-              style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+              style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
             />
             <button onClick={handleCreateGroup} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
             <button onClick={() => setCreatingGroup(false)} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
@@ -318,15 +365,15 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
                         onChange={e => setEditGroupName(e.target.value)}
                         onBlur={() => renameGroup(group.id)}
                         onKeyDown={e => { if (e.key === 'Enter') renameGroup(group.id); if (e.key === 'Escape') setEditingGroupId(null) }}
-                        style={{ border: `1.5px solid #6C63FF`, borderRadius: 6, padding: '3px 8px', fontSize: 15, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+                        style={{ border: `1.5px solid #6C63FF`, borderRadius: 6, padding: '3px 8px', fontSize: 15, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
                       />
                     ) : (
                       <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: txt }}>{group.name}</span>
                     )}
                     <button onClick={() => { setEditingGroupId(group.id); setEditGroupName(group.name) }}
-                      title="Rename group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
+                      title="Rename group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
                     <button onClick={() => removeGroup(group.id)}
-                      title="Delete group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#25252F' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+                      title="Delete group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
                     <button onClick={() => { setCreatingBoardInGroup(group.id); setNewBoardInGroupName('') }}
                       style={{ marginLeft: 'auto', height: 28, padding: '0 12px', borderRadius: 7, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}>
                       + New Board
@@ -338,7 +385,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
                       <input autoFocus value={newBoardInGroupName} onChange={e => setNewBoardInGroupName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') createBoardInGroup(group.id); if (e.key === 'Escape') setCreatingBoardInGroup(null) }}
                         placeholder="Board name…"
-                        style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '7px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#25252F' : 'white', color: txt, outline: 'none' }}
+                        style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '7px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
                       />
                       <button onClick={() => createBoardInGroup(group.id)} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13 }}>Create</button>
                       <button onClick={() => setCreatingBoardInGroup(null)} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
@@ -370,7 +417,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
             left: Math.min(chipDropdown.x, window.innerWidth - 200),
             top: Math.min(chipDropdown.y, window.innerHeight - 40 - groups.length * 36),
             zIndex: 201,
-            background: dark ? '#1A1A24' : 'white',
+            background: dark ? '#152336' : 'white',
             border: `1px solid ${bdr}`,
             borderRadius: 10,
             padding: '8px 0',

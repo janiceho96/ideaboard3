@@ -37,7 +37,7 @@ export default function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
       fontFamily: "'DM Sans', sans-serif",
     }}>
       <div style={{
-        background: 'white', borderRadius: 20, border: '2px solid #1A1A2E',
+        background: 'white', borderRadius: 20, border: '2px solid #152336',
         padding: 36, width: 380,
         boxShadow: '0 24px 64px rgba(0,0,0,.18)',
       }}>
@@ -50,12 +50,12 @@ export default function AuthScreen({ onSignIn, onSignUp }: AuthScreenProps) {
             fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 18, color: 'white',
           }}>I</div>
           <div>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: '#1A1A2E' }}>Ideaboard</div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 17, color: '#152336' }}>Ideaboard</div>
             <div style={{ fontSize: 12, color: '#999' }}>Collaborative whiteboard</div>
           </div>
         </div>
 
-        <h2 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 22, color: '#1A1A2E', marginBottom: 6 }}>
+        <h2 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 22, color: '#152336', marginBottom: 6 }}>
           {mode === 'signin' ? 'Welcome back' : 'Create account'}
         </h2>
         <p style={{ fontSize: 13, color: '#888', marginBottom: 24 }}>

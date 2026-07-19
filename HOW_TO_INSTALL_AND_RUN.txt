@@ -1,0 +1,103 @@
+IDEABOARD - HOW TO INSTALL AND RUN
+
+Ideaboard is a local app. It runs on your computer and opens in your web
+browser. It is not installed from the Apple App Store or Microsoft Store.
+
+
+FOR MAC USERS
+
+1. Put the whole Ideaboard folder somewhere easy to find, such as Downloads
+   or Applications.
+
+2. Open the Ideaboard folder.
+
+3. Double-click this file:
+
+   launch-ideaboard.command
+
+4. If your Mac asks for permission to open it:
+
+   - Right-click launch-ideaboard.command
+   - Choose Open
+   - Click Open again
+
+5. Keep the Terminal window open while using Ideaboard.
+
+6. Ideaboard should open in your browser at:
+
+   http://127.0.0.1:5180/
+
+7. To stop Ideaboard, go back to the Terminal window and press:
+
+   Control + C
+
+
+OPTIONAL MAC LAUNCHPAD SHORTCUT
+
+If there is an Ideaboard.app file included, move it to:
+
+   Your Home Folder > Applications
+
+Then open Launchpad and search for:
+
+   Ideaboard
+
+Click it to launch the app.
+
+
+FOR WINDOWS USERS
+
+1. Put the whole Ideaboard folder somewhere easy to find, such as Downloads
+   or Desktop.
+
+2. Open the Ideaboard folder.
+
+3. Double-click this file:
+
+   launch-ideaboard.bat
+
+4. Keep the command window open while using Ideaboard.
+
+5. Ideaboard should open in your browser at:
+
+   http://127.0.0.1:5180/
+
+6. To stop Ideaboard, close the command window or press:
+
+   Ctrl + C
+
+
+FIRST RUN
+
+The first time Ideaboard runs, it may install some required packages. This can
+take a few minutes. Wait until the browser opens.
+
+
+REQUIREMENT
+
+Ideaboard needs Node.js installed on the computer.
+
+If Ideaboard does not start, install Node.js from:
+
+   https://nodejs.org/
+
+Choose the LTS version.
+
+
+TROUBLESHOOTING
+
+If the browser does not open automatically, open your browser and go to:
+
+   http://127.0.0.1:5180/
+
+If you see a message saying the file cannot be opened on Mac:
+
+   - Right-click launch-ideaboard.command
+   - Choose Open
+   - Click Open again
+
+If another app is already using the port, close old Terminal or command
+windows that were running Ideaboard, then try again.
+
+If it still does not work, restart the computer and double-click the launcher
+again.

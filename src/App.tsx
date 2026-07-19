@@ -24,7 +24,7 @@ export default function App() {
     <div style={{
       height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontFamily: "'DM Sans',sans-serif", color: dark ? '#666' : '#888',
-      background: dark ? '#0F0F14' : '#ECEAE3',
+      background: dark ? '#0D1B2E' : '#ECEAE3',
       backgroundImage: 'radial-gradient(circle,rgba(0,0,0,.1) 1px,transparent 1px)',
       backgroundSize: '24px 24px',
     }}>

@@ -95,7 +95,7 @@ echo " Keep this window open while using Ideaboard."
 echo " Press Ctrl+C to stop the app."
 echo ""
 
-# Open browser after Vite has had time to start (default port 5173)
-(sleep 4 && open http://localhost:5173) &
+# Open browser after Vite has had time to start
+(sleep 4 && open http://localhost:5180) &
 
-npm run dev
+npm run dev -- --port 5180

@@ -8,7 +8,7 @@ It runs on your computer and opens in your browser. It is not an Apple App Store
 
 ## Real App Screenshots
 
-These screenshots show the actual local app running with sample boards and template content.
+These screenshots show sample boards with different layouts, so each example demonstrates a different way to use Ideaboard.
 
 ### Board Dashboard
 
@@ -18,21 +18,50 @@ The home screen keeps boards together in a simple visual dashboard. Each board c
 
 ### Project Brainstorm Board
 
-This example uses a Start / Stop / Continue framework for a small business campaign. Users can keep idea cards, goal tags, and notes on the same canvas while using the right panel to search or jump between items.
+This example uses a Start / Stop / Continue framework for a cafe promotion. It shows messy campaign thinking: goals, audience clues, wild hooks, an AI prompt, and the next experiment all living on the same board.
 
 ![Ideaboard project brainstorm board](marketing/screenshots/campaign-board.png)
 
 ### Content Calendar Board
 
-This example shows a creator workflow using a Kanban-style board. Cards move from backlog to in progress to done, making it useful for planning videos, posts, scripts, and publishing tasks.
+This example shows a creator workflow using a calendar-style board. Cards are arranged by publishing day and review stage, making it useful for planning videos, posts, scripts, newsletters, and repurposed content.
 
 ![Ideaboard content calendar board](marketing/screenshots/content-calendar-board.png)
 
 ### Decision Matrix Board
 
-This example shows a roadmap or product planning workflow. A decision matrix helps compare options, risks, and next actions in a visual structure.
+This example shows a product planning workflow. An impact / effort matrix helps compare feature ideas, risks, and next actions before deciding what to build first.
 
 ![Ideaboard decision matrix board](marketing/screenshots/roadmap-board.png)
+
+## Example: AI Work Done With Ideaboard
+
+Ideaboard is useful when AI gives you a lot of output and you need to turn it into a plan.
+
+Example workflow:
+
+1. Ask AI to generate raw ideas, research summaries, campaign hooks, lesson activities, or product options.
+2. Paste the best AI output into Ideaboard as cards or text blocks.
+3. Group the cards by theme, stage, priority, or decision criteria.
+4. Move weak ideas aside and keep useful ideas near the framework.
+5. Turn the final board into a checklist, content calendar, lesson plan, sprint plan, or client workshop outline.
+
+Example board:
+
+```text
+Board name: AI Research Sprint
+
+Cards:
+- AI summary of customer pain points
+- Useful quotes from source PDFs
+- Repeated objections
+- Feature ideas suggested by AI
+- Risks and claims to verify
+- Final recommendation
+
+Result:
+The AI output becomes a visual decision board instead of a long chat transcript.
+```
 
 ## What You Can Do With Ideaboard
 

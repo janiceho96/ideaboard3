@@ -36,7 +36,15 @@ const tagBase = [
   ['done', '#D4EDD8', '#1B4D21'],
 ] as const
 
-function card(boardId: string, title: string, body: string, tag: CardInsert['tag'], x: number, y: number): CardInsert {
+function card(
+  boardId: string,
+  title: string,
+  body: string,
+  tag: CardInsert['tag'],
+  x: number,
+  y: number,
+  width = 210,
+): CardInsert {
   return {
     board_id: boardId,
     title,
@@ -48,7 +56,7 @@ function card(boardId: string, title: string, body: string, tag: CardInsert['tag
     x,
     y,
     rotation: 0,
-    card_width: 210,
+    card_width: width,
     card_height: null,
     collapsed: false,
     locked: false,
@@ -61,43 +69,66 @@ export function buildBoardTemplatePayload({
   now = new Date().toISOString(),
   createId = () => crypto.randomUUID(),
 }: BuildBoardTemplatePayloadInput): BoardTemplatePayload {
-  const names: Record<BoardTemplateId, string[]> = {
-    'weekly-plan': ['Top Priority', 'Must Do', 'Waiting On', 'Friday Review'],
-    'project-brainstorm': ['Problem', 'Audience', 'Wild Ideas', 'Next Experiment'],
-    'content-calendar': ['Post Idea', 'Draft', 'Review', 'Publish'],
-    'decision-matrix': ['Option A', 'Option B', 'Risks', 'Decision'],
-  }
   const frameType: Record<BoardTemplateId, FrameInstance['type']> = {
     'weekly-plan': 'personal-kanban',
     'project-brainstorm': 'start-stop-continue',
     'content-calendar': 'personal-kanban',
-    'decision-matrix': 'eisenhower',
+    'decision-matrix': 'impact-effort',
   }
-  const labels = names[templateId]
-  const cards = labels.map((title, i) => card(
-    boardId,
-    title,
-    i === 0 ? 'Add the key notes here.' : '',
-    i === 0 ? 'critical' : i === 3 ? 'done' : 'planned',
-    120 + (i % 2) * 260,
-    150 + Math.floor(i / 2) * 190,
-  ))
+
+  const cardsByTemplate: Record<BoardTemplateId, CardInsert[]> = {
+    'weekly-plan': [
+      card(boardId, 'Top Priority', 'What must be true by Friday?', 'critical', 120, 150, 230),
+      card(boardId, 'Must Do', 'Client reply, prototype polish, invoice follow-up.', 'planned', 390, 150, 240),
+      card(boardId, 'Waiting On', 'Feedback, source file, meeting confirmation.', 'planned', 390, 345, 240),
+      card(boardId, 'Friday Review', 'Wins, loose ends, next week focus.', 'done', 660, 345, 230),
+    ],
+    'project-brainstorm': [
+      card(boardId, 'Campaign Goal', 'Sell 100 weekend drinks without discounting the hero product.', 'critical', 115, 145, 250),
+      card(boardId, 'Audience Clues', 'Office lunch crowd, students, regulars who order pastries.', 'idea', 420, 135, 240),
+      card(boardId, 'Wild Hooks', 'Limited flavour drop, receipt raffle, barista pick of the day.', 'planned', 190, 335, 260),
+      card(boardId, 'AI Prompt', 'Ask AI for 10 Instagram hooks, then keep only the strongest 3.', 'idea', 515, 330, 270),
+      card(boardId, 'Next Experiment', 'Launch one reel, one counter sign, and one WhatsApp message.', 'done', 325, 505, 310),
+    ],
+    'content-calendar': [
+      card(boardId, 'Mon: Short Reel', 'Hook: 3 mistakes people make when planning a launch.', 'critical', 115, 145, 240),
+      card(boardId, 'Wed: Carousel Draft', 'Turn AI outline into 6 slides and add examples.', 'planned', 390, 145, 250),
+      card(boardId, 'Fri: Newsletter', 'Use board notes as the first draft, then tighten CTA.', 'planned', 665, 145, 250),
+      card(boardId, 'Review Queue', 'Check claims, screenshots, and tone before publishing.', 'idea', 390, 350, 250),
+      card(boardId, 'Published Assets', 'Move completed posts here with date and link.', 'done', 665, 455, 250),
+    ],
+    'decision-matrix': [
+      card(boardId, 'AI Research Summary', 'Fast to ship, high leverage. Needs source checking.', 'critical', 150, 160, 255),
+      card(boardId, 'PDF Import Polish', 'Useful for real workflows, but touches storage and rendering.', 'planned', 500, 170, 265),
+      card(boardId, 'Team Sharing', 'High value later; needs auth, sync, and conflict handling.', 'idea', 500, 405, 265),
+      card(boardId, 'Theme Tweaks', 'Low effort, nice quality-of-life improvement.', 'done', 150, 430, 255),
+      card(boardId, 'Decision', 'Ship AI research workflow first; schedule PDF polish next.', 'planned', 835, 260, 280),
+    ],
+  }
+
+  const cards = cardsByTemplate[templateId]
   const frames: FrameInstance[] = [{
     id: createId(),
     type: frameType[templateId],
     name: BOARD_TEMPLATES.find(t => t.id === templateId)?.name,
-    x: 70,
+    x: templateId === 'decision-matrix' ? 90 : 70,
     y: 90,
-    width: 700,
-    height: 430,
+    width: templateId === 'decision-matrix' ? 760 : templateId === 'content-calendar' ? 900 : 700,
+    height: templateId === 'project-brainstorm' ? 560 : 470,
   }]
   const textBlocks: TextBlock[] = [{
     id: createId(),
     board_id: boardId,
-    html: '<b>Start here</b><br>Shape this board into your own workflow.',
-    x: 820,
+    html: templateId === 'project-brainstorm'
+      ? '<b>AI work example</b><br>Paste AI suggestions here, then drag the useful ones into Start / Stop / Continue.'
+      : templateId === 'content-calendar'
+        ? '<b>Publishing rhythm</b><br>Use AI for first drafts, then keep review and publish decisions visible.'
+        : templateId === 'decision-matrix'
+          ? '<b>Decision rule</b><br>Score each option by impact, effort, confidence, and risk before choosing.'
+          : '<b>Start here</b><br>Shape this board into your own workflow.',
+    x: templateId === 'decision-matrix' ? 920 : 820,
     y: 120,
-    width: 280,
+    width: templateId === 'decision-matrix' ? 300 : 280,
     created_at: now,
   }]
   const goalTags: GoalTag[] = tagBase.map(([label, bg, color], i) => ({

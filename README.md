@@ -6,6 +6,34 @@ It runs on your computer and opens in your browser. It is not an Apple App Store
 
 ![Ideaboard promo](marketing/ideaboard-promo.svg)
 
+## Real App Screenshots
+
+These screenshots show the actual local app running with sample boards and template content.
+
+### Board Dashboard
+
+The home screen keeps boards together in a simple visual dashboard. Each board card shows a small thumbnail preview, so users can recognize the board before opening it.
+
+![Ideaboard board dashboard](marketing/screenshots/home-dashboard.png)
+
+### Project Brainstorm Board
+
+This example uses a Start / Stop / Continue framework for a small business campaign. Users can keep idea cards, goal tags, and notes on the same canvas while using the right panel to search or jump between items.
+
+![Ideaboard project brainstorm board](marketing/screenshots/campaign-board.png)
+
+### Content Calendar Board
+
+This example shows a creator workflow using a Kanban-style board. Cards move from backlog to in progress to done, making it useful for planning videos, posts, scripts, and publishing tasks.
+
+![Ideaboard content calendar board](marketing/screenshots/content-calendar-board.png)
+
+### Decision Matrix Board
+
+This example shows a roadmap or product planning workflow. A decision matrix helps compare options, risks, and next actions in a visual structure.
+
+![Ideaboard decision matrix board](marketing/screenshots/roadmap-board.png)
+
 ## What You Can Do With Ideaboard
 
 - Create visual boards for projects, lessons, campaigns, research, workshops, or content plans.

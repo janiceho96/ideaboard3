@@ -23,16 +23,17 @@ import { buildWhiteboardExport } from '../lib/whiteboardExport'
 import { buildWhiteboardImport } from '../lib/whiteboardImport'
 import { buildBoardNavigationItems, filterCardsForBoard, type BoardNavigationItem } from '../lib/boardNavigation'
 import { normalizeSelectionRect, selectCardIdsInRect, selectSlideIdsInRect, type SelectionRect } from '../lib/multiSelect'
+import { ArrowLeft, CircleHelp, Download, FolderInput, Maximize2, Moon, Plus, Search, SquarePlus, Sun, Trash2, Type, Undo2, Upload, Workflow, ZoomIn, ZoomOut } from 'lucide-react'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
-  { value: '#FFF9C4', label: 'Yellow' },
-  { value: '#FFD6E0', label: 'Pink'   },
-  { value: '#D4EDD8', label: 'Green'  },
-  { value: '#D0E8FF', label: 'Blue'   },
-  { value: '#E8E0F5', label: 'Purple' },
-  { value: '#FFD6C2', label: 'Peach'  },
-  { value: '#152336', label: 'Dark'   },
+  { value: colors.markerYellow, label: 'Yellow' },
+  { value: colors.markerCoral, label: 'Coral'   },
+  { value: colors.markerMint, label: 'Mint'  },
+  { value: colors.markerCyan, label: 'Cyan'   },
+  { value: '#EEE9FF', label: 'Purple' },
+  { value: '#E7E9EF', label: 'Neutral'  },
+  { value: colors.inkDark, label: 'Dark'   },
 ]
 
 interface BoardProps {
@@ -316,10 +317,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const selectedCards = useMemo(
     () => brd.cards.filter(card => selectedCardIds.includes(card.id)),
     [brd.cards, selectedCardIds],
-  )
-  const selectedTiles = useMemo(
-    () => sld.tiles.filter(tile => selectedTileIds.includes(tile.id)),
-    [sld.tiles, selectedTileIds],
   )
   const selectedBoardItemCount = selectedCardIds.length + selectedTileIds.length
   const slideGroupViews = useMemo(() => slideGroups.map(group => {
@@ -634,15 +631,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     sldRef.current.addTiles(newTiles)
     showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
   }, [board.id, screenToWorld])
-
-  const deleteSelectedCards = useCallback(async () => {
-    const ids = selectedCardIds
-    if (!ids.length) return
-    await Promise.all(ids.map(id => brd.removeCard(id)))
-    setSelectedCardIds([])
-    setSelectedCardId(null)
-    showToast(`Deleted ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
-  }, [brd, selectedCardIds])
 
   const deleteSelectedBoardItems = useCallback(async () => {
     const cardIds = selectedCardIds
@@ -1313,56 +1301,53 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }
 
   // ── Theme colours ───────────────────────────────────────────
-  const sbBg   = dark ? colors.sidebar : '#0D1929'
-  const topBg  = dark ? 'rgba(13,13,18,.94)' : 'rgba(253,252,245,0.97)'
-  const topBdr = dark ? 'rgba(255,255,255,.06)' : colors.borderLight
-  const subC   = dark ? '#666'    : '#999'
+  const sbBg   = dark ? colors.sidebar : '#172038'
+  const topBg  = dark ? 'rgba(16,24,42,.96)' : 'rgba(255,255,255,.96)'
+  const topBdr = dark ? colors.borderDark : colors.borderLight
+  const subC   = dark ? '#AAB5C9' : '#5F687B'
   const cvBg   = dark ? colors.canvasDark : colors.canvasLight
-  const dotClr = dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.12)'
+  const dotClr = dark ? '#30405E' : '#C1C4CC'
 
-  if (brd.loading) return <Centered dark={dark}>Loading board…</Centered>
+  if (brd.loading) return <Centered dark={dark}>Loading your workspace...</Centered>
   if (brd.error)   return <Centered dark={dark} error>{brd.error}</Centered>
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', fontFamily: fonts.ui }}>
+    <div className="ib-board-shell" data-theme={dark ? 'dark' : 'light'} style={{ fontFamily: fonts.ui }}>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{ width: 68, background: sbBg, borderRight: '1px solid #1A1A22', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 2, flexShrink: 0, zIndex: 100 }}>
-        <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg,#49B6E5,#263D5B)', borderRadius: 10, border: '2px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Delius Swash Caps',cursive", fontWeight: 800, fontSize: 16, color: 'white', marginBottom: 12 }}>I</div>
+      <aside className="ib-board-sidebar" style={{ width: 68, background: sbBg, borderRight: '2px solid rgba(255,255,255,.08)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 0', gap: 2, flexShrink: 0, zIndex: 100 }}>
+        <div className="ib-logo" style={{ width: 36, height: 36, marginBottom: 12 }}>I</div>
 
         <SbBtn title="Back to boards" onClick={onBack} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+          <ArrowLeft size={17} />
         </SbBtn>
 
         <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
 
         <SbBtn title="New Card (N)" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          <SquarePlus size={17} />
         </SbBtn>
 
         <SbBtn title="Fit all cards in view" onClick={fitAll} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <Maximize2 size={17} />
         </SbBtn>
 
         <SbBtn title="Reset to 100%" onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <Search size={17} />
         </SbBtn>
 
         <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
 
         <SbBtn title="Export as PDF" onClick={exportPDF} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 10v6m0 0l-3-3m3 3l3-3"/><path d="M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          <Download size={17} />
         </SbBtn>
 
         <SbBtn title="Export full whiteboard as JSON backup" onClick={exportWhiteboard} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
-          </svg>
+          <Download size={17} />
         </SbBtn>
 
         <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/><polyline points="8 8 12 4 16 8"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
+          <FolderInput size={17} />
         </SbBtn>
         <input
           ref={pdfInputRef}
@@ -1374,10 +1359,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         />
 
         <SbBtn title="Import JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-            <line x1="12" y1="12" x2="12" y2="18"/><polyline points="15 15 12 12 9 15"/>
-          </svg>
+          <Upload size={17} />
         </SbBtn>
         <input
           ref={jsonInputRef}
@@ -1388,23 +1370,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         />
 
         <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
+          <Undo2 size={17} />
         </SbBtn>
 
         <SbBtn title="Bulk delete items" onClick={() => setBulkDeleteOpen(true)} dark={dark}>
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M9 11h6"/><path d="M9 15h6"/>
-          </svg>
+          <Trash2 size={17} />
         </SbBtn>
 
         <div style={{ width: 28, height: 1, background: '#1A1A22', margin: '4px 0' }}/>
 
         <div ref={addFrameBtnRef} style={{ position: 'relative' }}>
           <SbBtn title="Add Frame" onClick={() => setAddFrameMenuOpen(o => !o)} dark={dark}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M12 8v8M8 12h8"/>
-            </svg>
+            <Workflow size={17} />
           </SbBtn>
           {addFrameMenuOpen && (() => {
             const rect = addFrameBtnRef.current?.getBoundingClientRect()
@@ -1457,10 +1434,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 28, height: 1, background: '#1A1A22', marginBottom: 4 }}/>
           <SbBtn title="Toggle dark mode" onClick={onToggleDark} dark={dark}>
-            {dark
-              ? <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-              : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-            }
+            {dark ? <Sun size={17} /> : <Moon size={17} />}
           </SbBtn>
           <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#6C63FF', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'white', border: `2px solid ${dark ? '#1A1A22' : '#1E3451'}` }}>
             {user.email?.[0]?.toUpperCase() ?? 'U'}
@@ -1469,29 +1443,25 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       </aside>
 
       {/* ── MAIN ── */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      <div className="ib-board-main">
 
         {/* Topbar */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 50, background: topBg, backdropFilter: 'blur(12px)', borderBottom: `1px solid ${topBdr}`, display: 'flex', alignItems: 'center', padding: '0 18px', gap: 10, zIndex: 50 }}>
-          <span style={{ fontSize: 12, color: subC, fontFamily: "'Delius',cursive" }}>Boards /</span>
-          <span style={{ fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, fontSize: 15, color: dark ? '#F0EEE8' : '#263D5B' }}>{board.name}</span>
+        <div className="ib-board-header" style={{ background: topBg, borderColor: topBdr }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+            <span style={{ fontSize: 11, color: subC, fontFamily: fonts.ui }}>Boards /</span>
+            <span className="ib-board-title" style={{ color: dark ? '#F7F7F2' : colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{board.name}</span>
+            <span className="ib-board-status">Saved locally</span>
+          </div>
 
           <div style={{ flex: 1 }}/>
-          <span style={{ fontSize: 11, color: subC, background: dark ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.05)', padding: '3px 8px', borderRadius: 6 }}>
-            Double-click to add · Scroll to zoom · Ctrl+move to pan · Press ? for shortcuts
-          </span>
+          <div className="ib-board-header-actions">
           <button
             onClick={() => setShowBoardPanel(open => !open)}
             title={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
             aria-label={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
-            style={{ height: 30, padding: '0 10px', borderRadius: 8, border: `1px solid ${dark ? '#1E3451' : '#ddd'}`, background: dark ? '#152336' : 'white', color: dark ? '#DCE8F5' : '#263D5B', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 800, fontFamily: fonts.ui }}
+            className="ib-icon-button"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="16" rx="2"/>
-              <path d="M15 4v16"/>
-              <path d={showBoardPanel ? 'M10 9l-3 3 3 3' : 'M7 9l3 3-3 3'}/>
-            </svg>
-            {showBoardPanel ? 'Hide Find' : 'Show Find'}
+            <Search size={15} />
           </button>
           <button
             onClick={() => {
@@ -1509,13 +1479,31 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 created_at: new Date().toISOString(),
               })
             }}
-            style={{ height: 30, padding: '0 14px', borderRadius: 8, border: `2px solid ${dark ? '#49B6E5' : '#263D5B'}`, background: dark ? 'transparent' : 'white', color: dark ? '#49B6E5' : '#263D5B', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700 }}
+            className="ib-action"
           >
-            + Add Text
+            <Type size={14} /> Add text
           </button>
-          <button onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}
-            style={{ height: 30, padding: '0 14px', borderRadius: 8, border: '2px solid #263D5B', background: '#49B6E5', color: 'white', cursor: 'pointer', fontSize: 11, fontFamily: "'Delius Swash Caps',cursive", fontWeight: 700, boxShadow: '2px 2px 0 #263D5B' }}>
-            + Add Card
+          <button className="ib-action ib-action-primary" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}>
+            <SquarePlus size={15} /> Add card
+          </button>
+          </div>
+        </div>
+
+        <div className="ib-quick-add" aria-label="Quick add">
+          <button type="button" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) } }}>
+            <Plus size={13} /> Note
+          </button>
+          <button type="button" onClick={() => {
+            const cr = canvasRef.current?.getBoundingClientRect()
+            if (!cr) return
+            const cx = (cr.width / 2 - panX) / zoom
+            const cy = (cr.height / 2 - panY) / zoom
+            txtRef.current.addBlock({ id: crypto.randomUUID(), board_id: board.id, html: '', x: cx - 130, y: cy - 40, width: 260, created_at: new Date().toISOString() })
+          }}>
+            <Type size={13} /> Text
+          </button>
+          <button type="button" onClick={() => setAddFrameMenuOpen(true)}>
+            <Workflow size={13} /> Frame
           </button>
         </div>
 
@@ -1579,6 +1567,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             cursor: 'crosshair',
           }}
         >
+          {brd.cards.length === 0 && (
+            <div className="ib-empty-board" role="status">
+              <strong>What are we trying to solve?</strong>
+              <span>Start with one thought. You can shape it later.</span>
+              <button className="ib-action ib-action-primary" type="button" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) } }}>
+                <Plus size={14} /> Add your first idea
+              </button>
+            </div>
+          )}
           {/* THE WORLD */}
           <div ref={worldRef}
             style={{ position: 'absolute', left: 0, top: 0, transformOrigin: '0 0', transform: `translate(${panX}px,${panY}px) scale(${zoom})` }}>
@@ -1820,40 +1817,24 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           </div>{/* end world */}
 
-          {/* Empty state */}
-          {frm.frames.length === 0 && brd.cards.length === 0 && sld.tiles.length === 0 && txt.blocks.length === 0 && (
-            <div style={{
-              position: 'absolute', inset: 0,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              pointerEvents: 'none',
-              gap: 8,
-            }}>
-              <div style={{ fontSize: 28, opacity: 0.2, color: dark ? 'white' : '#263D5B' }}>✦</div>
-              <div style={{ fontSize: 13, color: dark ? 'rgba(255,255,255,.25)' : 'rgba(38,61,91,.35)', letterSpacing: '0.03em' }}>
-                Your board is empty
-              </div>
-              <div style={{ fontSize: 11, color: dark ? 'rgba(255,255,255,.15)' : 'rgba(38,61,91,.25)' }}>
-                Click <span style={{ color: '#49B6E5', opacity: 0.7 }}>+</span> in the sidebar to add a frame
-              </div>
-            </div>
-          )}
-
           {/* ── HUD ── */}
           {/* Zoom controls */}
-          <div style={{ position:'absolute', right:18, bottom:22, display:'flex', flexDirection:'column', gap:1, background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}>
-            {['+','−'].map((sym,i)=>(
-              <button key={sym} onClick={() => {
-                const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * (i===0?1.2:0.8)))
+          <div style={{ position:'absolute', right:18, bottom:22, display:'flex', flexDirection:'column', gap:1, background: dark?colors.surfaceDark:'white', borderRadius:9, border:`2px solid ${dark?colors.borderDark:colors.ink}`, overflow:'hidden', boxShadow:'3px 4px 0 rgba(23,32,56,.14)', zIndex:50 }}>
+            {[
+              { label: 'Zoom in', icon: <ZoomIn size={14} />, factor: 1.2 },
+              { label: 'Zoom out', icon: <ZoomOut size={14} />, factor: 0.8 },
+            ].map(({ label, icon, factor }) => (
+              <button key={label} aria-label={label} title={label} onClick={() => {
+                const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor))
                 const cr = canvasRef.current!.getBoundingClientRect()
                 const cx = cr.width/2, cy = cr.height/2
                 setPanX(px => cx-(cx-px)*(nz/zoom)); setPanY(py => cy-(cy-py)*(nz/zoom)); setZoom(nz)
-              }} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:17,color:dark?'#ccc':'#555',background:'none',border:'none' }}>{sym}</button>
+              }} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:dark?'#F7F7F2':colors.ink,background:'none',border:'none' }}>{icon}</button>
             ))}
-            <div style={{ height:1, background: dark?'#1E3451':'#e8e8e8' }}/>
+            <div style={{ height:1, background: dark?colors.borderDark:colors.borderLight }}/>
             <div style={{ width:34,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:dark?'#666':'#888',fontFamily:"'Delius Swash Caps',cursive" }}>{Math.round(zoom*100)}%</div>
-            <div style={{ height:1, background: dark?'#1E3451':'#e8e8e8' }}/>
-            <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#666':'#888',background:'none',border:'none' }}>1:1</button>
+            <div style={{ height:1, background: dark?colors.borderDark:colors.borderLight }}/>
+            <button onClick={() => { setPanX(0); setPanY(0); setZoom(1) }} aria-label="Reset zoom to 100 percent" title="Reset zoom" style={{ width:34,height:24,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:9,color:dark?'#AAB5C9':'#5F687B',background:'none',border:'none' }}>1:1</button>
           </div>
 
           {/* Shortcuts hint button */}
@@ -1861,8 +1842,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             onClick={() => setShowShortcuts(s => !s)}
             title="Keyboard shortcuts (?)"
             aria-label="Toggle keyboard shortcuts"
-            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:14, fontWeight:700, color: dark?'#ccc':'#555', background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', zIndex:50 }}
-          >?</button>
+            style={{ position:'absolute', right:18, bottom:160, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color: dark?'#F7F7F2':colors.ink, background: dark?colors.surfaceDark:'white', borderRadius:9, border:`2px solid ${dark?colors.borderDark:colors.ink}`, boxShadow:'3px 4px 0 rgba(23,32,56,.14)', zIndex:50 }}
+          ><CircleHelp size={16} /></button>
 
           {/* Minimap */}
           <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>

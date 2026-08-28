@@ -400,6 +400,8 @@
 }
 
 .ib-board-shell[data-theme='dark'] { background-color: var(--ib-dark-canvas); color: #f7f7f2; }
+.ib-board-main { position: relative; min-width: 0; flex: 1; overflow: hidden; }
+.ib-board-sidebar { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent; }
 
 .ib-board-header {
   position: absolute;
@@ -523,6 +525,7 @@
   .ib-form-row { align-items: stretch; flex-direction: column; }
   .ib-form-row .ib-action { width: 100%; }
   .ib-board-header { top: 10px; right: 10px; left: 10px; padding-left: 52px; }
+  .ib-board-sidebar { width: 54px !important; padding-right: 3px !important; padding-left: 3px !important; }
   .ib-board-header-actions .ib-icon-button:nth-child(n + 4) { display: none; }
   .ib-board-rail { top: auto; right: 50%; bottom: 12px; left: auto; display: flex; width: auto; transform: translateX(50%); }
   .ib-quick-add { bottom: 68px; }

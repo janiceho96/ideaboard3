@@ -279,16 +279,18 @@ npm install
 Start the app:
 
 ```bash
-npm run dev -- --port 5180
+npm run dev -- --port 5174
 ```
 
 Open:
 
 ```text
-http://127.0.0.1:5180/
+http://127.0.0.1:5174/ideaboard.html
 ```
 
 Keep the Terminal window open while using Ideaboard.
+
+Port note: the app uses port 5174 because port 5173 may already be in use.
 
 ## One-Click Launchers
 

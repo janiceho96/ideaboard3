@@ -96,6 +96,6 @@ echo " Press Ctrl+C to stop the app."
 echo ""
 
 # Open browser after Vite has had time to start
-(sleep 4 && open http://localhost:5180) &
+(sleep 4 && open http://localhost:5174/ideaboard.html) &
 
-npm run dev -- --port 5180
+npm run dev -- --port 5174

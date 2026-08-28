@@ -25,7 +25,7 @@ FOR MAC USERS
 
 6. Ideaboard should open in your browser at:
 
-   http://127.0.0.1:5180/
+   http://127.0.0.1:5174/ideaboard.html
 
 7. To stop Ideaboard, go back to the Terminal window and press:
 
@@ -60,7 +60,7 @@ FOR WINDOWS USERS
 
 5. Ideaboard should open in your browser at:
 
-   http://127.0.0.1:5180/
+   http://127.0.0.1:5174/ideaboard.html
 
 6. To stop Ideaboard, close the command window or press:
 
@@ -88,7 +88,7 @@ TROUBLESHOOTING
 
 If the browser does not open automatically, open your browser and go to:
 
-   http://127.0.0.1:5180/
+   http://127.0.0.1:5174/ideaboard.html
 
 If you see a message saying the file cannot be opened on Mac:
 

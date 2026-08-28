@@ -46,8 +46,8 @@ echo  Keep this window open while using Ideaboard.
 echo  Close this window to stop the app.
 echo.
 
-start "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:5180"
-call npm run dev
+start "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:5174/ideaboard.html"
+call npm run dev -- --port 5174
 
 pause
 exit /b 0

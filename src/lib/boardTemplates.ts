@@ -72,7 +72,7 @@ export function buildBoardTemplatePayload({
   const frameType: Record<BoardTemplateId, FrameInstance['type']> = {
     'weekly-plan': 'personal-kanban',
     'project-brainstorm': 'start-stop-continue',
-    'content-calendar': 'personal-kanban',
+    'content-calendar': 'customer-journey',
     'decision-matrix': 'impact-effort',
   }
 

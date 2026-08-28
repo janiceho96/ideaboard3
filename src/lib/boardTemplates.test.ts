@@ -27,4 +27,16 @@ describe('board templates', () => {
     expect(payload.goalTags.every(tag => tag.board_id === 'board-1')).toBe(true)
     expect(payload.textBlocks.every(block => block.board_id === 'board-1')).toBe(true)
   })
+
+  it('keeps each starter board visually and behaviorally distinct', () => {
+    const frameTypes = BOARD_TEMPLATES.map(template =>
+      buildBoardTemplatePayload({ templateId: template.id, boardId: 'board-1', createId: () => 'id' }).frames[0].type
+    )
+
+    expect(new Set(frameTypes).size).toBe(4)
+    expect(buildBoardTemplatePayload({ templateId: 'project-brainstorm', boardId: 'board-1', createId: () => 'id' }).cards.map(card => card.title))
+      .toEqual(expect.arrayContaining(['AI Prompt', 'Next Experiment']))
+    expect(buildBoardTemplatePayload({ templateId: 'content-calendar', boardId: 'board-1', createId: () => 'id' }).cards.map(card => card.title))
+      .toEqual(expect.arrayContaining(['Review Queue', 'Published Assets']))
+  })
 })

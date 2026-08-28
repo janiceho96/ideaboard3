@@ -24,15 +24,15 @@ This example uses a Start / Stop / Continue framework for a cafe promotion. It s
 
 ### Content Calendar Board
 
-This example shows a creator workflow using a calendar-style board. Cards are arranged by publishing day and review stage, making it useful for planning videos, posts, scripts, newsletters, and repurposed content.
+This example shows a creator workflow mapped from idea to publish. Cards move through planning, drafting, review, and publishing, making it useful for videos, posts, scripts, newsletters, and repurposed content.
 
-![Ideaboard content calendar board](marketing/screenshots/content-calendar-board.png)
+![Ideaboard Marker Workshop content calendar board](marketing/screenshots/marker-workshop-content-calendar.png)
 
 ### Decision Matrix Board
 
 This example shows a product planning workflow. An impact / effort matrix helps compare feature ideas, risks, and next actions before deciding what to build first.
 
-![Ideaboard decision matrix board](marketing/screenshots/roadmap-board.png)
+![Ideaboard Marker Workshop decision matrix board](marketing/screenshots/marker-workshop-decision-matrix.png)
 
 ## Example: AI Work Done With Ideaboard
 

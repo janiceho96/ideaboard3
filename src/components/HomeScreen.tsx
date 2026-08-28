@@ -1,9 +1,12 @@
 // src/components/HomeScreen.tsx
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import type { LocalUser, Board, Card, Group, BoardGroup } from '../types'
 import * as db from '../lib/db'
 import BoardThumbnail from './BoardThumbnail'
+import TemplatePreview from './TemplatePreview'
 import { BOARD_TEMPLATES, buildBoardTemplatePayload, type BoardTemplateId } from '../lib/boardTemplates'
+import { FolderPlus, GripVertical, LogOut, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react'
+import { colors, fonts, radii } from '../lib/designTokens'
 
 interface Props {
   user: LocalUser
@@ -19,6 +22,9 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [boardGroups, setBoardGroups] = useState<BoardGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [selectedTemplateId, setSelectedTemplateId] = useState<BoardTemplateId | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -36,43 +42,76 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [allCards, setAllCards] = useState<Card[]>([])
 
-  useEffect(() => {
-    Promise.all([db.fetchBoards(), db.fetchGroups(), db.fetchBoardGroups(), db.fetchAllCards()]).then(
-      ([b, g, bg, ac]) => { setBoards(b); setGroups(g); setBoardGroups(bg); setAllCards(ac); setLoading(false) }
-    )
+  const loadBoards = useCallback(async () => {
+    setLoading(true)
+    setLoadError(null)
+    try {
+      const [b, g, bg, ac] = await Promise.all([
+        db.fetchBoards(),
+        db.fetchGroups(),
+        db.fetchBoardGroups(),
+        db.fetchAllCards(),
+      ])
+      setBoards(b)
+      setGroups(g)
+      setBoardGroups(bg)
+      setAllCards(ac)
+    } catch {
+      setLoadError('We could not load your boards.')
+    } finally {
+      setLoading(false)
+    }
   }, [])
+
+  useEffect(() => { void loadBoards() }, [loadBoards])
 
   const createBoard = async (groupId?: string) => {
     const template = BOARD_TEMPLATES.find(t => t.id === selectedTemplateId)
     const name = newName.trim() || template?.name
     if (!name) return
-    const b = await db.createBoard(name, user.id)
-    if (selectedTemplateId) {
-      const seeded = buildBoardTemplatePayload({ templateId: selectedTemplateId, boardId: b.id })
-      await Promise.all(seeded.cards.map(insert => db.createCard(insert)))
-      await db.createGoalTags(seeded.goalTags.map(tag => ({
-        board_id: b.id,
-        label: tag.label,
-        bg: tag.bg,
-        color: tag.color,
-        x: tag.x,
-        y: tag.y,
-      })))
-      localStorage.setItem(`ideaboard_frames_${b.id}`, JSON.stringify(seeded.frames))
-      localStorage.setItem(`ideaboard_textblocks_${b.id}`, JSON.stringify(seeded.textBlocks))
-      setAllCards(prev => [...prev, ...seeded.cards.map((insert, i) => ({
-        ...insert,
-        id: `template-preview-${b.id}-${i}`,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }))])
+    setSaving(true)
+    setCreateError(null)
+    let createdBoard: Board | null = null
+    try {
+      createdBoard = await db.createBoard(name, user.id)
+      if (selectedTemplateId) {
+        const seeded = buildBoardTemplatePayload({ templateId: selectedTemplateId, boardId: createdBoard.id })
+        await Promise.all(seeded.cards.map(insert => db.createCard(insert)))
+        await db.createGoalTags(seeded.goalTags.map(tag => ({
+          board_id: createdBoard!.id,
+          label: tag.label,
+          bg: tag.bg,
+          color: tag.color,
+          x: tag.x,
+          y: tag.y,
+        })))
+        localStorage.setItem(`ideaboard_frames_${createdBoard.id}`, JSON.stringify(seeded.frames))
+        localStorage.setItem(`ideaboard_textblocks_${createdBoard.id}`, JSON.stringify(seeded.textBlocks))
+        setAllCards(prev => [...prev, ...seeded.cards.map((insert, i) => ({
+          ...insert,
+          id: `template-preview-${createdBoard!.id}-${i}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }))])
+      }
+      if (groupId) {
+        await db.addBoardToGroup(createdBoard.id, groupId)
+        setBoardGroups(prev => [...prev, { board_id: createdBoard!.id, group_id: groupId }])
+      }
+      setBoards(prev => [...prev, createdBoard!])
+      setNewName('')
+      setSelectedTemplateId(null)
+      setCreating(false)
+    } catch {
+      if (createdBoard) {
+        await db.deleteBoard(createdBoard.id)
+        localStorage.removeItem(`ideaboard_frames_${createdBoard.id}`)
+        localStorage.removeItem(`ideaboard_textblocks_${createdBoard.id}`)
+      }
+      setCreateError('We could not create that board yet. Try again.')
+    } finally {
+      setSaving(false)
     }
-    if (groupId) {
-      await db.addBoardToGroup(b.id, groupId)
-      setBoardGroups(prev => [...prev, { board_id: b.id, group_id: groupId }])
-    }
-    setBoards(prev => [...prev, b])
-    setNewName(''); setSelectedTemplateId(null); setCreating(false)
   }
 
   const renameBoard = async (id: string) => {
@@ -184,155 +223,172 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 3)
 
-  const bg   = dark ? '#0D1B2E' : '#ECEAE3'
-  const card = dark ? '#152336' : '#FFFFFF'
-  const bdr  = dark ? '#1E3451' : 'rgba(0,0,0,.1)'
-  const txt  = dark ? '#F0EEE8' : '#152336'
-  const sub  = dark ? '#888'    : '#999'
+  const bg   = dark ? colors.canvasDark : colors.canvasLight
+  const card = dark ? colors.surfaceDark : colors.surfaceLight
+  const bdr  = dark ? colors.borderDark : colors.borderLight
+  const txt  = dark ? '#F7F7F2' : colors.ink
+  const sub  = dark ? '#AAB5C9' : '#5F687B'
+  const displayName = user.email.split('@')[0] || 'there'
 
   const assignedIds = new Set(boardGroups.map(bg => bg.board_id))
   const uncategorized = boards.filter(b => !assignedIds.has(b.id))
 
   const renderBoardCard = (b: Board) => (
-    <div key={b.id}
-      style={{ background: card, border: `1.5px solid ${bdr}`, borderRadius: 16, padding: '20px 20px 16px', cursor: 'pointer', transition: 'border-color .15s, transform .15s', position: 'relative' }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#6C63FF'; (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)' }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = bdr; (e.currentTarget as HTMLDivElement).style.transform = 'none' }}
+    <div
+      key={b.id}
+      className="ib-board-card"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open board ${b.name}`}
       onClick={() => editingId !== b.id && onOpenBoard(b)}
+      onKeyDown={e => {
+        if ((e.key === 'Enter' || e.key === ' ') && editingId !== b.id) {
+          e.preventDefault()
+          onOpenBoard(b)
+        }
+      }}
     >
       <BoardThumbnail cards={cardsForBoard(b.id)} dark={dark} />
       {editingId === b.id ? (
-        <input autoFocus value={editName}
+        <input
+          autoFocus
+          value={editName}
           onChange={e => setEditName(e.target.value)}
           onBlur={() => renameBoard(b.id)}
           onKeyDown={e => { if (e.key === 'Enter') renameBoard(b.id); if (e.key === 'Escape') setEditingId(null) }}
           onClick={e => e.stopPropagation()}
-          style={{ width: '100%', border: `1.5px solid #6C63FF`, borderRadius: 7, padding: '4px 8px', fontSize: 14, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#162845' : 'white', color: txt, outline: 'none', boxSizing: 'border-box' }}
+          className="ib-input"
+          style={{ fontFamily: fonts.display, fontWeight: 700 }}
         />
       ) : (
-        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, color: txt, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
+        <div className="ib-board-card-title">{b.name}</div>
       )}
-      <div style={{ fontSize: 11, color: sub, marginBottom: 8 }}>{new Date(b.created_at).toLocaleDateString()}</div>
-      {/* Group chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }} onClick={e => e.stopPropagation()}>
+      <div className="ib-board-card-date">{new Date(b.created_at).toLocaleDateString()}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 9 }} onClick={e => e.stopPropagation()}>
         {groups
           .filter(g => boardGroups.some(bg => bg.board_id === b.id && bg.group_id === g.id))
           .map(g => (
             <span key={g.id}
               onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setChipDropdown({ boardId: b.id, x: r.left, y: r.bottom + 4 }) }}
-              style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: dark ? '#2A2A40' : '#EEE8FF', color: '#6C63FF', cursor: 'pointer', border: '1px solid #6C63FF22', fontFamily: "'DM Sans',sans-serif" }}
+              style={{ fontSize: 10, padding: '3px 7px', borderRadius: radii.control, background: dark ? '#273654' : '#EEEBFF', color: dark ? '#D6D0FF' : colors.markerPurple, cursor: 'pointer', border: `1px solid ${dark ? colors.borderDark : '#D8D2FF'}`, fontFamily: fonts.ui }}
             >{g.name}</span>
           ))
         }
-        <span
-          onClick={e => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setChipDropdown({ boardId: b.id, x: r.left, y: r.bottom + 4 }) }}
-          style={{ fontSize: 10, padding: '2px 7px', borderRadius: 20, background: 'transparent', color: sub, cursor: 'pointer', border: `1px dashed ${bdr}`, fontFamily: "'DM Sans',sans-serif" }}
-        >+</span>
+        <button
+          type="button"
+          aria-label={`Add ${b.name} to a group`}
+          title="Add to a group"
+          onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setChipDropdown({ boardId: b.id, x: r.left, y: r.bottom + 4 }) }}
+          style={{ width: 24, height: 22, display: 'grid', placeItems: 'center', borderRadius: radii.control, background: 'transparent', color: sub, cursor: 'pointer', border: `1px dashed ${bdr}` }}
+        ><Plus size={13} /></button>
       </div>
-      <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', gap: 4 }}>
-        <button onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name) }}
-          title="Rename" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
-        <button onClick={e => { e.stopPropagation(); removeBoard(b.id) }}
-          title="Delete" style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
+      <div className="ib-board-card-actions">
+        <button className="ib-icon-button" onClick={e => { e.stopPropagation(); setEditingId(b.id); setEditName(b.name) }} aria-label={`Rename ${b.name}`} title="Rename">
+          <Pencil size={13} />
+        </button>
+        <button className="ib-icon-button" onClick={e => { e.stopPropagation(); removeBoard(b.id) }} aria-label={`Delete ${b.name}`} title="Delete">
+          <Trash2 size={13} />
+        </button>
       </div>
     </div>
   )
 
   const renderGrid = (sectionBoards: Board[]) => (
     sectionBoards.length === 0
-      ? <p style={{ fontSize: 13, color: sub, fontStyle: 'italic', marginBottom: 8 }}>No boards in this group</p>
-      : <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
+      ? <p className="ib-subtle" style={{ fontStyle: 'italic', marginBottom: 8 }}>No boards in this group</p>
+      : <div className="ib-board-grid">
           {sectionBoards.map(renderBoardCard)}
         </div>
   )
 
   return (
-    <div style={{ minHeight: '100vh', background: bg, fontFamily: "'DM Sans',sans-serif", backgroundImage: 'radial-gradient(circle,rgba(0,0,0,.1) 1px,transparent 1px)', backgroundSize: '24px 24px' }}>
-      {/* Top bar */}
-      <div style={{ position: 'sticky', top: 0, background: dark ? 'rgba(15,15,20,.94)' : 'rgba(248,246,240,.94)', backdropFilter: 'blur(12px)', borderBottom: `1px solid ${bdr}`, padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', gap: 12, zIndex: 50 }}>
-        <div style={{ width: 34, height: 34, background: 'linear-gradient(135deg,#6C63FF,#E040FB)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, color: 'white' }}>I</div>
-        <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16, color: txt }}>Ideaboard</span>
-        <div style={{ flex: 1 }}/>
-        <span style={{ fontSize: 13, color: sub }}>{user.email}</span>
-        <button onClick={onToggleDark} title="Toggle dark mode"
-          style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
-          {dark ? '☀️' : '🌙'}
+    <div className="ib-page" data-theme={dark ? 'dark' : 'light'} style={{ backgroundColor: bg, color: txt }}>
+      <div className="ib-topbar">
+        <div className="ib-logo" aria-hidden="true">I</div>
+        <span className="ib-brand-name">Ideaboard</span>
+        <div className="ib-topbar-spacer" />
+        <span className="ib-subtle" style={{ fontSize: 12 }}>{user.email}</span>
+        <button className="ib-icon-button" onClick={onToggleDark} aria-label={dark ? 'Use light mode' : 'Use dark mode'} title={dark ? 'Use light mode' : 'Use dark mode'}>
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        <button onClick={onSignOut} style={{ height: 32, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', color: sub, cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Sign out</button>
+        <button className="ib-action" onClick={onSignOut} title="Sign out"><LogOut size={15} /> Sign out</button>
       </div>
 
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 32px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 28 }}>
+      <main className="ib-content">
+        <div className="ib-welcome">
           <div>
-            <h1 style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 28, color: txt, marginBottom: 4 }}>Your Boards</h1>
-            <p style={{ fontSize: 14, color: sub }}>{boards.length} board{boards.length !== 1 ? 's' : ''}</p>
+            <h1>Good to see you, {displayName}.</h1>
+            <p>Pick up an idea or start with a fresh board.</p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setCreatingGroup(true)}
-              style={{ height: 38, padding: '0 18px', borderRadius: 10, border: `1.5px solid #6C63FF`, background: 'transparent', color: '#6C63FF', cursor: 'pointer', fontSize: 14, fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }}>
-              + New Group
-            </button>
-            <button onClick={() => setCreating(true)}
-              style={{ height: 38, padding: '0 18px', borderRadius: 10, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 14, fontFamily: "'DM Sans',sans-serif", fontWeight: 500 }}>
-              + New Board
-            </button>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <button className="ib-action" onClick={() => setCreatingGroup(true)} title="Create a group"><FolderPlus size={15} /> New group</button>
+            <button className="ib-action ib-action-primary" onClick={() => { setCreating(true); setCreateError(null) }} title="Create a board"><Plus size={16} /> New board</button>
           </div>
         </div>
 
         {creating && (
-          <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') createBoard(); if (e.key === 'Escape') { setCreating(false); setSelectedTemplateId(null) } }}
-                placeholder={selectedTemplateId ? 'Rename template board…' : 'Board name…'}
-                style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
-              />
-              <button onClick={() => createBoard()} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
-              <button onClick={() => { setCreating(false); setSelectedTemplateId(null) }} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <section className="ib-new-board-panel" aria-labelledby="new-board-heading">
+            <div className="ib-section-header" style={{ marginBottom: 6 }}>
+              <div>
+                <h2 id="new-board-heading">Start with a shape</h2>
+                <p className="ib-subtle" style={{ marginTop: 4 }}>Choose a shape to get started, then make it yours.</p>
+              </div>
+              <button className="ib-icon-button" type="button" onClick={() => { setCreating(false); setSelectedTemplateId(null); setCreateError(null) }} aria-label="Close new board form" title="Close"><span aria-hidden="true">×</span></button>
             </div>
-            <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+            <div className="ib-form-row">
+              <input className="ib-input" autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') createBoard(); if (e.key === 'Escape') { setCreating(false); setSelectedTemplateId(null) } }}
+                placeholder={selectedTemplateId ? 'Name your board' : 'Board name'}
+                aria-label="Board name"
+              />
+              <button className="ib-action ib-action-primary" onClick={() => createBoard()} disabled={saving || (!newName.trim() && !selectedTemplateId)}><Plus size={15} /> {saving ? 'Creating...' : 'Create board'}</button>
+            </div>
+            {createError && <div className="ib-error-state" role="alert" style={{ margin: '14px 0 0', padding: '10px 12px', boxShadow: 'none' }}><strong>{createError}</strong></div>}
+            <div className="ib-template-grid">
               {BOARD_TEMPLATES.map(template => (
-                <button
+                <TemplatePreview
                   key={template.id}
-                  onClick={() => { setSelectedTemplateId(template.id); if (!newName.trim()) setNewName(template.name) }}
-                  style={{
-                    textAlign: 'left',
-                    border: `1.5px solid ${selectedTemplateId === template.id ? '#6C63FF' : bdr}`,
-                    background: selectedTemplateId === template.id ? (dark ? '#1B2B4A' : '#F0EDFF') : (dark ? '#162845' : 'white'),
-                    color: txt,
-                    borderRadius: 10,
-                    padding: '11px 12px',
-                    cursor: 'pointer',
-                    fontFamily: "'DM Sans',sans-serif",
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: 13, marginBottom: 3 }}>{template.name}</div>
-                  <div style={{ fontSize: 11, color: sub, lineHeight: 1.35 }}>{template.description}</div>
-                </button>
+                  templateId={template.id}
+                  name={template.name}
+                  description={template.description}
+                  selected={selectedTemplateId === template.id}
+                  dark={dark}
+                  onSelect={() => { setSelectedTemplateId(template.id); if (!newName.trim()) setNewName(template.name) }}
+                />
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {creatingGroup && (
-          <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '16px 18px', marginBottom: 16, display: 'flex', gap: 10 }}>
-            <input autoFocus value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+          <section className="ib-group-panel" aria-labelledby="new-group-heading">
+            <div className="ib-section-header" style={{ marginBottom: 10 }}>
+              <h2 id="new-group-heading">Create a group</h2>
+              <button className="ib-icon-button" type="button" onClick={() => setCreatingGroup(false)} aria-label="Close new group form" title="Close"><span aria-hidden="true">×</span></button>
+            </div>
+            <div className="ib-form-row">
+            <input className="ib-input" autoFocus value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleCreateGroup(); if (e.key === 'Escape') setCreatingGroup(false) }}
-              placeholder="Group name…"
-              style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
+              placeholder="Group name"
+              aria-label="Group name"
             />
-            <button onClick={handleCreateGroup} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13, fontFamily: "'DM Sans',sans-serif" }}>Create</button>
-            <button onClick={() => setCreatingGroup(false)} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-          </div>
+            <button className="ib-action ib-action-primary" onClick={handleCreateGroup}><Plus size={15} /> Create group</button>
+            </div>
+          </section>
         )}
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 60, color: sub, fontSize: 14 }}>Loading boards…</div>
+        {loadError ? (
+          <div className="ib-error-state" role="alert">
+            <strong>{loadError}</strong>
+            <button className="ib-action" onClick={() => void loadBoards()}>Try again</button>
+          </div>
+        ) : loading ? (
+          <div className="ib-empty-state" role="status" aria-live="polite"><strong>Loading your boards...</strong><p>Getting your workspace ready.</p></div>
         ) : boards.length === 0 && !creating ? (
-          <div style={{ textAlign: 'center', padding: 80, color: sub }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🗂️</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: txt, marginBottom: 8 }}>No boards yet</div>
-            <div style={{ fontSize: 14 }}>Click "New Board" to get started</div>
+          <div className="ib-empty-state">
+            <strong>There is room for a good idea here.</strong>
+            <p>Start with a blank board or choose a shape that fits the work.</p>
+            <button className="ib-action ib-action-primary" onClick={() => setCreating(true)}><Plus size={15} /> Start a board</button>
           </div>
         ) : (
           <>
@@ -350,7 +406,8 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span
+                    <button
+                      type="button"
                       onMouseDown={e => {
                         e.preventDefault()
                         dragGroupId.current = group.id
@@ -358,8 +415,9 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
                         setDraggingGroupId(group.id)
                       }}
                       title="Drag to reorder"
-                      style={{ cursor: 'grab', fontSize: 16, color: sub, userSelect: 'none', paddingRight: 4 }}
-                    >⠿</span>
+                      aria-label={`Reorder ${group.name}`}
+                      style={{ display: 'grid', placeItems: 'center', width: 24, height: 24, border: 0, background: 'transparent', color: sub, cursor: 'grab', padding: 0 }}
+                    ><GripVertical size={15} /></button>
                     {editingGroupId === group.id ? (
                       <input autoFocus value={editGroupName}
                         onChange={e => setEditGroupName(e.target.value)}
@@ -368,27 +426,29 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
                         style={{ border: `1.5px solid #6C63FF`, borderRadius: 6, padding: '3px 8px', fontSize: 15, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
                       />
                     ) : (
-                      <span style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: txt }}>{group.name}</span>
+                      <span style={{ fontFamily: fonts.display, fontWeight: 700, fontSize: 16, color: txt }}>{group.name}</span>
                     )}
-                    <button onClick={() => { setEditingGroupId(group.id); setEditGroupName(group.name) }}
-                      title="Rename group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✏️</button>
-                    <button onClick={() => removeGroup(group.id)}
-                      title="Delete group" style={{ width: 24, height: 24, borderRadius: 5, border: `1px solid ${bdr}`, background: dark ? '#162845' : 'white', cursor: 'pointer', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🗑️</button>
-                    <button onClick={() => { setCreatingBoardInGroup(group.id); setNewBoardInGroupName('') }}
-                      style={{ marginLeft: 'auto', height: 28, padding: '0 12px', borderRadius: 7, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 12, fontFamily: "'DM Sans',sans-serif" }}>
-                      + New Board
+                    <button className="ib-icon-button" onClick={() => { setEditingGroupId(group.id); setEditGroupName(group.name) }}
+                      title="Rename group" aria-label={`Rename ${group.name}`} style={{ width: 26, height: 26 }}><Pencil size={12} /></button>
+                    <button className="ib-icon-button" onClick={() => removeGroup(group.id)}
+                      title="Delete group" aria-label={`Delete ${group.name}`} style={{ width: 26, height: 26 }}><Trash2 size={12} /></button>
+                    <button className="ib-action" onClick={() => { setCreatingBoardInGroup(group.id); setNewBoardInGroupName('') }}
+                      title={`Create a board in ${group.name}`} style={{ marginLeft: 'auto', minHeight: 30, padding: '0 10px', fontSize: 11 }}>
+                      <Plus size={13} /> New board
                     </button>
                   </div>
                   <div style={{ height: 1, background: bdr, marginBottom: 16 }} />
                   {creatingBoardInGroup === group.id && (
-                    <div style={{ background: card, border: `2px solid #6C63FF`, borderRadius: 14, padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10 }}>
-                      <input autoFocus value={newBoardInGroupName} onChange={e => setNewBoardInGroupName(e.target.value)}
+                    <div className="ib-group-panel" style={{ padding: 14 }}>
+                      <div className="ib-form-row">
+                      <input className="ib-input" autoFocus value={newBoardInGroupName} onChange={e => setNewBoardInGroupName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') createBoardInGroup(group.id); if (e.key === 'Escape') setCreatingBoardInGroup(null) }}
-                        placeholder="Board name…"
-                        style={{ flex: 1, border: `1.5px solid ${bdr}`, borderRadius: 8, padding: '7px 12px', fontSize: 14, fontFamily: "'DM Sans',sans-serif", background: dark ? '#162845' : 'white', color: txt, outline: 'none' }}
+                        placeholder="Board name"
+                        aria-label="Board name"
                       />
-                      <button onClick={() => createBoardInGroup(group.id)} style={{ height: 34, padding: '0 14px', borderRadius: 8, border: 'none', background: '#6C63FF', color: 'white', cursor: 'pointer', fontSize: 13 }}>Create</button>
-                      <button onClick={() => setCreatingBoardInGroup(null)} style={{ height: 34, padding: '0 12px', borderRadius: 8, border: `1px solid ${bdr}`, background: 'transparent', color: sub, cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+                      <button className="ib-action ib-action-primary" onClick={() => createBoardInGroup(group.id)}><Plus size={14} /> Create</button>
+                      <button className="ib-action" onClick={() => setCreatingBoardInGroup(null)}>Cancel</button>
+                      </div>
                     </div>
                   )}
                   {renderGrid(groupBoards)}
@@ -406,7 +466,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
             )}
           </>
         )}
-      </div>
+      </main>
 
       {/* Group-assignment dropdown */}
       {chipDropdown && (
@@ -425,7 +485,7 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
             minWidth: 180,
           }}>
             {groups.length === 0 ? (
-              <div style={{ padding: '8px 16px', fontSize: 13, color: sub }}>No groups yet — create one first</div>
+              <div style={{ padding: '8px 16px', fontSize: 13, color: sub }}>No groups yet: create one first</div>
             ) : groups.map(g => {
               const checked = boardGroups.some(bg => bg.board_id === chipDropdown.boardId && bg.group_id === g.id)
               return (

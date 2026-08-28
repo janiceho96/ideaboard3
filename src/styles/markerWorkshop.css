@@ -496,6 +496,10 @@
 .ib-empty-board span { color: var(--ib-ink-soft); font-size: 12px; line-height: 1.4; }
 .ib-empty-board button { justify-self: center; margin-top: 5px; }
 
+.ib-dialog-backdrop { backdrop-filter: blur(3px); }
+.ib-dialog label { color: var(--ib-ink-soft); }
+.ib-dialog button { font-family: 'DM Sans', sans-serif; }
+
 .ib-sr-only {
   position: absolute;
   width: 1px;

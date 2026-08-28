@@ -13,21 +13,23 @@ import { useState, useRef, useEffect } from 'react'
 import type { Card, TagType } from '../types'
 import { marked } from 'marked'
 import { sanitizeHtml } from '../lib/sanitizeHtml'
+import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy, Lock, LockOpen, Trash2 } from 'lucide-react'
+import { colors, fonts, radii, shadows } from '../lib/designTokens'
 
 // Configure marked: safe, no wrapping <p> for single lines
 marked.setOptions({ breaks: true })
 
 const TAG_META: Record<TagType, { label: string; bg: string; color: string }> = {
-  idea:     { label: '💡 Idea',     bg: '#E8E0F5', color: '#3A2270' },
-  critical: { label: '🚨 Critical', bg: '#D4EDD8', color: '#1B4D21' },
-  planned:  { label: '📅 Planned',  bg: '#FFF3B0', color: '#5C4009' },
-  delegate: { label: '👋 Delegate', bg: '#FFD6C2', color: '#6B2D0D' },
-  remove:   { label: '🗑️ Remove',   bg: '#E8E0F5', color: '#3A2270' },
-  done:     { label: '✅ Done',     bg: '#D4EDD8', color: '#1B4D21' },
+  idea:     { label: 'Idea',     bg: '#EEE9FF', color: '#4137A8' },
+  critical: { label: 'Critical', bg: colors.markerCoral, color: '#6E252E' },
+  planned:  { label: 'Planned',  bg: colors.markerYellow, color: '#523F00' },
+  delegate: { label: 'Delegate', bg: colors.markerCyan, color: '#0E4B68' },
+  remove:   { label: 'Remove',   bg: '#E7E9EF', color: '#4C566C' },
+  done:     { label: 'Done',     bg: colors.markerMint, color: '#164D40' },
 }
 const DOT_COLORS: Record<TagType, string> = {
-  idea: '#A78BFA', critical: '#EF4444', planned: '#F59E0B',
-  delegate: '#6366F1', remove: '#8B5CF6', done: '#22C55E',
+  idea: colors.markerPurple, critical: colors.markerCoral, planned: colors.markerYellow,
+  delegate: colors.markerCyan, remove: '#8D96A9', done: colors.markerMint,
 }
 
 // Returns null | 'soon' | 'overdue' based on due_date
@@ -57,17 +59,17 @@ interface IdeaCardProps {
 
 export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInlineTitle, onToggleCollapse, onDuplicate, onToggleLock, onColorPick, dark }: IdeaCardProps) {
   const tm        = TAG_META[card.tag] ?? TAG_META.idea
-  const dotColor  = DOT_COLORS[card.tag] ?? '#6C63FF'
+  const dotColor  = DOT_COLORS[card.tag] ?? colors.markerPurple
   const dueStatus = getDueStatus(card.due_date)
 
-  const isDark    = card.bg === '#152336'
-  const textColor = isDark ? 'white' : (dark ? '#F0EEE8' : '#152336')
-  const mutedColor= isDark ? 'rgba(255,255,255,0.6)' : (dark ? '#aaa' : '#666')
+  const isDark    = card.bg === '#152336' || card.bg === colors.inkDark
+  const textColor = isDark ? 'white' : (dark ? '#F7F7F2' : colors.ink)
+  const mutedColor= isDark ? 'rgba(255,255,255,0.6)' : (dark ? '#AAB5C9' : '#5F687B')
 
   // Border colour: overdue = red, soon = amber, default = dark
   const borderColor = dueStatus === 'overdue' ? '#EF4444'
                     : dueStatus === 'soon'    ? '#F59E0B'
-                    : '#152336'
+                    : colors.ink
 
   // Inline title editing
   const [editing, setEditing]   = useState(false)
@@ -90,8 +92,8 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
       )
     : ''
 
-  const cardBg = card.bg === '#152336' ? '#152336'
-               : dark && card.bg === 'white' ? '#1E1E2A'
+  const cardBg = isDark ? colors.inkDark
+               : dark && card.bg === 'white' ? colors.surfaceDark
                : card.bg || 'white'
 
   return (
@@ -121,11 +123,11 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
         left: card.x, top: card.y,
         transform: `rotate(${card.rotation}deg)`,
         background: cardBg,
-        borderRadius: 14,
+        borderRadius: radii.card,
         border: `2px solid ${borderColor}`,
         boxShadow: dueStatus === 'overdue'
           ? `0 4px 14px rgba(239,68,68,.25), 0 0 0 1px rgba(239,68,68,.15)`
-          : '0 4px 14px rgba(0,0,0,.13)',
+          : shadows.card,
         padding: '13px 15px 10px',
         cursor: card.locked ? 'default' : 'grab',
         width: card.card_width ?? 185,
@@ -133,7 +135,7 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
         minHeight: card.collapsed ? 44 : 100,
         zIndex: 20,
         userSelect: 'none',
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: fonts.ui,
         overflow: 'hidden',
         boxSizing: 'border-box',
       }}
@@ -143,20 +145,19 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
         onClick={e => { e.stopPropagation(); onToggleCollapse(card.id) }}
         onMouseDown={e => e.stopPropagation()}
         title={card.collapsed ? 'Expand card' : 'Collapse card'}
-        style={{ position: 'absolute', top: 6, left: 6, width: 16, height: 16, borderRadius: '50%', background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', fontSize: 9, color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
-      >{card.collapsed ? '▸' : '▾'}</button>
+        aria-label={card.collapsed ? 'Expand card' : 'Collapse card'}
+        style={{ position: 'absolute', top: 6, left: 6, width: 18, height: 18, borderRadius: 5, background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', color: mutedColor, display: 'grid', placeItems: 'center', zIndex: 2 }}
+      >{card.collapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}</button>
 
       {/* Lock button */}
       <button className="no-drag"
         onClick={e => { e.stopPropagation(); onToggleLock(card.id) }}
         onMouseDown={e => e.stopPropagation()}
         title={card.locked ? 'Unlock card' : 'Lock card in place'}
-        style={{ position: 'absolute', top: 6, right: 52, width: 18, height: 18, borderRadius: '50%', background: card.locked ? 'rgba(108,99,255,.18)' : 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', fontSize: 10, color: card.locked ? '#6C63FF' : '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
+        aria-label={card.locked ? 'Unlock card' : 'Lock card in place'}
+        style={{ position: 'absolute', top: 6, right: 52, width: 18, height: 18, borderRadius: 5, background: card.locked ? 'rgba(105,87,255,.18)' : 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', color: card.locked ? colors.markerPurple : mutedColor, display: 'grid', placeItems: 'center', zIndex: 2 }}
       >
-        {card.locked
-          ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 019.9-1"/></svg>
-        }
+        {card.locked ? <Lock size={11} /> : <LockOpen size={11} />}
       </button>
 
       {/* Duplicate button */}
@@ -164,34 +165,34 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
         onClick={e => { e.stopPropagation(); onDuplicate(card.id) }}
         onMouseDown={e => e.stopPropagation()}
         title="Duplicate card"
-        style={{ position: 'absolute', top: 6, right: 30, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', fontSize: 10, color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
-      >
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2"/>
-          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-        </svg>
-      </button>
+        aria-label="Duplicate card"
+        style={{ position: 'absolute', top: 6, right: 30, width: 18, height: 18, borderRadius: 5, background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', color: mutedColor, display: 'grid', placeItems: 'center', zIndex: 2 }}
+      ><Copy size={11} /></button>
 
       {/* Delete button */}
       <button className="no-drag"
         onClick={e => { e.stopPropagation(); onDelete(card.id) }}
         onMouseDown={e => e.stopPropagation()}
-        style={{ position: 'absolute', top: 6, right: 8, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', fontSize: 12, color: '#888', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}
-      >×</button>
+        title="Delete card"
+        aria-label="Delete card"
+        style={{ position: 'absolute', top: 6, right: 8, width: 18, height: 18, borderRadius: 5, background: 'rgba(0,0,0,.07)', border: 'none', cursor: 'pointer', color: mutedColor, display: 'grid', placeItems: 'center', zIndex: 2 }}
+      ><Trash2 size={11} /></button>
 
-      {/* Overdue badge — shifted right to clear the chevron */}
+      {/* Overdue badge is shifted right to clear the collapse control. */}
       {dueStatus && (
-        <div style={{ position: 'absolute', top: 6, left: 24, fontSize: 9, fontWeight: 700, letterSpacing: '.05em', textTransform: 'uppercase', color: dueStatus === 'overdue' ? '#EF4444' : '#F59E0B', background: dueStatus === 'overdue' ? 'rgba(239,68,68,.1)' : 'rgba(245,158,11,.1)', padding: '2px 6px', borderRadius: 10 }}>
-          {dueStatus === 'overdue' ? '⚠ Overdue' : '⏰ Due soon'}
+        <div style={{ position: 'absolute', top: 6, left: 24, fontSize: 9, fontWeight: 800, letterSpacing: '.05em', textTransform: 'uppercase', color: dueStatus === 'overdue' ? '#A52A32' : '#765900', background: dueStatus === 'overdue' ? 'rgba(255,142,142,.28)' : 'rgba(255,218,69,.34)', padding: '3px 6px', borderRadius: radii.control, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {dueStatus === 'overdue' ? <AlertTriangle size={10} /> : <Clock3 size={10} />}
+          {dueStatus === 'overdue' ? 'Overdue' : 'Due soon'}
         </div>
       )}
 
       {/* Tag */}
-      <div style={{ marginTop: dueStatus ? 16 : 0, marginBottom: 7, display: 'inline-block', fontSize: 9, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: 18, background: tm.bg, color: tm.color }}>
+      <div style={{ marginTop: dueStatus ? 16 : 0, marginBottom: 7, display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', padding: '4px 7px', borderRadius: radii.control, background: tm.bg, color: tm.color }}>
+        <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor }} />
         {tm.label}
       </div>
 
-      {/* Title — inline editable */}
+      {/* Title: inline editable */}
       {editing ? (
         <input ref={inputRef} className="no-drag"
           value={draft}
@@ -199,18 +200,18 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
           onBlur={commitTitle}
           onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setEditing(false); setDraft(card.title) } }}
           onMouseDown={e => e.stopPropagation()}
-          style={{ display: 'block', width: '100%', border: '1.5px solid #6C63FF', borderRadius: 6, padding: '3px 6px', fontSize: 13, fontFamily: "'Syne',sans-serif", fontWeight: 700, background: 'transparent', color: textColor, outline: 'none', marginBottom: 5, boxSizing: 'border-box' }}
+          style={{ display: 'block', width: '100%', border: `1.5px solid ${colors.markerPurple}`, borderRadius: radii.control, padding: '3px 6px', fontSize: 13, fontFamily: fonts.display, fontWeight: 700, background: 'transparent', color: textColor, outline: 'none', marginBottom: 5, boxSizing: 'border-box' }}
         />
       ) : (
         <div
           className="no-drag"
           onClick={e => { e.stopPropagation(); setEditing(true) }}
           title="Click to rename"
-          style={{ fontFamily: "'Syne',sans-serif", fontSize: 13, fontWeight: 700, color: textColor, lineHeight: 1.3, marginBottom: card.body ? 5 : 0, cursor: 'text', borderRadius: 4, padding: '2px 0' }}
+          style={{ fontFamily: fonts.display, fontSize: 13, fontWeight: 700, color: textColor, lineHeight: 1.3, marginBottom: card.body ? 5 : 0, cursor: 'text', borderRadius: 4, padding: '2px 0' }}
         >{card.title}</div>
       )}
 
-      {/* Body — rendered markdown (hidden when collapsed) */}
+      {/* Body: rendered markdown, hidden when collapsed */}
       {!card.collapsed && card.body && (
         <div className="no-drag md-body"
           dangerouslySetInnerHTML={{ __html: markdownHtml }}
@@ -218,17 +219,17 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
         />
       )}
 
-      {/* Footer (hidden when collapsed) */}
+      {/* Footer: hidden when collapsed */}
       {!card.collapsed && (
         <div style={{ marginTop: 9, paddingTop: 7, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.07)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 10, color: mutedColor }}>
-            {card.due_date ? `📅 ${card.due_date}` : card.date_label}
+            {card.due_date ? <><CalendarDays size={11} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />{card.due_date}</> : card.date_label}
           </span>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor }} />
         </div>
       )}
 
-      {/* Resize handle — bottom-right corner (disabled when locked) */}
+      {/* Resize handle: bottom-right corner, disabled when locked */}
       <div className="no-drag"
         onMouseDown={e => {
           if (card.locked) return

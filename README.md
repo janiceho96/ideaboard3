@@ -14,13 +14,13 @@ These screenshots show sample boards with different layouts, so each example dem
 
 The home screen keeps boards together in a simple visual dashboard. Each board card shows a small thumbnail preview, so users can recognize the board before opening it.
 
-![Ideaboard board dashboard](marketing/screenshots/home-dashboard.png)
+![Ideaboard Marker Workshop dashboard](marketing/screenshots/marker-workshop-dashboard.png)
 
 ### Project Brainstorm Board
 
 This example uses a Start / Stop / Continue framework for a cafe promotion. It shows messy campaign thinking: goals, audience clues, wild hooks, an AI prompt, and the next experiment all living on the same board.
 
-![Ideaboard project brainstorm board](marketing/screenshots/campaign-board.png)
+![Ideaboard Marker Workshop project brainstorm board](marketing/screenshots/marker-workshop-workspace.png)
 
 ### Content Calendar Board
 

@@ -164,6 +164,15 @@
   padding: 42px 0 64px;
 }
 
+.ib-auth-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.ib-auth-card { width: min(390px, 100%); padding: 32px; border: 2px solid var(--ib-ink); border-radius: var(--ib-radius-panel); background: var(--ib-surface); box-shadow: 7px 8px 0 rgba(23, 32, 56, 0.16); }
+.ib-auth-card h1, .ib-auth-card h2 { font-family: 'Syne', sans-serif; letter-spacing: 0; }
+.ib-auth-card h2 { margin: 0 0 6px; font-size: 23px; }
+.ib-auth-card label { display: block; margin-bottom: 6px; color: var(--ib-ink-soft); font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.ib-auth-card .ib-auth-field { margin-bottom: 16px; }
+.ib-auth-card .ib-auth-error { margin-bottom: 16px; padding: 10px 12px; border: 1px solid #F2A7AD; border-radius: var(--ib-radius-control); background: #FFF0F1; color: #A52A32; font-size: 12px; }
+.ib-auth-card .ib-auth-success { padding: 13px 14px; border: 1.5px solid #2F9E82; border-radius: var(--ib-radius-control); background: #DDF7EE; color: #164D40; font-size: 13px; line-height: 1.45; }
+
 .ib-welcome {
   display: flex;
   align-items: flex-end;

@@ -62,9 +62,7 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
   const dotColor  = DOT_COLORS[card.tag] ?? colors.markerPurple
   const dueStatus = getDueStatus(card.due_date)
 
-  const isDark    = card.bg === '#152336' || card.bg === colors.inkDark
-  const textColor = isDark ? 'white' : (dark ? '#F7F7F2' : colors.ink)
-  const mutedColor= isDark ? 'rgba(255,255,255,0.6)' : (dark ? '#AAB5C9' : '#5F687B')
+  const legacyDarkCard = card.bg === '#152336' || card.bg === colors.inkDark
 
   // Border colour: overdue = red, soon = amber, default = dark
   const borderColor = dueStatus === 'overdue' ? '#EF4444'
@@ -92,9 +90,12 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
       )
     : ''
 
-  const cardBg = isDark ? colors.inkDark
+  const cardBg = legacyDarkCard ? colors.inkDark
                : dark && card.bg === 'white' ? colors.surfaceDark
                : card.bg || 'white'
+  const darkSurface = cardBg === colors.inkDark || cardBg === colors.surfaceDark
+  const textColor = darkSurface ? '#F7F7F2' : colors.ink
+  const mutedColor = darkSurface ? 'rgba(255,255,255,0.6)' : '#5F687B'
 
   return (
     <div
@@ -221,7 +222,7 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
 
       {/* Footer: hidden when collapsed */}
       {!card.collapsed && (
-        <div style={{ marginTop: 9, paddingTop: 7, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.07)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ marginTop: 9, paddingTop: 7, borderTop: `1px solid ${darkSurface ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.07)'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 10, color: mutedColor }}>
             {card.due_date ? <><CalendarDays size={11} style={{ verticalAlign: 'text-bottom', marginRight: 4 }} />{card.due_date}</> : card.date_label}
           </span>

@@ -192,7 +192,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [boardSearch, setBoardSearch] = useState('')
   const [hideDoneRemove, setHideDoneRemove] = useState(false)
   const [overdueOnly, setOverdueOnly] = useState(false)
-  const [showBoardPanel, setShowBoardPanel] = useState(true)
+  const [showBoardPanel, setShowBoardPanel] = useState(() => typeof window === 'undefined' || window.innerWidth > 720)
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
@@ -1447,7 +1447,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
         {/* Topbar */}
         <div className="ib-board-header" style={{ background: topBg, borderColor: topBdr }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+          <div className="ib-board-breadcrumb" style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
             <span style={{ fontSize: 11, color: subC, fontFamily: fonts.ui }}>Boards /</span>
             <span className="ib-board-title" style={{ color: dark ? '#F7F7F2' : colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{board.name}</span>
             <span className="ib-board-status">Saved locally</span>
@@ -1479,12 +1479,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 created_at: new Date().toISOString(),
               })
             }}
+            title="Add text"
+            aria-label="Add text"
             className="ib-action"
           >
-            <Type size={14} /> Add text
+            <Type size={14} /> <span className="ib-board-action-label">Add text</span>
           </button>
-          <button className="ib-action ib-action-primary" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}>
-            <SquarePlus size={15} /> Add card
+          <button title="Add card" aria-label="Add card" className="ib-action ib-action-primary" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width/2, cr.top + cr.height/2); setEditingCard(null); setModalOpen(true) } }}>
+            <SquarePlus size={15} /> <span className="ib-board-action-label">Add card</span>
           </button>
           </div>
         </div>
@@ -2278,7 +2280,7 @@ function SbBtn({ children, title, onClick }: { children: React.ReactNode; title:
   return (
     <button title={title} onClick={onClick}
       style={{ width:42,height:42,borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'rgba(255,255,255,0.45)',background:'none',border:'1px solid transparent',transition:'background .15s,color .15s,border-color .15s' }}
-      onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(73,182,229,0.12)'; b.style.color = '#49B6E5'; b.style.borderColor = 'rgba(73,182,229,0.3)' }}
+      onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'rgba(255,218,69,0.14)'; b.style.color = colors.markerYellow; b.style.borderColor = 'rgba(255,218,69,0.3)' }}
       onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'none'; b.style.color = 'rgba(255,255,255,0.45)'; b.style.borderColor = 'transparent' }}
     >{children}</button>
   )

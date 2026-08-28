@@ -224,7 +224,6 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
       .slice(0, 3)
 
   const bg   = dark ? colors.canvasDark : colors.canvasLight
-  const card = dark ? colors.surfaceDark : colors.surfaceLight
   const bdr  = dark ? colors.borderDark : colors.borderLight
   const txt  = dark ? '#F7F7F2' : colors.ink
   const sub  = dark ? '#AAB5C9' : '#5F687B'

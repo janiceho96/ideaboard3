@@ -18,8 +18,8 @@ export const colors = {
 
 export const fonts = {
   ui: "'DM Sans', sans-serif",
-  display: "'Delius Swash Caps', cursive",
-  body: "'Delius', cursive",
+  display: "'Syne', sans-serif",
+  body: "'DM Sans', sans-serif",
   mono: "'JetBrains Mono', monospace",
 } as const
 

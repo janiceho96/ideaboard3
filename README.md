@@ -298,7 +298,23 @@ This project includes launcher files for people who do not want to type commands
 
 ### Mac
 
-Double-click:
+Recommended: build the native Mac app once by double-clicking:
+
+```text
+macOS/install-ideaboard-mac.command
+```
+
+This uses Xcode to register `Ideaboard.app` in your Applications folder. After the installer finishes, open:
+
+```text
+~/Applications/Ideaboard.app
+```
+
+You can move it to the Dock for one-click launching. It starts the local server and opens Ideaboard in your browser without leaving a Terminal window open.
+
+Keep the project folder in place after installing. If you move it, run the Mac installer again so the app can register the new location.
+
+If you do not want to build the native app, the terminal launcher is also available:
 
 ```text
 launch-ideaboard.command

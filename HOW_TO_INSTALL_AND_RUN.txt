@@ -11,38 +11,44 @@ FOR MAC USERS
 
 2. Open the Ideaboard folder.
 
-3. Double-click this file:
+3. Make sure Xcode and Node.js are installed on your Mac.
 
-   launch-ideaboard.command
+4. Double-click this file:
 
-4. If your Mac asks for permission to open it:
+   macOS/install-ideaboard-mac.command
 
-   - Right-click launch-ideaboard.command
+5. If macOS asks for permission to open it:
+
+   - Right-click macOS/install-ideaboard-mac.command
    - Choose Open
    - Click Open again
 
-5. Keep the Terminal window open while using Ideaboard.
+6. Wait for the installer to finish. It creates:
 
-6. Ideaboard should open in your browser at:
+   Your Home Folder > Applications > Ideaboard.app
+
+7. Open Ideaboard.app from Applications. You can drag it to the Dock for
+   one-click launching.
+
+The native app starts the local server and opens Ideaboard in your browser.
+You do not need to keep a Terminal window open.
+Keep the project folder in the same location after installing. If you move it,
+run macOS/install-ideaboard-mac.command again.
+
+ALTERNATIVE MAC LAUNCHER
+
+If you do not want to build the native app, double-click:
+
+   launch-ideaboard.command
+
+Keep the Terminal window open while using this alternative launcher. Ideaboard
+should open in your browser at:
 
    http://127.0.0.1:5174/ideaboard.html
 
-7. To stop Ideaboard, go back to the Terminal window and press:
+To stop it, go back to the Terminal window and press:
 
    Control + C
-
-
-OPTIONAL MAC LAUNCHPAD SHORTCUT
-
-If there is an Ideaboard.app file included, move it to:
-
-   Your Home Folder > Applications
-
-Then open Launchpad and search for:
-
-   Ideaboard
-
-Click it to launch the app.
 
 
 FOR WINDOWS USERS

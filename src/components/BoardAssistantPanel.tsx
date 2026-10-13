@@ -158,7 +158,6 @@ export default function BoardAssistantPanel(props: Props) {
   const [sectionId, setSectionId] = useState('')
   const [noteId, setNoteId] = useState(selectedNoteIds[0] ?? '')
   const [replace, setReplace] = useState(false)
-  const [consent, setConsent] = useState(false)
   const [status, setStatus] = useState<NativeAIStatus>({ available: false, configured: false })
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState('')
@@ -293,7 +292,7 @@ export default function BoardAssistantPanel(props: Props) {
     : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : [], [scope, props.availableSources, sourceSelection])
   const targetNote = cards.find(c => c.id === noteId)
   const needsFrame = command === 'fill' || command === 'expand'
-  const canGenerate = status.configured && consent && goal.trim() && !blockedByTask && !review && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
+  const canGenerate = status.configured && goal.trim() && !blockedByTask && !review && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
   const canRunLocalAction = promptRoute?.status === 'action' || promptRoute?.status === 'clarify'
   const canSubmit = !!goal.trim() && !blockedByTask && !review && !frameworkReview && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
 
@@ -757,7 +756,6 @@ export default function BoardAssistantPanel(props: Props) {
           <span className="ib-context-help">Locked notes cannot be revised.</span>
         </label>}
         {needsFrame && <label className="ib-context-check"><input type="checkbox" checked={replace} disabled={busy || !!review || blockedByTask} onChange={e => setReplace(e.target.checked)} /> Suggest replacements with a comparison</label>}
-        {status.available && <label className="ib-context-check"><input type="checkbox" checked={consent} disabled={busy} onChange={e => setConsent(e.target.checked)} /> Send this message, recent chat, selected sources, and target writing to my configured provider.</label>}
         {status.available && <button type="button" className="ib-panel-small" onClick={refreshStatus}>Check AI connection</button>}
       </div>}
       <div className="ib-chat-composer-tools">
@@ -767,8 +765,9 @@ export default function BoardAssistantPanel(props: Props) {
         {!status.available && <span className="ib-composer-hint">Mac app required for AI</span>}
       </div>
       <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!frameworkReview || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={frameworkReview ? 'Review, save, or discard the framework draft to continue…' : status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
+      {status.configured && <span className="ib-context-help">AI requests share your message, recent chat, selected sources, and target writing with your configured provider.</span>}
       <div className="ib-chat-composer-bottom">
-        <span className="ib-composer-hint">{status.available && !consent ? 'Confirm sharing in Context' : status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'Your notes stay editable'}</span>
+        <span className="ib-composer-hint">{status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'Your notes stay editable'}</span>
         {busy ? <button type="button" className="ib-panel-small ib-stop-button" onClick={() => abort.current?.abort()}><Square size={13} /> Stop</button> : <button type="submit" className="ib-send-button" aria-label="Send message" title="Send message" disabled={!canSubmit}><Send size={16} /></button>}
       </div>
     </form>

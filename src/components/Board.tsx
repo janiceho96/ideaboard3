@@ -922,6 +922,16 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [brd, selectedCardIds, showToast])
 
   useEffect(() => {
+    // Keep pointer previews out of board state; the drop handler commits the final position.
+    const previewCardMove = (id: string, x: number, y: number) => {
+      for (const [prefix, offset] of [['card_', 0], ['multi-card_', 6], ['selected-card_', 5]] as const) {
+        const element = document.getElementById(`${prefix}${id}`)
+        if (element) {
+          element.style.left = `${x - offset}px`
+          element.style.top = `${y - offset}px`
+        }
+      }
+    }
     const applyPointerMove = (clientX: number, clientY: number) => {
       if (isDragging.current && canvasRef.current) {
         const cr = canvasRef.current.getBoundingClientRect()
@@ -935,16 +945,16 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           if (ids.length > 1 || tileIds.length) {
             const dx = wx - dragStartWX.current
             const dy = wy - dragStartWY.current
-            for (const id of ids) brd.moveCard(id, starts[id].x + dx, starts[id].y + dy)
+            for (const id of ids) previewCardMove(id, starts[id].x + dx, starts[id].y + dy)
             const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
             if (tileIds.length) sldRef.current.moveTiles(tilePositions)
             setSnapGhost(null)
           } else {
-            brd.moveCard(dragCardId.current, wx, wy)
+            previewCardMove(dragCardId.current, wx, wy)
             const draggingCard = brd.cards.find(c => c.id === dragCardId.current)
             if (draggingCard) {
             const snap = snapPosition(wx, wy, draggingCard, brd.cards)
-            setSnapGhost(snap)
+            setSnapGhost(previous => previous?.x === snap.x && previous.y === snap.y ? previous : snap)
             if (snap.snappedToId && snap.snappedToId !== lastSnapId.current) playSnapSound()
             lastSnapId.current = snap.snappedToId
             }
@@ -961,7 +971,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             const dy = wy - dragStartWY.current
             const tilePositions = Object.fromEntries(tileIds.map(id => [id, { x: tileStarts[id].x + dx, y: tileStarts[id].y + dy }]))
             sldRef.current.moveTiles(tilePositions)
-            for (const id of cardIds) brd.moveCard(id, cardStarts[id].x + dx, cardStarts[id].y + dy)
+            for (const id of cardIds) previewCardMove(id, cardStarts[id].x + dx, cardStarts[id].y + dy)
           } else {
             sldRef.current.moveTile(dragTileId.current, wx, wy)
           }
@@ -1077,6 +1087,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             const dy = wy - dragStartWY.current
             for (const id of ids) {
               const next = { x: starts[id].x + dx, y: starts[id].y + dy }
+              previewCardMove(id, next.x, next.y)
               brd.moveCard(id, next.x, next.y)
               brd.commitCardMove(id, next.x, next.y)
             }
@@ -1089,6 +1100,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             const finalPos = draggingCard
               ? snapPosition(wx, wy, draggingCard, brd.cards)
               : { x: wx, y: wy }
+            previewCardMove(dragCardId.current, finalPos.x, finalPos.y)
             brd.moveCard(dragCardId.current, finalPos.x, finalPos.y)
             brd.commitCardMove(dragCardId.current, finalPos.x, finalPos.y)
           }
@@ -1109,6 +1121,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             }
             for (const id of cardIds) {
               const next = { x: cardStarts[id].x + dx, y: cardStarts[id].y + dy }
+              previewCardMove(id, next.x, next.y)
               brd.moveCard(id, next.x, next.y)
               brd.commitCardMove(id, next.x, next.y)
             }
@@ -2028,7 +2041,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             })()}
 
             {selectedCards.map(card => (
-              <div key={`multi-${card.id}`} style={{
+              <div key={`multi-${card.id}`} id={`multi-card_${card.id}`} style={{
                 position: 'absolute',
                 left: card.x - 6,
                 top: card.y - 6,
@@ -2092,7 +2105,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               const card = visibleCards.find(c => c.id === selectedCardId)
               if (!card) return null
               return (
-                <div style={{
+                <div id={`selected-card_${card.id}`} style={{
                   position: 'absolute',
                   left: card.x - 5,
                   top: card.y - 5,

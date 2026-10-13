@@ -9,7 +9,7 @@
 //   - Lock button prevents dragging and resizing
 //   - Right-click opens quick colour picker
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import type { Card, TagType } from '../types'
 import { marked } from 'marked'
 import { sanitizeHtml } from '../lib/sanitizeHtml'
@@ -85,11 +85,11 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
   }
 
   // Render markdown body safely
-  const markdownHtml = card.body
+  const markdownHtml = useMemo(() => card.body
     ? sanitizeHtml((marked.parse(card.body) as string)
         .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
       )
-    : ''
+    : '', [card.body])
 
   const cardBg = legacyDarkCard ? colors.inkDark
                : dark && card.bg === 'white' ? colors.surfaceDark

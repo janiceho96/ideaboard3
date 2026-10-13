@@ -8,12 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* AppDelegate.swift */; };
+		A10000000000000000000002 /* LocalWebServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* LocalWebServer.swift */; };
+		A10000000000000000000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/AppDelegate.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000000000000000000003 /* Ideaboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Ideaboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000004 /* LocalWebServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/LocalWebServer.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +36,7 @@
 			buildConfigurationList = A50000000000000000000002 /* Build configuration list for PBXNativeTarget "IdeaboardMac" */;
 			buildPhases = (
 				A30000000000000000000002 /* Sources */,
+				A30000000000000000000004 /* Build and bundle Ideaboard web app */,
 				A30000000000000000000001 /* Frameworks */,
 				A30000000000000000000003 /* Resources */,
 			);
@@ -81,6 +86,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A10000000000000000000003 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -92,10 +98,29 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000001 /* AppDelegate.swift in Sources */,
+				A10000000000000000000002 /* LocalWebServer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A30000000000000000000004 /* Build and bundle Ideaboard web app */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Build and bundle Ideaboard web app";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nPROJECT_ROOT=\"${SRCROOT}/../..\"\nNPM_BIN=\"${IDEABOARD_NPM_EXECUTABLE:-}\"\nif [ -z \"$NPM_BIN\" ]; then NPM_BIN=\"$(command -v npm || true)\"; fi\nif [ -z \"$NPM_BIN\" ]; then\n  for candidate in /opt/homebrew/bin/npm /usr/local/bin/npm /usr/bin/npm; do\n    if [ -x \"$candidate\" ]; then NPM_BIN=\"$candidate\"; break; fi\n  done\nfi\nif [ -z \"$NPM_BIN\" ] || [ ! -x \"$NPM_BIN\" ]; then echo \"error: Node.js and npm are required to build Ideaboard from source.\"; exit 1; fi\n\"$NPM_BIN\" --prefix \"$PROJECT_ROOT\" run build\nWEB_DEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Web\"\nmkdir -p \"$WEB_DEST\"\nditto \"$PROJECT_ROOT/dist\" \"$WEB_DEST\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXVariantGroup section */
 /* End PBXVariantGroup section */
@@ -148,7 +173,8 @@
 		A50000000000000000000005 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGNING_REQUIRED = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -165,7 +191,8 @@
 		A50000000000000000000006 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGNING_REQUIRED = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -207,6 +234,7 @@
 			isa = PBXGroup;
 			children = (
 				A70000000000000000000003 /* Sources */,
+				A20000000000000000000005 /* Assets.xcassets */,
 				A20000000000000000000002 /* Info.plist */,
 				A70000000000000000000002 /* Products */,
 			);
@@ -224,6 +252,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000001 /* AppDelegate.swift */,
+				A20000000000000000000004 /* LocalWebServer.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";

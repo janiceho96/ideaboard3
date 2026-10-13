@@ -1,101 +1,39 @@
 #!/bin/bash
 
-# Change to the folder this script lives in (works wherever you put it)
-cd "$(dirname "$0")"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_PATH="$HOME/Applications/Ideaboard.app"
-
-# ── Create a proper macOS .app shortcut ──────────────────────────────────────
-create_app_shortcut() {
-  mkdir -p "$HOME/Applications"
-  mkdir -p "$APP_PATH/Contents/MacOS"
-
-  # App metadata
-  cat > "$APP_PATH/Contents/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>Ideaboard</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.ideaboard.app</string>
-  <key>CFBundleName</key>
-  <string>Ideaboard</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleShortVersionString</key>
-  <string>1.0</string>
-  <key>CFBundleVersion</key>
-  <string>1</string>
-  <key>NSHighResolutionCapable</key>
-  <true/>
-</dict>
-</plist>
-PLIST
-
-  # Launcher executable — embeds the project path so the .app always finds it
-  cat > "$APP_PATH/Contents/MacOS/Ideaboard" << LAUNCHER
-#!/bin/bash
-open "$SCRIPT_DIR/launch-ideaboard.command"
-LAUNCHER
-
-  chmod +x "$APP_PATH/Contents/MacOS/Ideaboard"
-
-  echo ""
-  echo " ✓ Ideaboard.app created in ~/Applications"
-  echo ""
-  echo " To add to your Dock:"
-  echo "   1. Open Finder"
-  echo "   2. Press Cmd+Shift+H (go to your home folder)"
-  echo "   3. Open the Applications folder"
-  echo "   4. Drag Ideaboard to the right side of your Dock"
-  echo ""
+# Browser launcher only. The native Mac app is installed separately.
+fail() {
+  printf '\n ERROR: %s\n\n' "$1"
+  if [[ -t 0 ]]; then
+    read -r -p " Press Enter to close..."
+  fi
+  exit 1
 }
 
-# ── Main ─────────────────────────────────────────────────────────────────────
-clear
-echo ""
-echo " ============================="
-echo "   Ideaboard - Starting up..."
-echo " ============================="
-echo ""
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)" || exit 1
+cd "$SCRIPT_DIR" || fail "Cannot open the Ideaboard project folder."
 
-# Offer to install as an app the first time
-if [ ! -d "$APP_PATH" ]; then
-  echo " Tip: Add Ideaboard to your Dock as a proper app."
-  read -p " Create app shortcut now? [y/N] " -n 1 -r
-  echo ""
-  if [[ $REPLY =~ ^[Yy]$ ]]; then
-    create_app_shortcut
-  else
-    echo ""
-  fi
+printf '\n =============================\n   Ideaboard - Starting up...\n =============================\n\n'
+
+if ! command -v node >/dev/null 2>&1 || ! node --version >/dev/null 2>&1; then
+  fail "Install Node.js 24 LTS from https://nodejs.org, then reopen this launcher."
+fi
+if ! command -v npm >/dev/null 2>&1 || ! npm --version >/dev/null 2>&1; then
+  fail "npm is unavailable. Reinstall Node.js 24 LTS from https://nodejs.org, then reopen this launcher."
+fi
+if [[ ! -f package.json || ! -f package-lock.json ]]; then
+  fail "Extract the entire Ideaboard download before opening this launcher."
 fi
 
-# Check Node.js is installed
-if ! command -v node &> /dev/null; then
-  echo " ERROR: Node.js is not installed."
-  echo " Download it from https://nodejs.org"
-  echo ""
-  read -p " Press Enter to close..."
-  exit 1
+if [[ ! -d node_modules ]]; then
+  printf ' First run - installing packages. An internet connection is required.\n\n'
+  npm ci || fail "Package installation failed. Check the message above and your internet connection, then try again."
 fi
 
-# Install packages on first run
-if [ ! -d "node_modules" ]; then
-  echo " First run - installing packages, please wait..."
-  echo ""
-  npm install
-  echo ""
-fi
+printf ' The browser will open when Ideaboard is ready.\n'
+printf ' Address: http://127.0.0.1:5174/ideaboard.html\n'
+printf ' Keep this window open. Press Ctrl+C to stop Ideaboard.\n\n'
 
-echo " Starting server... browser will open in a few seconds."
-echo " Keep this window open while using Ideaboard."
-echo " Press Ctrl+C to stop the app."
-echo ""
-
-# Open browser after Vite has had time to start
-(sleep 4 && open http://localhost:5174/ideaboard.html) &
-
-npm run dev -- --port 5174
+# A fixed host and port keep browser storage consistent between launches.
+# strictPort prevents Vite from silently opening a different, empty board store.
+npm run dev -- --host 127.0.0.1 --port 5174 --strictPort --open /ideaboard.html \
+  || fail "The server could not start. If port 5174 is already in use, stop the other browser launcher and try again."

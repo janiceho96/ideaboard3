@@ -1,5 +1,7 @@
 export type TagType = 'idea' | 'critical' | 'planned' | 'delegate' | 'remove' | 'done'
 
+export type CardFontFamily = 'marker' | 'delius' | 'dm-sans' | 'syne' | 'lora' | 'caveat' | 'jetbrains-mono'
+
 export interface LocalUser {
   id: string
   email: string
@@ -17,6 +19,7 @@ export interface Card {
   board_id: string
   title: string
   body: string
+  font_family?: CardFontFamily // absent on legacy cards; renders with the original Marker typography
   date_label: string
   due_date: string | null      // ISO date string e.g. "2024-08-15"
   tag: TagType
@@ -28,6 +31,8 @@ export interface Card {
   card_height: number | null   // null = auto height
   collapsed: boolean           // true = shrunk to title bar only
   locked: boolean              // true = cannot be dragged or resized
+  ai_source_ids?: string[]
+  ai_assisted?: boolean
   created_at: string
   updated_at: string
 }
@@ -81,7 +86,7 @@ export interface BoardGroup {
   group_id: string
 }
 
-export type FrameworkType =
+export type BuiltinFrameworkType =
   | 'blank' | 'eisenhower' | 'ooda'
   | 'ikigai' | 'wheel-of-life' | 'grow' | 'smart-goals'
   | 'start-stop-continue' | 'personal-kanban' | 'five-whys'
@@ -90,9 +95,35 @@ export type FrameworkType =
   | 'stp' | 'marketing-mix' | 'aida' | 'swot' | 'customer-journey'
   | 'first-principles' | 'six-thinking-hats' | 'scamper' | 'pros-cons' | 'impact-effort'
 
+export type FrameworkType = BuiltinFrameworkType | `custom:${string}:${number}`
+
+export interface FrameworkArea {
+  id: string
+  storageKey: string
+  label: string
+  writingGuidance: string
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+export type FrameworkLayout = 'grid' | 'flow' | 'matrix' | 'cycle'
+
+export interface CustomFrameworkTemplate {
+  id: string
+  revision: number
+  label: string
+  purpose: string
+  layout: FrameworkLayout
+  defaultSize: { width: number; height: number }
+  sections: FrameworkArea[]
+}
+
 export interface FrameInstance {
   id: string
   type: FrameworkType
+  customFramework?: CustomFrameworkTemplate
   name?: string     // user-defined label; absent = show type name only
   notes?: string    // editable text written directly on the framework
   noteAreas?: Record<string, string> // editable text keyed by framework section

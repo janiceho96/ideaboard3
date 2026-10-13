@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>Ideaboard</string>
+	<key>CFBundleIconName</key>
+	<string>AppIcon</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,7 +26,12 @@
 	<true/>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.productivity</string>
-	<key>IDEABOARD_PROJECT_ROOT</key>
-	<string>$(SRCROOT)/../..</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 </dict>
 </plist>

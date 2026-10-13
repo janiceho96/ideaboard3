@@ -1,8 +1,9 @@
 import type { Board, Card, FrameInstance, GoalTag, SlideTile, TextBlock } from '../types'
+import type { BoardSource } from './boardSourceStore'
 
 export interface WhiteboardExport {
   schema: 'ideaboard.whiteboard'
-  version: 1
+  version: 3
   exportedAt: string
   board: Board
   cards: Card[]
@@ -11,6 +12,7 @@ export interface WhiteboardExport {
   textBlocks: TextBlock[]
   slides: SlideTile[]
   slideImages: Record<string, string | null>
+  sources: BoardSource[]
 }
 
 interface BuildWhiteboardExportInput {
@@ -21,6 +23,7 @@ interface BuildWhiteboardExportInput {
   textBlocks: TextBlock[]
   slides: SlideTile[]
   slideImages: Record<string, string | null>
+  sources?: BoardSource[]
   exportedAt?: string
 }
 
@@ -32,11 +35,12 @@ export function buildWhiteboardExport({
   textBlocks,
   slides,
   slideImages,
+  sources = [],
   exportedAt = new Date().toISOString(),
 }: BuildWhiteboardExportInput): WhiteboardExport {
   return {
     schema: 'ideaboard.whiteboard',
-    version: 1,
+    version: 3,
     exportedAt,
     board,
     cards,
@@ -45,5 +49,6 @@ export function buildWhiteboardExport({
     textBlocks,
     slides,
     slideImages,
+    sources,
   }
 }

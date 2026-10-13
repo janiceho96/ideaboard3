@@ -2,12 +2,20 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/markerWorkshop.css'
-
-// Fonts
-const link = document.createElement('link')
-link.rel = 'stylesheet'
-link.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Syne:wght@600;700;800&display=swap'
-document.head.appendChild(link)
+import '@fontsource/dm-sans/400.css'
+import '@fontsource/dm-sans/500.css'
+import '@fontsource/dm-sans/700.css'
+import '@fontsource/syne/600.css'
+import '@fontsource/syne/700.css'
+import '@fontsource/syne/800.css'
+import '@fontsource/delius/400.css'
+import '@fontsource/delius-swash-caps/400.css'
+import '@fontsource/lora/400.css'
+import '@fontsource/lora/700.css'
+import '@fontsource/caveat/500.css'
+import '@fontsource/caveat/700.css'
+import '@fontsource/jetbrains-mono/400.css'
+import '@fontsource/jetbrains-mono/700.css'
 
 // Global reset
 const style = document.createElement('style')

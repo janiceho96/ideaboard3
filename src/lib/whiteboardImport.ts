@@ -7,6 +7,9 @@ import type {
   TextBlock,
 } from '../types'
 import { sanitizeHtml } from './sanitizeHtml'
+import type { BoardSource } from './boardSourceStore'
+import { VALID_TYPES } from '../hooks/useFrames'
+import { frameworkTypeFor, validateCustomFrameworkTemplate } from './customFrameworks'
 
 type ImportKind = 'cards' | 'whiteboard'
 
@@ -18,6 +21,7 @@ export interface WhiteboardImportResult {
   textBlocks: TextBlock[]
   slides: SlideTile[]
   slideImages: Record<string, string>
+  sources: BoardSource[]
 }
 
 interface BuildWhiteboardImportInput {
@@ -82,7 +86,7 @@ export function buildWhiteboardImport({
   }
 
   const cards = cardsRaw.map(card => mapCard(card, targetBoardId))
-  const isWhiteboard = root.schema === 'ideaboard.whiteboard' && root.version === 1
+  const isWhiteboard = root.schema === 'ideaboard.whiteboard' && (root.version === 1 || root.version === 2 || root.version === 3)
 
   if (!isWhiteboard) {
     return {
@@ -93,6 +97,7 @@ export function buildWhiteboardImport({
       textBlocks: [],
       slides: [],
       slideImages: {},
+      sources: [],
     }
   }
 
@@ -112,10 +117,25 @@ export function buildWhiteboardImport({
 
   const frames = asArray(root.frames).map(value => {
     const frame = asRecord(value)
+    const savedType = asString(frame.type, 'eisenhower')
+    const customFramework = validateCustomFrameworkTemplate(frame.customFramework)
+    const hasValidCustom = customFramework && frameworkTypeFor(customFramework) === savedType
+    const type = hasValidCustom
+      ? savedType as FrameInstance['type']
+      : VALID_TYPES.some(valid => valid === savedType)
+        ? savedType as FrameInstance['type']
+        : 'eisenhower'
+    const rawNoteAreas = asRecord(frame.noteAreas)
+    const noteAreas = Object.fromEntries(Object.entries(rawNoteAreas)
+      .filter(([key, text]) => key.length <= 100 && typeof text === 'string' && text.length <= 20000)
+      .slice(0, 32)) as Record<string, string>
     return {
       id: createId(),
-      type: asString(frame.type, 'eisenhower') as FrameInstance['type'],
+      type,
+      ...(hasValidCustom ? { customFramework } : {}),
       name: asString(frame.name) || undefined,
+      notes: asString(frame.notes) || undefined,
+      ...(Object.keys(noteAreas).length ? { noteAreas } : {}),
       x: asNumber(frame.x, 60),
       y: asNumber(frame.y, 40),
       width: asNumber(frame.width, 640),
@@ -138,10 +158,12 @@ export function buildWhiteboardImport({
 
   const slideImagesRaw = asRecord(root.slideImages)
   const slideImages: Record<string, string> = {}
+  const slideIds = new Map<string, string>()
   const slides = asArray(root.slides).map(value => {
     const slide = asRecord(value)
     const oldId = asString(slide.id)
     const id = createId()
+    if (oldId) slideIds.set(oldId, id)
     const image = oldId ? slideImagesRaw[oldId] : null
     if (typeof image === 'string') slideImages[id] = image
     return {
@@ -158,6 +180,24 @@ export function buildWhiteboardImport({
     } satisfies SlideTile
   })
 
+  const sources = asArray(root.sources).slice(0, 2000).flatMap(value => {
+    const source = asRecord(value)
+    const kind = source.kind
+    if (!['markdown', 'text', 'pdf-page', 'image'].includes(String(kind)) || typeof source.text !== 'string' || source.text.length > 200_000) return []
+    const oldSlideId = asString(source.slide_id)
+    const slideId = oldSlideId ? slideIds.get(oldSlideId) : undefined
+    if ((kind === 'pdf-page' || kind === 'image') && !slideId) return []
+    return [{
+      id: createId(), board_id: targetBoardId, kind: kind as BoardSource['kind'],
+      title: asString(source.title, 'Imported source').slice(0, 512),
+      text: source.text, mime_type: asString(source.mime_type, 'text/plain').slice(0, 128),
+      ...(slideId ? { slide_id: slideId } : {}),
+      ...(typeof source.page_number === 'number' ? { page_number: source.page_number } : {}),
+      ...(typeof source.total_pages === 'number' ? { total_pages: source.total_pages } : {}),
+      created_at: asString(source.created_at, new Date().toISOString()),
+    } satisfies BoardSource]
+  })
+
   return {
     kind: 'whiteboard',
     cards,
@@ -166,5 +206,6 @@ export function buildWhiteboardImport({
     textBlocks,
     slides,
     slideImages,
+    sources,
   }
 }

@@ -1,16 +1,944 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ideaboard</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Delius+Swash+Caps&family=Delius&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stellar SparX International | Executive Advisory & Management Consulting</title>
+  <meta name="description" content="Building Organizations That Grow with People, Purpose, and Performance Across Markets. Strategic Advisory & Leadership Transformation in Malaysia & Singapore.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* ==========================================================================
+       STELLAR SPARX INTERNATIONAL - ELEGANT MINIMALIST DESIGN SYSTEM
+       Theme: Executive Prestige (Deep Royal Navy & Gold Accent)
+       ========================================================================== */
+    :root {
+      --bg-dark: #FFFFFF;
+      --bg-surface: #F8FAFC;
+      --bg-navy: #001F3F;
+      --bg-navy-dark: #0B192C;
+      
+      --primary: #002E5D;
+      --primary-hover: #001F3F;
+      --accent-gold: #C5A059;
+      --accent-gold-light: rgba(197, 160, 89, 0.15);
+      
+      --text-main: #0B192C;
+      --text-muted: #475569;
+      --text-light: #F8FAFC;
+      
+      --border-light: rgba(0, 46, 93, 0.1);
+      --border-gold: rgba(197, 160, 89, 0.35);
+      
+      --font-heading: 'Outfit', -apple-system, sans-serif;
+      --font-body: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 24px;
+      --radius-pill: 9999px;
+      
+      --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      font-size: 16px;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: #FFFFFF;
+      color: var(--text-main);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      background: var(--bg-navy);
+      color: var(--text-light);
+      border-bottom: 1px solid var(--border-gold);
+      font-size: 0.85rem;
+      padding: 10px 0;
+    }
+
+    .top-bar-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .top-hq-label {
+      font-weight: 800;
+      font-size: 0.78rem;
+      color: var(--accent-gold);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-right: 12px;
+    }
+
+    .top-contact a {
+      color: rgba(248, 250, 252, 0.85);
+      text-decoration: none;
+      margin-left: 20px;
+      transition: var(--transition);
+    }
+
+    .top-contact a:hover {
+      color: var(--accent-gold);
+    }
+
+    /* Navbar */
+    .navbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-light);
+      padding: 16px 0;
+    }
+
+    .navbar-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      font-family: var(--font-heading);
+      font-weight: 900;
+      font-size: 1.35rem;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-logo-badge {
+      width: 36px;
+      height: 36px;
+      background: var(--primary);
+      color: var(--accent-gold);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: #334155;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+
+    .nav-links a:hover {
+      color: var(--primary);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 26px;
+      border-radius: var(--radius-pill);
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 0.92rem;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+    }
+
+    .btn-gold {
+      background: var(--accent-gold);
+      color: var(--bg-navy-dark);
+    }
+
+    .btn-gold:hover {
+      background: #D4AF37;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(197, 160, 89, 0.35);
+    }
+
+    /* ==========================================================================
+       SECTION 1: ELEGANT FULL PICTURE OF BUILDINGS WITH SIMPLE CENTERED QUOTE
+       ========================================================================== */
+    .simple-hero-section {
+      position: relative;
+      width: 100%;
+      min-height: 90vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop') center center / cover no-repeat;
+      text-align: center;
+      padding: 100px 24px;
+      border-bottom: 3px solid var(--accent-gold);
+    }
+
+    .simple-hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(0, 31, 63, 0.65) 0%, rgba(11, 25, 44, 0.88) 100%);
+      z-index: 1;
+    }
+
+    .simple-hero-container {
+      position: relative;
+      z-index: 2;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .simple-quote-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .simple-quote-mark {
+      font-family: var(--font-heading);
+      font-size: 5.5rem;
+      line-height: 0.8;
+      color: var(--accent-gold);
+      margin-bottom: 16px;
+      opacity: 0.95;
+    }
+
+    .simple-quote-text {
+      font-family: var(--font-heading);
+      font-size: 2.75rem;
+      font-weight: 700;
+      line-height: 1.25;
+      color: #FFFFFF;
+      letter-spacing: -0.02em;
+      margin-bottom: 32px;
+      text-shadow: 0 4px 25px rgba(0, 0, 0, 0.65);
+    }
+
+    .simple-quote-author {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .author-name-text {
+      font-family: var(--font-heading);
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      letter-spacing: 0.5px;
+    }
+
+    .author-title-text {
+      font-size: 1rem;
+      color: rgba(248, 250, 252, 0.92);
+      font-weight: 500;
+    }
+
+    .author-location-tag {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: rgba(248, 250, 252, 0.78);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+
+    /* Common Section Formatting */
+    .section {
+      padding: 90px 0;
+    }
+
+    .section-header {
+      margin-bottom: 56px;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      color: var(--accent-gold);
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .section-title {
+      font-family: var(--font-heading);
+      font-size: 2.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .section-intro {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    /* SECTION 2: SECTOR FOCUS GRID */
+    .sectors-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    .sector-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sector-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 45px rgba(0, 46, 93, 0.12);
+      border-color: var(--border-gold);
+    }
+
+    .sector-img-box {
+      height: 200px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .sector-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.5s ease;
+    }
+
+    .sector-card:hover .sector-img {
+      transform: scale(1.08);
+    }
+
+    .sector-content {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+      text-align: left;
+    }
+
+    .sector-kicker {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+
+    .sector-title {
+      font-family: var(--font-heading);
+      font-size: 1.3rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .sector-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      flex-grow: 1;
+    }
+
+    .sector-link {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    /* SECTION 3: CAPABILITIES & INITIATIVES GRID */
+    .capabilities-section {
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .caps-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+
+    .cap-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 28px;
+      transition: var(--transition);
+      text-align: left;
+    }
+
+    .cap-card:hover {
+      border-color: var(--border-gold);
+      transform: translateY(-5px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+    }
+
+    .cap-num {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      background: var(--accent-gold-light);
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    .cap-title {
+      font-family: var(--font-heading);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .cap-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* SECTION 4: LEADER SPARX ACADEMY */
+    .academy-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 32px;
+    }
+
+    .academy-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      padding: 36px;
+      text-align: left;
+      transition: var(--transition);
+    }
+
+    .academy-card:hover {
+      border-color: var(--border-gold);
+      box-shadow: 0 15px 40px rgba(0, 46, 93, 0.08);
+    }
+
+    .academy-header-tag {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--accent-gold);
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .academy-title {
+      font-family: var(--font-heading);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .academy-desc {
+      color: var(--text-muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .academy-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-light);
+      padding-top: 20px;
+    }
+
+    .academy-tag {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* SECTION 5: CONTACT & ADVISORY SECTION */
+    .contact-section {
+      background: var(--bg-navy-dark);
+      color: #FFFFFF;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .contact-info {
+      text-align: left;
+    }
+
+    .contact-info h2 {
+      font-family: var(--font-heading);
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin-bottom: 16px;
+    }
+
+    .contact-info p {
+      color: rgba(248, 250, 252, 0.8);
+      font-size: 1.05rem;
+      margin-bottom: 36px;
+    }
+
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .info-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .info-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(197, 160, 89, 0.15);
+      color: var(--accent-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-gold);
+      display: block;
+    }
+
+    .info-value {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .contact-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg);
+      padding: 44px;
+      backdrop-filter: blur(12px);
+      text-align: left;
+    }
+
+    .contact-card h3 {
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      color: #FFFFFF;
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: rgba(248, 250, 252, 0.8);
+      margin-bottom: 8px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #FFFFFF;
+      font-family: inherit;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+
+    /* Footer */
+    footer {
+      background: #050B14;
+      color: rgba(248, 250, 252, 0.6);
+      padding: 40px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.9rem;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    @media (max-width: 992px) {
+      .sectors-grid, .caps-grid, .academy-grid, .contact-grid { grid-template-columns: 1fr; }
+      .simple-quote-text { font-size: 1.95rem; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="container top-bar-content">
+      <div>
+        <span class="top-hq-label"><i class="fa-solid fa-earth-americas"></i> International HQ:</span>
+        <span><i class="fa-solid fa-location-dot"></i> Malaysia &nbsp;|&nbsp; Singapore</span>
+      </div>
+      <div class="top-contact">
+        <a href="mailto:info@stellarsparx.com"><i class="fa-solid fa-envelope"></i> info@stellarsparx.com</a>
+        <a href="tel:+601126787022"><i class="fa-solid fa-phone"></i> +60 11-2678 7022</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container navbar-container">
+      <a href="#" class="brand-logo">
+        <div class="brand-logo-badge">S</div>
+        <span>STELLAR SPARX</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#hero">Home</a></li>
+        <li><a href="#about">About</a></li>
+        <li><a href="#services">Services</a></li>
+        <li><a href="#academy">Academy</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+
+      <a href="#contact" class="btn btn-gold">Connect With Us</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- ==========================================================================
+         SECTION 1: ELEGANT FULL PICTURE OF BUILDINGS WITH SIMPLE CENTERED QUOTE
+         ========================================================================== -->
+    <section class="simple-hero-section" id="hero">
+      <div class="simple-hero-overlay"></div>
+      
+      <div class="container simple-hero-container">
+        <div class="simple-quote-box">
+          <div class="simple-quote-mark">“</div>
+          
+          <blockquote class="simple-quote-text">
+            Transformational growth is not merely about adapting to change—it is about shaping culture, aligning leadership, and unlocking human potential across markets.
+          </blockquote>
+
+          <div class="simple-quote-author">
+            <div class="author-name-text">Dr. Alexander Wright</div>
+            <div class="author-title-text">Managing Partner &amp; Principal Executive Advisor</div>
+            <div class="author-location-tag"><i class="fa-solid fa-location-dot"></i> Malaysia &nbsp;|&nbsp; Singapore</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 2: SECTOR FOCUS SECTION
+         ========================================================================== -->
+    <section class="section" id="about">
+      <div class="container text-center">
+        <div class="section-header">
+          <span class="section-tag">PARTNERING FOR EXCELLENCE</span>
+          <h2 class="section-title">Empowering Sectors Across Markets</h2>
+          <p class="section-intro">We partner closely with organizations, teams, and leaderpreneurs to accelerate business growth and foster organizational resilience.</p>
+        </div>
+
+        <div class="sectors-grid">
+          <!-- 01 Public Sector -->
+          <div class="sector-card">
+            <div class="sector-img-box">
+              <img src="https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?q=80&w=1000&auto=format&fit=crop" alt="Government & Public Policy Alignment" class="sector-img">
+            </div>
+            <div class="sector-content">
+              <div class="sector-kicker">01 PUBLIC SECTOR</div>
+              <h3 class="sector-title">Government &amp; Public Policy Alignment</h3>
+              <p class="sector-desc">Accredited consulting interventions and compliance alignment for national and local public entities to drive policy excellence.</p>
+              <a href="#contact" class="sector-link">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+          </div>
+
+          <!-- 02 Private Sector -->
+          <div class="sector-card">
+            <div class="sector-img-box">
+              <img src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop" alt="Corporate Agility & Strategic Growth" class="sector-img">
+            </div>
+            <div class="sector-content">
+              <div class="sector-kicker">02 PRIVATE SECTOR</div>
+              <h3 class="sector-title">Corporate Agility &amp; Strategic Growth</h3>
+              <p class="sector-desc">Tailored strategies that boost business performance, foster strategic innovation, and ignite organizational agility across competitive industries.</p>
+              <a href="#contact" class="sector-link">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+          </div>
+
+          <!-- 03 Social Sector -->
+          <div class="sector-card">
+            <div class="sector-img-box">
+              <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1000&auto=format&fit=crop" alt="Non-Profit & Community Expansion" class="sector-img">
+            </div>
+            <div class="sector-content">
+              <div class="sector-kicker">03 SOCIAL SECTOR</div>
+              <h3 class="sector-title">Non-Profit &amp; Community Expansion</h3>
+              <p class="sector-desc">Empowering non-profits and community associations to build leadership capability, drive social innovation, and amplify impact.</p>
+              <a href="#contact" class="sector-link">Learn More <i class="fa-solid fa-arrow-right"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 3: STRATEGIC INITIATIVES & CAPABILITIES
+         ========================================================================== -->
+    <section class="section capabilities-section" id="services">
+      <div class="container text-center">
+        <div class="section-header">
+          <span class="section-tag">GLOBAL CAPABILITIES</span>
+          <h2 class="section-title">Strategic Growth Offerings</h2>
+          <p class="section-intro">Integrated capability pillars designed to navigate complex enterprise lifecycles across regional markets.</p>
+        </div>
+
+        <div class="caps-grid">
+          <div class="cap-card">
+            <span class="cap-num">01</span>
+            <h3 class="cap-title">Biz SparX Global</h3>
+            <p class="cap-desc">Enabling business presence, professional support, and cross-border market access.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">02</span>
+            <h3 class="cap-title">Strategy SparX</h3>
+            <p class="cap-desc">Shaping strategic direction through diagnosis, execution toolsets, and TOWS models.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">03</span>
+            <h3 class="cap-title">Leader SparX Institute</h3>
+            <p class="cap-desc">Developing C-suite leaders and executive teams through certified coaching.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">04</span>
+            <h3 class="cap-title">Digital SparX Lab</h3>
+            <p class="cap-desc">Advancing digital readiness, tech adoption, and AI workflow integration.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">05</span>
+            <h3 class="cap-title">CEO SparX Network</h3>
+            <p class="cap-desc">Closed-door peer advisory network for founders and executive decision-makers.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">06</span>
+            <h3 class="cap-title">People SparX Solution</h3>
+            <p class="cap-desc">Strengthening HR systems, organizational culture, and change management.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">07</span>
+            <h3 class="cap-title">Edu SparX Centre</h3>
+            <p class="cap-desc">Connecting education with global internships, study tours, and talent recruitment.</p>
+          </div>
+
+          <div class="cap-card">
+            <span class="cap-num">08</span>
+            <h3 class="cap-title">Event SparX Lab</h3>
+            <p class="cap-desc">Curating strategic platforms for business summits and executive networking.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 4: LEADER SPARX ACADEMY
+         ========================================================================== -->
+    <section class="section" id="academy">
+      <div class="container text-center">
+        <div class="section-header">
+          <span class="section-tag">CAPABILITY DEVELOPMENT</span>
+          <h2 class="section-title">Leader SparX Academy</h2>
+          <p class="section-intro">Develop your leadership capability with accredited programs designed for high-performance governance and growth.</p>
+        </div>
+
+        <div class="academy-grid">
+          <div class="academy-card">
+            <div class="academy-header-tag">01 ACCREDITED EXECUTIVE PROGRAM</div>
+            <h3 class="academy-title">Executive Leadership Strategy</h3>
+            <p class="academy-desc">Accredited strategic alignment training designed specifically for corporate executives, directors, and governance boards.</p>
+            <div class="academy-footer">
+              <span class="academy-tag"><i class="fa-solid fa-clock"></i> 3-Day Intensive</span>
+              <a href="#contact" class="btn btn-gold">Enroll Now</a>
+            </div>
+          </div>
+
+          <div class="academy-card">
+            <div class="academy-header-tag">02 ACCREDITED EXECUTIVE PROGRAM</div>
+            <h3 class="academy-title">Leaderpreneur Accreditation</h3>
+            <p class="academy-desc">Certified frameworks designed to develop innovative leadership behaviors, intrapreneurship, and venture capabilities.</p>
+            <div class="academy-footer">
+              <span class="academy-tag"><i class="fa-solid fa-clock"></i> 5-Week Modular</span>
+              <a href="#contact" class="btn btn-gold">Enroll Now</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         SECTION 5: CONTACT & ADVISORY RESERVATION
+         ========================================================================== -->
+    <section class="section contact-section" id="contact">
+      <div class="container">
+        <div class="contact-grid">
+          <div class="contact-info">
+            <span class="section-tag">STRATEGY ACTIVATION</span>
+            <h2>Initiate Executive Advisory</h2>
+            <p>Request a consultation with our senior advisors to unlock your organization's growth potential across markets.</p>
+
+            <div class="info-list">
+              <div class="info-item">
+                <div class="info-icon"><i class="fa-solid fa-building"></i></div>
+                <div>
+                  <span class="info-label">International HQ</span>
+                  <div class="info-value">Malaysia | Singapore</div>
+                </div>
+              </div>
+
+              <div class="info-item">
+                <div class="info-icon"><i class="fa-solid fa-envelope"></i></div>
+                <div>
+                  <span class="info-label">Direct Email</span>
+                  <div class="info-value">info@stellarsparx.com</div>
+                </div>
+              </div>
+
+              <div class="info-item">
+                <div class="info-icon"><i class="fa-solid fa-phone"></i></div>
+                <div>
+                  <span class="info-label">Telephone</span>
+                  <div class="info-value">+60 11-2678 7022</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="contact-card">
+            <h3>Request Consultation</h3>
+            <form onsubmit="event.preventDefault(); alert('Thank you. Our executive office will be in touch shortly.');">
+              <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" class="form-control" placeholder="Dr. Alexander Wright" required>
+              </div>
+
+              <div class="form-group">
+                <label>Corporate Work Email *</label>
+                <input type="email" class="form-control" placeholder="alexander@enterprise.com" required>
+              </div>
+
+              <div class="form-group">
+                <label>Organization *</label>
+                <input type="text" class="form-control" placeholder="Stellar SparX International Ltd" required>
+              </div>
+
+              <div class="form-group">
+                <label>Consultation Focus *</label>
+                <input type="text" class="form-control" placeholder="Executive Strategy / Capability Development" required>
+              </div>
+
+              <button type="submit" class="btn btn-gold" style="width: 100%;">Submit Consultation Request</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container footer-content">
+      <div>
+        <strong style="color: #FFFFFF;">STELLAR SPARX INTERNATIONAL</strong> &copy; 2026. All Rights Reserved.
+      </div>
+      <div>
+        <a href="#hero" style="color: var(--accent-gold); text-decoration: none; font-weight: 700;">Back to top <i class="fa-solid fa-arrow-up"></i></a>
+      </div>
+    </div>
+  </footer>
+
+</body>
 </html>

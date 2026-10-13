@@ -15,6 +15,7 @@ import { marked } from 'marked'
 import { sanitizeHtml } from '../lib/sanitizeHtml'
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy, Lock, LockOpen, Trash2 } from 'lucide-react'
 import { colors, fonts, radii, shadows } from '../lib/designTokens'
+import { getCardTypography } from '../lib/cardTypography'
 
 // Configure marked: safe, no wrapping <p> for single lines
 marked.setOptions({ breaks: true })
@@ -96,6 +97,7 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
   const darkSurface = cardBg === colors.inkDark || cardBg === colors.surfaceDark
   const textColor = darkSurface ? '#F7F7F2' : colors.ink
   const mutedColor = darkSurface ? 'rgba(255,255,255,0.6)' : '#5F687B'
+  const typography = getCardTypography(card.font_family)
 
   return (
     <div
@@ -201,14 +203,14 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
           onBlur={commitTitle}
           onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setEditing(false); setDraft(card.title) } }}
           onMouseDown={e => e.stopPropagation()}
-          style={{ display: 'block', width: '100%', border: `1.5px solid ${colors.markerPurple}`, borderRadius: radii.control, padding: '3px 6px', fontSize: 13, fontFamily: fonts.display, fontWeight: 700, background: 'transparent', color: textColor, outline: 'none', marginBottom: 5, boxSizing: 'border-box' }}
+          style={{ display: 'block', width: '100%', border: `1.5px solid ${colors.markerPurple}`, borderRadius: radii.control, padding: '3px 6px', fontSize: 13, fontFamily: typography.title, fontWeight: typography.titleWeight, background: 'transparent', color: textColor, outline: 'none', marginBottom: 5, boxSizing: 'border-box' }}
         />
       ) : (
         <div
           className="no-drag"
           onClick={e => { e.stopPropagation(); setEditing(true) }}
           title="Click to rename"
-          style={{ fontFamily: fonts.display, fontSize: 13, fontWeight: 700, color: textColor, lineHeight: 1.3, marginBottom: card.body ? 5 : 0, cursor: 'text', borderRadius: 4, padding: '2px 0' }}
+          style={{ fontFamily: typography.title, fontSize: 13, fontWeight: typography.titleWeight, color: textColor, lineHeight: 1.3, marginBottom: card.body ? 5 : 0, cursor: 'text', borderRadius: 4, padding: '2px 0' }}
         >{card.title}</div>
       )}
 
@@ -216,7 +218,7 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
       {!card.collapsed && card.body && (
         <div className="no-drag md-body"
           dangerouslySetInnerHTML={{ __html: markdownHtml }}
-          style={{ fontSize: 11, color: mutedColor, lineHeight: 1.55 }}
+          style={{ fontSize: card.font_family === 'caveat' ? 14 : 11, fontFamily: typography.body, fontWeight: typography.bodyWeight, color: mutedColor, lineHeight: 1.55 }}
         />
       )}
 

@@ -27,4 +27,15 @@ describe('normaliseCard — backwards compatibility', () => {
     const c = { ...oldCard, collapsed: false, locked: true }
     expect(normaliseCard(c as unknown as Record<string, unknown>).locked).toBe(true)
   })
+
+  it('keeps the legacy Marker font when an older card has no font field', () => {
+    expect(normaliseCard(oldCard as unknown as Record<string, unknown>).font_family).toBeUndefined()
+  })
+
+  it('preserves supported font choices and drops unknown values', () => {
+    const card = { ...oldCard, font_family: 'lora' }
+    const unsupported = { ...oldCard, font_family: 'remote-font' }
+    expect(normaliseCard(card as unknown as Record<string, unknown>).font_family).toBe('lora')
+    expect(normaliseCard(unsupported as unknown as Record<string, unknown>).font_family).toBeUndefined()
+  })
 })

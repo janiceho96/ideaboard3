@@ -1,29 +1,43 @@
 // src/components/Board.tsx
 import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from 'react'
-import type { LocalUser, Board as BoardType, Card, GoalTagInsert, TagType } from '../types'
+import { flushSync } from 'react-dom'
+import BoardAssistantPanel from './BoardAssistantPanel'
+import FrameworkDesignerModal from './FrameworkDesignerModal'
+import NoteWritingPanel from './NoteWritingPanel'
+import { readAssistantTask, savedAssistantSnapshot, undoAssistantTask, type AssistantOperations, type AssistantTask } from '../lib/assistantTask'
+import type { LocalUser, Board as BoardType, Card, CardFontFamily, CustomFrameworkTemplate, GoalTagInsert, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
 import CardModal from './CardModal'
 import { snapPosition, snapPositionGeneric } from '../lib/snapPosition'
 import { playSnapSound } from '../lib/snapSound'
-import { useFrames, FRAMEWORK_LABELS, FRAMEWORK_GROUPS } from '../hooks/useFrames'
+import { useFrames, FRAMEWORK_LABELS, FRAMEWORK_GROUPS, FRAMEWORK_REGISTRY, getFrameworkDefinition, getFrameworkLabel } from '../hooks/useFrames'
 import FrameworkOverlay from './FrameworkOverlay'
 import { useSlides } from '../hooks/useSlides'
 import { importPdf } from '../lib/pdfImport'
 import { saveImage, getImage, deleteImage } from '../lib/slideImageStore'
+import { deleteBoardSources, listBoardSources, saveBoardSources, type BoardSource } from '../lib/boardSourceStore'
+import { parseTextSource } from '../lib/textSourceImport'
+import { htmlToPlainText } from '../lib/sourceText'
+import { importImageFile, prepareImageAttachment } from '../lib/imageAttachment'
+import { extractNativeImageText } from '../lib/nativeAssistant'
+import type { AssistantSource } from '../lib/assistantPlan'
 import SlideTile from './SlideTile'
 import type { SlideTile as SlideTileType } from '../types'
 import TextBlockItem, { TEXT_MIN_W } from './TextBlockItem'
 import { useTextBlocks } from '../hooks/useTextBlocks'
 import type { UseTextBlocksReturn } from '../hooks/useTextBlocks'
 import { buildExportBounds, type BoardRect } from '../lib/boardGeometry'
+import { CANVAS_ZOOM_STEP, MIN_CANVAS_ZOOM, MAX_CANVAS_ZOOM, wheelPixels, wheelZoomFactor, zoomCanvasAt } from '../lib/canvasZoom'
 import { colors, fonts } from '../lib/designTokens'
 import { buildBulkDeleteItems, type BulkDeleteItem } from '../lib/bulkDelete'
 import { buildWhiteboardExport } from '../lib/whiteboardExport'
 import { buildWhiteboardImport } from '../lib/whiteboardImport'
+import { preserveImportedCardFonts } from '../lib/cardTypography'
 import { buildBoardNavigationItems, filterCardsForBoard, type BoardNavigationItem } from '../lib/boardNavigation'
 import { normalizeSelectionRect, selectCardIdsInRect, selectSlideIdsInRect, type SelectionRect } from '../lib/multiSelect'
-import { ArrowLeft, CircleHelp, Download, FolderInput, Maximize2, Moon, Plus, Search, SquarePlus, Sun, Trash2, Type, Undo2, Upload, Workflow, ZoomIn, ZoomOut } from 'lucide-react'
+import { deleteCustomFrameworkTemplate, readCustomFrameworks, saveCustomFrameworkTemplate } from '../lib/customFrameworks'
+import { ArrowLeft, CircleHelp, Download, FolderInput, Maximize2, Moon, Pencil, Plus, Search, Sparkles, SquarePlus, Sun, Trash2, Type, Undo2, Upload, Workflow, ZoomIn, ZoomOut } from 'lucide-react'
 
 const COLOUR_SWATCHES = [
   { value: 'white',   label: 'White',  border: '#ddd' },
@@ -52,8 +66,8 @@ interface SlideGroup {
   created_at: string
 }
 
-const MIN_ZOOM = 0.15
-const MAX_ZOOM = 3
+const MIN_ZOOM = MIN_CANVAS_ZOOM
+const MAX_ZOOM = MAX_CANVAS_ZOOM
 const CARD_MIN_W = 140
 const CARD_MIN_H = 100
 const FRAMEWORK_MIN_W = 400
@@ -90,7 +104,31 @@ function pointInRect(x: number, y: number, rect: BoardRect): boolean {
 }
 
 export default function Board({ user, board, onBack, dark, onToggleDark }: BoardProps) {
-  const brd = useBoard(board.id)
+  const baseBoard = useBoard(board.id)
+  const baseBoardRef = useRef(baseBoard)
+  baseBoardRef.current = baseBoard
+  // The legacy hook keeps a separate snapshot for every internal mutation.
+  // After an assistant task boundary, expose only subsequent user operations to
+  // its Undo stack so old intermediate task snapshots cannot resurrect drafts.
+  const userUndosAfterTask = useRef<number | null>(null)
+  const brd = useMemo(() => {
+    const userMutation = <T,>(operation: () => T): T => {
+      if (userUndosAfterTask.current !== null) userUndosAfterTask.current += 1
+      return operation()
+    }
+    return {
+    ...baseBoard,
+    addCard: (...args: Parameters<typeof baseBoard.addCard>) => userMutation(() => baseBoard.addCard(...args)),
+    updateCard: (...args: Parameters<typeof baseBoard.updateCard>) => userMutation(() => baseBoard.updateCard(...args)),
+    removeCard: (...args: Parameters<typeof baseBoard.removeCard>) => userMutation(() => baseBoard.removeCard(...args)),
+    duplicateCard: (...args: Parameters<typeof baseBoard.duplicateCard>) => userMutation(() => baseBoard.duplicateCard(...args)),
+    bulkImportCards: (...args: Parameters<typeof baseBoard.bulkImportCards>) => userMutation(() => baseBoard.bulkImportCards(...args)),
+    bulkImportGoalTags: (...args: Parameters<typeof baseBoard.bulkImportGoalTags>) => userMutation(() => baseBoard.bulkImportGoalTags(...args)),
+    removeGoalTag: (...args: Parameters<typeof baseBoard.removeGoalTag>) => userMutation(() => baseBoard.removeGoalTag(...args)),
+    }
+  }, [baseBoard])
+  const brdRef = useRef(brd)
+  brdRef.current = brd
   const frm = useFrames(board.id)
   const frmRef = useRef(frm)
   useEffect(() => { frmRef.current = frm }, [frm])
@@ -121,6 +159,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   const canvasRef    = useRef<HTMLDivElement>(null)
   const worldRef     = useRef<HTMLDivElement>(null)
+  const cameraRef = useRef({ panX, panY, zoom })
+  useEffect(() => { cameraRef.current = { panX, panY, zoom } }, [panX, panY, zoom])
   const zoomRef      = useRef(zoom)
   useEffect(() => { zoomRef.current = zoom }, [zoom])
 
@@ -185,6 +225,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [colourPicker, setColourPicker] = useState<{ cardId: string; x: number; y: number } | null>(null)
   const [selectedFrameId,  setSelectedFrameId]  = useState<string | null>(null)
   const [addFrameMenuOpen, setAddFrameMenuOpen]  = useState(false)
+  const [customFrameworks, setCustomFrameworks] = useState(() => readCustomFrameworks())
+  const [frameworkDesignerOpen, setFrameworkDesignerOpen] = useState(false)
+  const [editingFramework, setEditingFramework] = useState<CustomFrameworkTemplate | null>(null)
   const addFrameBtnRef = useRef<HTMLDivElement>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
@@ -193,7 +236,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [hideDoneRemove, setHideDoneRemove] = useState(false)
   const [overdueOnly, setOverdueOnly] = useState(false)
   const [showBoardPanel, setShowBoardPanel] = useState(() => typeof window === 'undefined' || window.innerWidth > 720)
+  const [assistantOpen, setAssistantOpen] = useState(() => {
+    try { return localStorage.getItem(`ideaboard_assistant_task_${board.id}`) !== null } catch { return false }
+  })
+  const [writingCardId, setWritingCardId] = useState<string | null>(null)
+  const assistantButtonRef = useRef<HTMLButtonElement>(null)
+  const assistantUndoBusy = useRef(false)
+  const activeBoardRef = useRef<string | null>(board.id)
+  activeBoardRef.current = board.id
+  useEffect(() => () => { activeBoardRef.current = null }, [board.id])
+  const assistantSelectedIds = useMemo(() => [...new Set([...selectedCardIds, ...(selectedCardId ? [selectedCardId] : [])])], [selectedCardIds, selectedCardId])
   const [tileImages, setTileImages] = useState<Record<string, string>>({})
+  const [boardSources, setBoardSources] = useState<BoardSource[]>([])
   const pdfInputRef = useRef<HTMLInputElement>(null)
   const jsonInputRef = useRef<HTMLInputElement>(null)
 
@@ -216,10 +270,48 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // Toast
   const [toast, setToast]   = useState<string | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToast(msg); clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(null), 3000)
+  }, [])
+
+  const openFrameworkDesigner = (template?: CustomFrameworkTemplate) => {
+    setEditingFramework(template ?? null)
+    setFrameworkDesignerOpen(true)
+    setAddFrameMenuOpen(false)
   }
+  const saveFrameworkTemplate = (template: CustomFrameworkTemplate): boolean => {
+    setCustomFrameworks(saveCustomFrameworkTemplate(template))
+    showToast('Framework saved to My frameworks')
+    return true
+  }
+  const removeFrameworkTemplate = (id: string): boolean => {
+    setCustomFrameworks(deleteCustomFrameworkTemplate(id))
+    showToast('Removed from My frameworks. Existing board frames are unchanged.')
+    return true
+  }
+  const addCustomFrameworkToBoard = (template: CustomFrameworkTemplate): boolean => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return false
+    try {
+      const camera = cameraRef.current
+      const frame = frmRef.current.addCustomFrame(template, rect.width / 2, rect.height / 2, camera.zoom, camera.panX, camera.panY)
+      setSelectedFrameId(frame.id)
+      setAddFrameMenuOpen(false)
+      showToast(`${template.label} added to the canvas`)
+      return true
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Could not add this framework')
+      return false
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    setBoardSources([])
+    listBoardSources(board.id).then(sources => { if (!cancelled) setBoardSources(sources) }).catch(() => { if (!cancelled) showToast('Could not load imported sources') })
+    return () => { cancelled = true }
+  }, [board.id, showToast])
 
   // ── Coord helpers ───────────────────────────────────────────
   const screenToWorld = useCallback((sx: number, sy: number) => {
@@ -284,7 +376,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     textBlocks: txt.blocks,
     frames: frm.frames,
     tags: brd.goalTags,
-    frameLabel: type => FRAMEWORK_LABELS[type],
+    frameLabel: type => getFrameworkLabel(type, frm.frames.find(frame => frame.type === type)?.customFramework),
   }), [brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks])
 
   const selectedBulkItems = useMemo(
@@ -332,8 +424,43 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     slides: sld.tiles,
     frames: frm.frames,
     tags: brd.goalTags,
-    frameLabel: type => FRAMEWORK_LABELS[type],
+    frameLabel: type => getFrameworkLabel(type, frm.frames.find(frame => frame.type === type)?.customFramework),
   }), [brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks])
+
+  const assistantSources = useMemo<AssistantSource[]>(() => {
+    const fromCards: AssistantSource[] = brd.cards.map(card => ({ ...card, kind: 'note' as const, source_label: `Note · ${card.title || 'Untitled'}` }))
+    const fromTextBlocks: AssistantSource[] = txt.blocks.map(block => {
+      const body = htmlToPlainText(block.html)
+      return { id: `text-block:${block.id}`, board_id: board.id, title: body.split('\n')[0]?.slice(0, 120) || 'Canvas text', body, kind: 'text-block' as const, source_label: `Canvas text · ${body.split('\n')[0]?.slice(0, 90) || 'Untitled'}` }
+    }).filter(source => source.body.trim())
+    const fromFrames: AssistantSource[] = frm.frames.map(frame => {
+      const definition = getFrameworkDefinition(frame.type, frame.customFramework) ?? FRAMEWORK_REGISTRY.blank
+      const sections = definition.sections.map(section => {
+        const content = frame.noteAreas?.[section.storageKey] ?? frame.noteAreas?.[section.id] ?? ''
+        return content.trim() ? `${section.label}\n${content}` : ''
+      }).filter(Boolean)
+      const body = [frame.notes, ...sections].filter(Boolean).join('\n\n')
+      const label = getFrameworkLabel(frame.type, frame.customFramework)
+      return { id: `framework:${frame.id}`, board_id: board.id, title: frame.name || label, body, kind: 'framework' as const, source_label: `Framework · ${frame.name || label}` }
+    }).filter(source => source.body.trim())
+    const fromTags: AssistantSource[] = brd.goalTags.map(tag => ({ id: `goal:${tag.id}`, board_id: board.id, title: tag.label || 'Board goal', body: tag.label, kind: 'goal-tag' as const, source_label: `Board goal · ${tag.label}` }))
+    const fromFiles: AssistantSource[] = boardSources.map(source => ({
+      id: source.id, board_id: board.id, title: source.title, body: source.text,
+      kind: source.kind, source_label: source.kind === 'pdf-page' ? `${source.title} · Page ${source.page_number ?? 1}` : source.title,
+      slide_id: source.slide_id, mime_type: source.mime_type, page_number: source.page_number,
+    }))
+    const linkedSlideIds = new Set(boardSources.map(source => source.slide_id).filter(Boolean))
+    const fromLegacySlides: AssistantSource[] = sld.tiles.filter(tile => !linkedSlideIds.has(tile.id)).map(tile => ({
+      id: `slide:${tile.id}`, board_id: board.id, title: tile.filename, body: '',
+      kind: (/\.pdf$/i.test(tile.filename) ? 'pdf-page' : 'image') as AssistantSource['kind'], source_label: `${tile.filename} · Page ${tile.page_number}`,
+      slide_id: tile.id, page_number: tile.page_number, mime_type: /\.pdf$/i.test(tile.filename) ? 'application/pdf' : 'image/jpeg',
+    }))
+    return [...fromCards, ...fromTextBlocks, ...fromFrames, ...fromTags, ...fromFiles, ...fromLegacySlides]
+  }, [board.id, boardSources, brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks])
+  const assistantSelectedSourceIds = useMemo(() => [
+    ...assistantSelectedIds,
+    ...assistantSources.filter(source => source.slide_id && selectedTileIds.includes(source.slide_id)).map(source => source.id),
+  ], [assistantSelectedIds, assistantSources, selectedTileIds])
 
   const outlineItems = useMemo(() => {
     const q = boardSearch.trim().toLowerCase()
@@ -348,9 +475,53 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     setZoom(nextZoom)
     setPanX(cr.width / 2 - item.x * nextZoom)
     setPanY(cr.height / 2 - item.y * nextZoom)
-    if (item.kind === 'card') setSelectedCardId(item.id)
+    if (item.kind === 'card') {
+      setBoardSearch(''); setHideDoneRemove(false); setOverdueOnly(false)
+      setSelectedCardId(item.id); setSelectedCardIds([item.id])
+    }
     if (item.kind === 'frame') setSelectedFrameId(item.id)
   }, [])
+
+  const assistantOperations = useMemo<AssistantOperations>(() => ({
+    getSnapshot: () => {
+      if (activeBoardRef.current !== board.id) throw new Error('This board is no longer open. Reopen it to recover the task.')
+      if (board.owner_id !== user.id) throw new Error('The assistant can only work on a board you own.')
+      const snapshot = savedAssistantSnapshot(board.id, localStorage)
+      if (!localStorage.getItem(`ideaboard_frames_${board.id}`)) snapshot.frames = frmRef.current.frames
+      return snapshot
+    },
+    // Existing frame hooks persist inside state updaters. Flush the accepted
+    // callback so journal verification runs after that save, never before it.
+    importFrames: frames => flushSync(() => frmRef.current.importFrames(frames)),
+    writeSection: (id, key, text) => flushSync(() => frmRef.current.updateFrameNoteArea(id, key, text)),
+    deleteFrame: id => flushSync(() => frmRef.current.deleteFrame(id)),
+    addCards: async cards => { await baseBoardRef.current.bulkImportCards(cards) },
+    updateCard: async (id, changes) => { await baseBoardRef.current.updateCard(id, changes) },
+    deleteCard: async id => { await baseBoardRef.current.removeCard(id) },
+  }), [board.id, board.owner_id, user.id])
+
+  const undoBoardAction = useCallback(async () => {
+    if (assistantUndoBusy.current) return
+    assistantUndoBusy.current = true
+    try {
+      const task = readAssistantTask(board.id, localStorage)
+      if (task) {
+        await undoAssistantTask(task, assistantOperations, localStorage)
+        userUndosAfterTask.current = 0
+        window.dispatchEvent(new CustomEvent('ideaboard:assistant-task-changed', { detail: board.id }))
+        showToast('Assistant task undone and saved')
+      } else if (userUndosAfterTask.current === 0) {
+        showToast('No newer canvas edits to undo')
+      } else {
+        brdRef.current.undo()
+        if (userUndosAfterTask.current !== null) userUndosAfterTask.current -= 1
+        showToast('Undone ↩')
+      }
+    } catch (e) {
+      setAssistantOpen(true); setShowBoardPanel(false); setWritingCardId(null)
+      showToast(e instanceof Error ? e.message : 'Open the assistant to recover this task.')
+    } finally { assistantUndoBusy.current = false }
+  }, [board.id, assistantOperations, showToast])
 
   // ── Mouse handlers ──────────────────────────────────────────
   const onCanvasMouseDown = (e: React.MouseEvent) => {
@@ -538,12 +709,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       // Best effort — still remove tile from board
     }
     sldRef.current.removeTile(id)
+    const linkedSources = boardSources.filter(source => source.slide_id === id)
+    try { await deleteBoardSources(linkedSources.map(source => source.id)) } catch { showToast('Slide removed, but its source record could not be cleared') }
+    setBoardSources(current => current.filter(source => source.slide_id !== id))
     setTileImages(prev => {
       const next = { ...prev }
       delete next[id]
       return next
     })
-  }, [])
+  }, [boardSources, showToast])
 
   const deleteSelectedBulkItems = useCallback(async () => {
     const items = selectedBulkItems
@@ -568,69 +742,95 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     setBulkDeleteSelection({})
     setBulkDeleteOpen(false)
     showToast(`Deleted ${items.length} item${items.length !== 1 ? 's' : ''}`)
-  }, [brd, handleDeleteTile, selectedBulkItems, selectedCardId, selectedFrameId])
+  }, [brd, handleDeleteTile, selectedBulkItems, selectedCardId, selectedFrameId, showToast])
 
-  const handleImportPdf = useCallback(async (files: FileList | null) => {
-    if (!files || !files.length) return
+  const handleImportSources = useCallback(async (files: File[]): Promise<AssistantSource[]> => {
+    if (!files.length) return []
     const cr = canvasRef.current?.getBoundingClientRect()
-    if (!cr) return
+    if (!cr) return []
     const { x: cx, y: cy } = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2)
-
-    const TILE_W = 260
-    const GAP    = 20
-    const COLS   = 4
-
+    const tileWidth = 260
+    const gap = 20
     let yOffset = cy
     const newTiles: SlideTileType[] = []
     const imageEntries: Array<{ id: string; dataUrl: string }> = []
+    const newSources: BoardSource[] = []
 
     for (const file of Array.from(files)) {
+      const extension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
       try {
-        const pages = await importPdf(file)
-        if (!pages.length) continue
-
-        const maxTileH = Math.max(...pages.map(p => TILE_W / p.aspectRatio))
-
-        pages.forEach((page, i) => {
-          const col = i % COLS
-          const row = Math.floor(i / COLS)
-          const tileH = TILE_W / page.aspectRatio
-          const id = crypto.randomUUID()
-          newTiles.push({
-            id,
-            board_id: board.id,
-            filename: file.name,
-            page_number: i + 1,
-            total_pages: pages.length,
-            x: cx + col * (TILE_W + GAP),
-            y: yOffset + row * (tileH + GAP),
-            width: TILE_W,
-            aspect_ratio: page.aspectRatio,
-            created_at: new Date().toISOString(),
+        if (extension === '.pdf') {
+          const pages = await importPdf(file)
+          const columns = 4
+          const maxHeight = Math.max(1, ...pages.map(page => tileWidth / page.aspectRatio))
+          pages.forEach((page, index) => {
+            const id = crypto.randomUUID()
+            const tileHeight = tileWidth / page.aspectRatio
+            const tile: SlideTileType = { id, board_id: board.id, filename: file.name, page_number: index + 1, total_pages: pages.length, x: cx + (index % columns) * (tileWidth + gap), y: yOffset + Math.floor(index / columns) * (tileHeight + gap), width: tileWidth, aspect_ratio: page.aspectRatio, created_at: new Date().toISOString() }
+            newTiles.push(tile)
+            imageEntries.push({ id, dataUrl: page.dataUrl })
+            newSources.push({ id: crypto.randomUUID(), board_id: board.id, kind: 'pdf-page', title: file.name, text: (page.textContent ?? '').slice(0, 200_000), mime_type: 'application/pdf', slide_id: id, page_number: index + 1, total_pages: pages.length, created_at: new Date().toISOString() })
           })
-          imageEntries.push({ id, dataUrl: page.dataUrl })
-        })
-
-        const rows = Math.ceil(pages.length / COLS)
-        yOffset += rows * (maxTileH + GAP) + 40
-      } catch {
-        showToast(`Failed to import ${file.name}`)
+          yOffset += Math.ceil(pages.length / columns) * (maxHeight + gap) + 40
+        } else if (['.txt', '.md', '.markdown'].includes(extension)) {
+          const text = await parseTextSource(file)
+          newSources.push({ id: crypto.randomUUID(), board_id: board.id, kind: extension === '.txt' ? 'text' : 'markdown', title: file.name, text, mime_type: file.type || (extension === '.txt' ? 'text/plain' : 'text/markdown'), created_at: new Date().toISOString() })
+        } else if (/^image\/(?:png|jpeg|webp)$/i.test(file.type) || ['.png', '.jpg', '.jpeg', '.webp'].includes(extension)) {
+          const { dataUrl, aspectRatio } = await importImageFile(file)
+          const id = crypto.randomUUID()
+          newTiles.push({ id, board_id: board.id, filename: file.name, page_number: 1, total_pages: 1, x: cx, y: yOffset, width: tileWidth, aspect_ratio: aspectRatio, created_at: new Date().toISOString() })
+          imageEntries.push({ id, dataUrl })
+          newSources.push({ id: crypto.randomUUID(), board_id: board.id, kind: 'image', title: file.name, text: '', mime_type: file.type || 'image/jpeg', slide_id: id, page_number: 1, total_pages: 1, created_at: new Date().toISOString() })
+          yOffset += tileWidth / aspectRatio + gap
+        } else {
+          throw new Error('Choose a PDF, Markdown, plain-text, PNG, JPEG, or WebP file.')
+        }
+      } catch (error) {
+        showToast(`${file.name}: ${error instanceof Error ? error.message : 'Could not import this file.'}`)
       }
     }
 
-    if (!newTiles.length) return
-
     try {
       await Promise.all(imageEntries.map(({ id, dataUrl }) => saveImage(id, dataUrl)))
+      await saveBoardSources(newSources)
     } catch {
-      // Rollback any images that were saved before the failure
       await Promise.allSettled(imageEntries.map(({ id }) => deleteImage(id)))
       showToast('Import failed — storage may be full')
+      return []
+    }
+    if (newTiles.length) {
+      sldRef.current.addTiles(newTiles)
+      setTileImages(current => ({ ...current, ...Object.fromEntries(imageEntries.map(({ id, dataUrl }) => [id, dataUrl])) }))
+    }
+    if (activeBoardRef.current === board.id) setBoardSources(current => [...current.filter(source => !newSources.some(incoming => incoming.id === source.id)), ...newSources])
+    if (newTiles.length || newSources.length) showToast(`Imported ${newSources.length} source${newSources.length === 1 ? '' : 's'} to this board`)
+    return newSources.map(toAssistantSource)
+  }, [board.id, screenToWorld, showToast])
+
+  const extractSourceText = useCallback(async (source: AssistantSource) => {
+    if (!source.slide_id) throw new Error('This source has no image to read.')
+    const image = await getImage(source.slide_id)
+    if (!image) throw new Error('The source image is missing from local storage.')
+    const text = await extractNativeImageText(await prepareImageAttachment(image))
+    if (!text.trim()) throw new Error('No readable text was found. You can still include the image for visual reading.')
+    const existing = boardSources.find(item => item.id === source.id)
+    const updated: BoardSource = existing
+      ? { ...existing, text }
+      : { id: source.id, board_id: board.id, kind: source.kind === 'image' ? 'image' : 'pdf-page', title: source.title, text, mime_type: source.mime_type ?? 'image/jpeg', slide_id: source.slide_id, page_number: source.page_number, created_at: new Date().toISOString() }
+    await saveBoardSources([updated])
+    setBoardSources(current => [...current.filter(item => item.id !== updated.id), updated])
+    showToast('Text extracted on this Mac; the image stayed local')
+  }, [board.id, boardSources, showToast])
+
+  const removeAssistantSource = useCallback(async (source: AssistantSource) => {
+    if (source.slide_id) {
+      await handleDeleteTile(source.slide_id)
       return
     }
-    sldRef.current.addTiles(newTiles)
-    showToast(`Imported ${newTiles.length} slide${newTiles.length !== 1 ? 's' : ''} ✓`)
-  }, [board.id, screenToWorld])
+    await deleteBoardSources([source.id])
+    setBoardSources(current => current.filter(item => item.id !== source.id))
+    showToast('Imported source removed from this board')
+  }, [handleDeleteTile, showToast])
 
   const deleteSelectedBoardItems = useCallback(async () => {
     const cardIds = selectedCardIds
@@ -642,7 +842,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     setSelectedTileIds([])
     setSelectedCardId(null)
     showToast(`Deleted ${cardIds.length + tileIds.length} item${cardIds.length + tileIds.length !== 1 ? 's' : ''}`)
-  }, [brd, selectedCardIds, selectedTileIds])
+  }, [brd, selectedCardIds, selectedTileIds, showToast])
 
   const createSlideGroupFromSelection = useCallback(() => {
     if (!selectedTileIds.length) return
@@ -664,7 +864,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       ]
     })
     showToast(`Grouped ${selectedTileIds.length} slide${selectedTileIds.length !== 1 ? 's' : ''}`)
-  }, [board.id, selectedTileIds])
+  }, [board.id, selectedTileIds, showToast])
 
   const syncSlideGroupsAfterDrop = useCallback((tileIds: string[], positions: Record<string, { x: number; y: number }> = {}) => {
     if (!tileIds.length) return
@@ -687,19 +887,23 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     })
   }, [])
 
+  const duplicateCardPreservingFont = useCallback(async (id: string) => {
+    await brd.duplicateCard(id)
+  }, [brd])
+
   const duplicateSelectedCards = useCallback(async () => {
     const ids = selectedCardIds
     if (!ids.length) return
-    await Promise.all(ids.map(id => brd.duplicateCard(id)))
+    for (const id of ids) await duplicateCardPreservingFont(id)
     showToast(`Duplicated ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
-  }, [brd, selectedCardIds])
+  }, [duplicateCardPreservingFont, selectedCardIds, showToast])
 
   const updateSelectedCards = useCallback(async (changes: Partial<Card>) => {
     const ids = selectedCardIds
     if (!ids.length) return
     await Promise.all(ids.map(id => brd.updateCard(id, changes)))
     showToast(`Updated ${ids.length} card${ids.length !== 1 ? 's' : ''}`)
-  }, [brd, selectedCardIds])
+  }, [brd, selectedCardIds, showToast])
 
   useEffect(() => {
     const applyPointerMove = (clientX: number, clientY: number) => {
@@ -965,27 +1169,55 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       moveRaf.current = null
       pendingMove.current = null
     }
-  }, [brd, panX, panY, selectionRect, syncSlideGroupsAfterDrop, visibleCards, zoom])
+  }, [brd, panX, panY, selectionRect, syncSlideGroupsAfterDrop, visibleCards, zoom, showToast])
 
-  // ── Scroll to zoom ──────────────────────────────────────────
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const cr = canvasRef.current!.getBoundingClientRect()
-    const mx = e.clientX - cr.left
-    const my = e.clientY - cr.top
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * delta))
-    setPanX(px => mx - (mx - px) * (nz / zoom))
-    setPanY(py => my - (my - py) * (nz / zoom))
-    setZoom(nz)
-  }, [zoom])
+  const zoomCanvas = useCallback((factor: number, pointer?: { x: number; y: number }) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const next = zoomCanvasAt(cameraRef.current, factor, pointer?.x ?? rect.width / 2, pointer?.y ?? rect.height / 2)
+    cameraRef.current = next
+    zoomRef.current = next.zoom
+    setPanX(next.panX)
+    setPanY(next.panY)
+    setZoom(next.zoom)
+  }, [])
+
+  // A non-passive listener consumes canvas gestures without magnifying the app UI.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const onWheel = (event: WheelEvent) => {
+      const modifier = event.ctrlKey || event.metaKey
+      if (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable]')) {
+        if (modifier) event.preventDefault()
+        return
+      }
+      event.preventDefault()
+      if (isDragging.current || isResizing.current || isPanning.current || isSelecting.current) return
+      const rect = canvas.getBoundingClientRect()
+      const dx = wheelPixels(event.deltaX, event.deltaMode, rect.width)
+      const dy = wheelPixels(event.deltaY, event.deltaMode, rect.height)
+      if (modifier) {
+        zoomCanvas(wheelZoomFactor(dy), { x: event.clientX - rect.left, y: event.clientY - rect.top })
+      } else {
+        const camera = cameraRef.current
+        const next = { ...camera, panX: camera.panX - (event.shiftKey && dx === 0 ? dy : dx), panY: camera.panY - (event.shiftKey && dx === 0 ? 0 : dy) }
+        cameraRef.current = next
+        setPanX(next.panX)
+        setPanY(next.panY)
+      }
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [brd.loading, zoomCanvas])
 
   // ── Keyboard shortcuts ──────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (target.closest('input,textarea,[contenteditable]')) return
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { brd.undo(); showToast('Undone ↩'); return }
+      const zoomShortcut = ['+', '=', '-', '0'].includes(e.key) && (e.ctrlKey || e.metaKey)
+      if (target.closest('input,textarea,[contenteditable]') && !zoomShortcut) return
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); void undoBoardAction(); return }
 
       // Arrow key pan (with or without Ctrl — Ctrl+Arrow also pans)
       if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) {
@@ -999,31 +1231,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         return
       }
 
-      // Zoom shortcuts
-      if ((e.key === '+' || e.key === '=') && !e.ctrlKey && !e.metaKey) {
+      // Buttons and keyboard use the same reciprocal 5% step.
+      if (e.key === '+' || e.key === '=') {
         e.preventDefault()
-        const cr = canvasRef.current?.getBoundingClientRect()
-        if (!cr) return
-        const cx = cr.width / 2, cy = cr.height / 2
-        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 1.2))
-        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
-        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
-        setZoom(nz)
+        zoomCanvas(CANVAS_ZOOM_STEP)
         return
       }
-      if (e.key === '-' && !e.ctrlKey && !e.metaKey) {
+      if (e.key === '-') {
         e.preventDefault()
-        const cr = canvasRef.current?.getBoundingClientRect()
-        if (!cr) return
-        const cx = cr.width / 2, cy = cr.height / 2
-        const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomRef.current * 0.8))
-        setPanX(px => cx - (cx - px) * (nz / zoomRef.current))
-        setPanY(py => cy - (cy - py) * (nz / zoomRef.current))
-        setZoom(nz)
+        zoomCanvas(1 / CANVAS_ZOOM_STEP)
         return
       }
-      if (e.key === '0' && !e.ctrlKey && !e.metaKey) {
+      if (e.key === '0') {
         e.preventDefault()
+        cameraRef.current = { panX: 0, panY: 0, zoom: 1 }
         setPanX(0); setPanY(0); setZoom(1)
         return
       }
@@ -1065,7 +1286,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [brd, deleteSelectedBoardItems, panBoard, screenToWorld, selectedBoardItemCount, selectedCardId, selectedCardIds, selectedFrameId, modalOpen])
+  }, [brd, deleteSelectedBoardItems, panBoard, screenToWorld, selectedBoardItemCount, selectedCardId, selectedCardIds, selectedFrameId, modalOpen, undoBoardAction, showToast, zoomCanvas])
 
   // ── Ctrl key for cursor ──────────────────────────────────────
   useEffect(() => {
@@ -1121,18 +1342,34 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }
 
   // ── View helpers ────────────────────────────────────────────
-  const fitAll = () => {
-    if (!brd.cards.length || !canvasRef.current) return
+  const fitBounds = (bounds: BoardRect | null) => {
+    if (!bounds || !canvasRef.current) return
     const cr = canvasRef.current.getBoundingClientRect()
-    const xs = brd.cards.map(c => c.x), ys = brd.cards.map(c => c.y)
-    const minX = Math.min(...xs) - 80, minY = Math.min(...ys) - 80
-    const maxX = Math.max(...xs) + 280, maxY = Math.max(...ys) + 220
-    const nz = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(cr.width / (maxX - minX), cr.height / (maxY - minY)) * 0.85))
+    const nz = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(cr.width / Math.max(1, bounds.width), cr.height / Math.max(1, bounds.height)) * 0.9))
     setZoom(nz)
-    setPanX(cr.width  / 2 - (minX + (maxX - minX) / 2) * nz)
-    setPanY(cr.height / 2 - (minY + (maxY - minY) / 2) * nz)
+    setPanX(cr.width / 2 - (bounds.x + bounds.width / 2) * nz)
+    setPanY(cr.height / 2 - (bounds.y + bounds.height / 2) * nz)
   }
+  const measuredCardRect = (card: Card): BoardRect => {
+    const element = canvasRef.current?.querySelector<HTMLElement>(`[data-board-card-id="${CSS.escape(card.id)}"] > div`)
+    return { x: card.x, y: card.y, width: card.card_width ?? 185, height: card.card_height ?? (element ? element.getBoundingClientRect().height / zoomRef.current : card.collapsed ? 54 : 220) }
+  }
+  const fitAll = () => fitBounds(buildExportBounds([
+    ...brd.cards.map(measuredCardRect), ...tileRects.map(r => r.rect),
+    ...textRects.map(r => r.rect), ...frameRects.map(r => r.rect), ...tagRects.map(r => r.rect),
+  ], 70))
 
+  const locateAssistantTask = (task: AssistantTask) => {
+    const saved = savedAssistantSnapshot(board.id, localStorage)
+    const generatedCards = saved.cards.filter(c => (c as Card & { ai_task_id?: string }).ai_task_id === task.id)
+    const targetFrames = saved.frames.filter(f => task.effects.frames.some(d => d.id === f.id) || task.effects.sections.some(w => w.frameId === f.id))
+    const targetCards = saved.cards.filter(c => task.effects.revisions.some(w => w.cardId === c.id))
+    setBoardSearch(''); setHideDoneRemove(false); setOverdueOnly(false)
+    requestAnimationFrame(() => fitBounds(buildExportBounds([
+      ...targetFrames.map(f => ({ x: f.x, y: f.y, width: f.width, height: f.height })),
+      ...[...generatedCards, ...targetCards].map(measuredCardRect),
+    ], 65)))
+  }
   // ── PDF Export ──────────────────────────────────────────────
   const exportPDF = async () => {
     if (!worldRef.current || !exportBounds) {
@@ -1214,6 +1451,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       textBlocks: txt.blocks,
       slides: sld.tiles,
       slideImages,
+      sources: await listBoardSources(board.id),
     })
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -1234,7 +1472,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       const data = JSON.parse(text)
       const imported = buildWhiteboardImport({ data, targetBoardId: board.id })
 
-      await brd.bulkImportCards(imported.cards)
+      await brd.bulkImportCards(preserveImportedCardFonts(data, imported.cards))
       if (imported.kind === 'whiteboard') {
         const tagInserts: GoalTagInsert[] = imported.goalTags.map(tag => ({
           board_id: board.id,
@@ -1248,8 +1486,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         frmRef.current.importFrames(imported.frames)
         txtRef.current.addBlocks(imported.textBlocks)
         await Promise.all(Object.entries(imported.slideImages).map(([id, dataUrl]) => saveImage(id, dataUrl)))
+        await saveBoardSources(imported.sources)
         sldRef.current.addTiles(imported.slides)
         setTileImages(prev => ({ ...prev, ...imported.slideImages }))
+        setBoardSources(current => [...current, ...imported.sources])
       }
 
       if (imported.kind === 'cards') {
@@ -1278,14 +1518,28 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
   // ── Modal ───────────────────────────────────────────────────
   const openEdit = (id: string) => { setEditingCard(brd.cards.find(c => c.id === id) ?? null); setModalOpen(true) }
+  const openWriting = (id: string) => {
+    setSelectedCardId(id); setSelectedCardIds([id]); setWritingCardId(id)
+    setShowBoardPanel(false); setAssistantOpen(false)
+  }
+  const openAssistant = () => { setAssistantOpen(true); setShowBoardPanel(false); setWritingCardId(null) }
+  const openSearch = () => { setShowBoardPanel(true); setAssistantOpen(false); setWritingCardId(null) }
+  let assistantSnapshot = { boardId: board.id, cards: brd.cards, frames: frm.frames }
+  try { assistantSnapshot = assistantOperations.getSnapshot() } catch { /* board loading/error UI owns failures */ }
+  const writingCard = writingCardId ? assistantSnapshot.cards.find(c => c.id === writingCardId) : undefined
+  const saveWriting = async (original: Card, title: string, body: string) => {
+    const saved = assistantOperations.getSnapshot().cards.find(c => c.id === original.id)
+    if (!saved || saved.locked || saved.updated_at !== original.updated_at || saved.title !== original.title || saved.body !== original.body) throw new Error('The saved note changed or is locked. Your draft is kept; reload the current note.')
+    await brdRef.current.updateCard(original.id, { title, body })
+  }
 
-  const handleSave = async (data: { title: string; body: string; dateLabel: string; dueDate: string | null; tag: TagType; bg: string }) => {
+  const handleSave = async (data: { title: string; body: string; dateLabel: string; dueDate: string | null; tag: TagType; bg: string; fontFamily: CardFontFamily }) => {
     try {
       if (editingCard) {
-        await brd.updateCard(editingCard.id, { title: data.title, body: data.body, date_label: data.dateLabel, due_date: data.dueDate, tag: data.tag, bg: data.bg })
+        await brd.updateCard(editingCard.id, { title: data.title, body: data.body, date_label: data.dateLabel, due_date: data.dueDate, tag: data.tag, bg: data.bg, font_family: data.fontFamily })
         showToast('Card updated ✓')
       } else {
-        await brd.addCard(data.title, data.body, data.dateLabel, data.dueDate, data.tag, data.bg, newCardWorld.current.x, newCardWorld.current.y)
+        await brd.addCard(data.title, data.body, data.dateLabel, data.dueDate, data.tag, data.bg, newCardWorld.current.x, newCardWorld.current.y, data.fontFamily)
         showToast('Card added ✓')
       }
     } catch (err) {
@@ -1328,7 +1582,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <SquarePlus size={17} />
         </SbBtn>
 
-        <SbBtn title="Fit all cards in view" onClick={fitAll} dark={dark}>
+        <SbBtn title="Fit board in view" onClick={fitAll} dark={dark}>
           <Maximize2 size={17} />
         </SbBtn>
 
@@ -1346,16 +1600,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           <Download size={17} />
         </SbBtn>
 
-        <SbBtn title="Import PDF" onClick={() => pdfInputRef.current?.click()} dark={dark}>
+        <SbBtn title="Import PDF, image, Markdown, or text source" onClick={() => pdfInputRef.current?.click()} dark={dark}>
           <FolderInput size={17} />
         </SbBtn>
         <input
           ref={pdfInputRef}
           type="file"
-          accept=".pdf"
+          accept=".pdf,.md,.markdown,.txt,image/png,image/jpeg,image/webp"
           multiple
           style={{ display: 'none' }}
-          onChange={e => { handleImportPdf(e.target.files); e.target.value = '' }}
+          onChange={e => {
+            const files = Array.from(e.currentTarget.files ?? [])
+            e.currentTarget.value = ''
+            if (files.length) void handleImportSources(files)
+          }}
         />
 
         <SbBtn title="Import JSON backup" onClick={() => jsonInputRef.current?.click()} dark={dark}>
@@ -1369,7 +1627,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           onChange={e => { importWhiteboardJson(e.target.files); e.target.value = '' }}
         />
 
-        <SbBtn title="Undo (Ctrl+Z)" onClick={() => { brd.undo(); showToast('Undone ↩') }} dark={dark}>
+        <SbBtn title="Undo (Ctrl+Z)" onClick={() => { void undoBoardAction() }} dark={dark}>
           <Undo2 size={17} />
         </SbBtn>
 
@@ -1399,6 +1657,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   minWidth: 200, maxHeight: 400, overflowY: 'auto',
                 }}>
                   <div style={{ padding: '8px 14px 4px', fontSize: 10, fontWeight: 700, color: dark ? '#666' : '#aaa', letterSpacing: '0.08em' }}>ADD FRAME</div>
+                  <button
+                    onClick={() => openFrameworkDesigner()}
+                    style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '9px 14px', border: 'none', background: dark ? '#252F46' : '#F2EEFF', cursor: 'pointer', textAlign: 'left', fontSize: 12, fontWeight: 700, color: dark ? '#F4D94A' : '#4536BE', fontFamily: fonts.ui }}
+                  ><Sparkles size={14} /> Design a framework</button>
                   {FRAMEWORK_GROUPS.map((entry, i) =>
                     'sep' in entry ? (
                       <div key={entry.sep + i} style={{ padding: '7px 14px 2px', fontSize: 8, letterSpacing: '0.1em', color: dark ? '#555' : '#aaa', fontWeight: 700 }}>
@@ -1425,6 +1687,19 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                       </button>
                     )
                   )}
+                  {!!customFrameworks.length && <>
+                    <div style={{ padding: '8px 14px 3px', fontSize: 9, fontWeight: 800, color: dark ? '#AEB7C8' : '#6B7280' }}>MY FRAMEWORKS</div>
+                    {customFrameworks.map(template => (
+                      <div key={template.id} style={{ display: 'flex', alignItems: 'center', borderTop: `1px solid ${dark ? '#31405A' : '#E6E3DD'}` }}>
+                        <button onClick={() => addCustomFrameworkToBoard(template)} title={`Add ${template.label} to the canvas`}
+                          style={{ minWidth: 0, flex: 1, padding: '9px 10px 9px 14px', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', color: dark ? '#F7F7F2' : colors.ink, fontFamily: fonts.ui, fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {template.label}
+                        </button>
+                        <button onClick={() => openFrameworkDesigner(template)} aria-label={`Edit ${template.label}`} title={`Edit ${template.label}`}
+                          style={{ width: 34, height: 34, marginRight: 5, display: 'grid', placeItems: 'center', border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer', color: dark ? '#C4CAD8' : '#566176' }}><Pencil size={14} /></button>
+                      </div>
+                    ))}
+                  </>}
                 </div>
               </>
             )
@@ -1455,8 +1730,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
           <div style={{ flex: 1 }}/>
           <div className="ib-board-header-actions">
+          <button ref={assistantButtonRef} className="ib-action" aria-label="Open Board Assistant" title="Board Assistant" aria-pressed={assistantOpen} onClick={openAssistant}>
+            <Sparkles size={15} /> <span className="ib-board-action-label">Assistant</span>
+          </button>
+          {selectedCardId && <button className="ib-action" title="Write selected note" onClick={() => openWriting(selectedCardId)}>Write</button>}
           <button
-            onClick={() => setShowBoardPanel(open => !open)}
+            onClick={() => { if (showBoardPanel) setShowBoardPanel(false); else openSearch() }}
             title={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
             aria-label={showBoardPanel ? 'Hide find board items' : 'Show find board items'}
             className="ib-icon-button"
@@ -1491,7 +1770,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           </div>
         </div>
 
-        <div className="ib-quick-add" aria-label="Quick add">
+        <div className="ib-quick-add" aria-label="Quick add" style={assistantOpen || writingCardId ? { display: 'none' } : undefined}>
           <button type="button" onClick={() => { const cr = canvasRef.current?.getBoundingClientRect(); if (cr) { newCardWorld.current = screenToWorld(cr.left + cr.width / 2, cr.top + cr.height / 2); setEditingCard(null); setModalOpen(true) } }}>
             <Plus size={13} /> Note
           </button>
@@ -1558,7 +1837,6 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           onMouseDown={onCanvasMouseDown}
           onContextMenu={e => e.preventDefault()}
           onDoubleClick={onCanvasDblClick}
-          onWheel={onWheel}
           style={{
             position: 'absolute', inset: '50px 0 0 0',
             overflow: 'hidden',
@@ -1672,12 +1950,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
 
             {/* Cards */}
             {visibleCards.map(card => (
-              <div key={card.id} className="world-item">
+              <div key={card.id} className="world-item" data-board-card-id={card.id}>
                 <IdeaCard
                   card={card} dark={dark}
                   onMoveStart={onCardMoveStart}
                   onResizeStart={onResizeStart}
-                  onEdit={openEdit}
+                  onEdit={openWriting}
                   onDelete={async id => {
                     if (id === selectedCardId) setSelectedCardId(null)
                     setSelectedCardIds(prev => prev.filter(cardId => cardId !== id))
@@ -1686,7 +1964,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                   }}
                   onInlineTitle={async (id, title) => { await brd.updateCard(id, { title }); showToast('Renamed ✓') }}
                   onToggleCollapse={async id => { await brd.updateCard(id, { collapsed: !brd.cards.find(c => c.id === id)?.collapsed }) }}
-                  onDuplicate={async id => { await brd.duplicateCard(id); showToast('Card duplicated ✓') }}
+                  onDuplicate={async id => { await duplicateCardPreservingFont(id); showToast('Card duplicated ✓') }}
                   onToggleLock={async id => {
                     const locked = !brd.cards.find(c => c.id === id)?.locked
                     await brd.updateCard(id, { locked })
@@ -1823,15 +2101,10 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           {/* Zoom controls */}
           <div style={{ position:'absolute', right:18, bottom:22, display:'flex', flexDirection:'column', gap:1, background: dark?colors.surfaceDark:'white', borderRadius:9, border:`2px solid ${dark?colors.borderDark:colors.ink}`, overflow:'hidden', boxShadow:'3px 4px 0 rgba(23,32,56,.14)', zIndex:50 }}>
             {[
-              { label: 'Zoom in', icon: <ZoomIn size={14} />, factor: 1.2 },
-              { label: 'Zoom out', icon: <ZoomOut size={14} />, factor: 0.8 },
+              { label: 'Zoom in', icon: <ZoomIn size={14} />, factor: CANVAS_ZOOM_STEP },
+              { label: 'Zoom out', icon: <ZoomOut size={14} />, factor: 1 / CANVAS_ZOOM_STEP },
             ].map(({ label, icon, factor }) => (
-              <button key={label} aria-label={label} title={label} onClick={() => {
-                const nz = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor))
-                const cr = canvasRef.current!.getBoundingClientRect()
-                const cx = cr.width/2, cy = cr.height/2
-                setPanX(px => cx-(cx-px)*(nz/zoom)); setPanY(py => cy-(cy-py)*(nz/zoom)); setZoom(nz)
-              }} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:dark?'#F7F7F2':colors.ink,background:'none',border:'none' }}>{icon}</button>
+              <button key={label} aria-label={label} title={label} onClick={() => zoomCanvas(factor)} style={{ width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:dark?'#F7F7F2':colors.ink,background:'none',border:'none' }}>{icon}</button>
             ))}
             <div style={{ height:1, background: dark?colors.borderDark:colors.borderLight }}/>
             <div style={{ width:34,height:26,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:dark?'#666':'#888',fontFamily:"'Delius Swash Caps',cursive" }}>{Math.round(zoom*100)}%</div>
@@ -1872,7 +2145,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       </div>
 
       {/* ── SEARCH + OUTLINE ── */}
-      {showBoardPanel && (
+      {showBoardPanel && !assistantOpen && !writingCard && (
       <aside style={{
         width: 306,
         flexShrink: 0,
@@ -1957,7 +2230,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             return (
               <button
                 key={item.key}
-                onClick={() => jumpToItem(item)}
+                onClick={() => { jumpToItem(item); if (item.kind === 'card') openWriting(item.id) }}
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '8px 1fr',
@@ -1984,6 +2257,66 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         </div>
       </aside>
       )}
+
+      {frameworkDesignerOpen && <FrameworkDesignerModal
+        key={editingFramework?.id ?? 'new-framework'}
+        open={frameworkDesignerOpen}
+        boardId={board.id}
+        dark={dark}
+        sources={assistantSources}
+        initialTemplate={editingFramework ?? undefined}
+        onSave={saveFrameworkTemplate}
+        onDelete={removeFrameworkTemplate}
+        onAdd={addCustomFrameworkToBoard}
+        onClose={() => { setFrameworkDesignerOpen(false); setEditingFramework(null) }}
+      />}
+
+      <BoardAssistantPanel
+        open={assistantOpen} boardId={board.id} boardName={board.name}
+        cards={assistantSnapshot.cards} frames={assistantSnapshot.frames}
+        customFrameworks={customFrameworks}
+        availableSources={assistantSources}
+        selectedNoteIds={assistantSelectedIds} selectedSourceIds={assistantSelectedSourceIds} selectedFrameId={selectedFrameId}
+        operations={assistantOperations}
+        getOrigin={() => ({ x: exportBounds ? exportBounds.x + exportBounds.width + 100 : 80, y: exportBounds?.y ?? 80 })}
+        locate={locateAssistantTask}
+        onTaskBoundary={() => { userUndosAfterTask.current = 0 }}
+        onLocateNote={id => { const item = navigationItems.find(i => i.kind === 'card' && i.id === id); if (item) jumpToItem(item) }}
+        onMoveNote={async (id, x, y) => { await brdRef.current.updateCard(id, { x, y }) }}
+        onDeleteNote={async id => {
+          await brdRef.current.removeCard(id)
+          setSelectedCardId(current => current === id ? null : current)
+          setSelectedCardIds(current => current.filter(selected => selected !== id))
+        }}
+        onLocateSource={source => {
+          const kind = source.kind === 'note' ? 'card' : source.kind === 'text-block' ? 'text' : source.kind === 'framework' ? 'frame' : source.kind === 'goal-tag' ? 'tag' : 'slide'
+          const id = source.kind === 'note' ? source.id : source.kind === 'text-block' ? source.id.slice('text-block:'.length) : source.kind === 'framework' ? source.id.slice('framework:'.length) : source.kind === 'goal-tag' ? source.id.slice('goal:'.length) : source.slide_id
+          const item = id ? navigationItems.find(candidate => candidate.kind === kind && candidate.id === id) : undefined
+          if (item) { jumpToItem(item); if (source.kind === 'note') openWriting(source.id) }
+          else showToast('This imported text source is available in the Assistant context.')
+        }}
+        onRemoveSource={removeAssistantSource}
+        onImportFiles={handleImportSources}
+        loadSourceImage={source => source.slide_id ? getImage(source.slide_id) : Promise.resolve(null)}
+        onExtractSourceText={extractSourceText}
+        onSearch={openSearch}
+        onClose={() => { setAssistantOpen(false); assistantButtonRef.current?.focus() }}
+        dark={dark}
+      />
+      {writingCard && !assistantOpen && <NoteWritingPanel key={writingCard.id} card={writingCard} dark={dark}
+        sourceNotes={((writingCard as Card & { ai_source_ids?: string[] }).ai_source_ids ?? []).map(id => assistantSources.find(source => source.id === id)).filter((source): source is AssistantSource => !!source).map(source => ({ id: source.id, title: source.source_label ?? source.title }))}
+        onLocateSource={id => {
+          const source = assistantSources.find(item => item.id === id)
+          if (!source) return
+          const kind = source.kind === 'note' ? 'card' : source.kind === 'text-block' ? 'text' : source.kind === 'framework' ? 'frame' : source.kind === 'goal-tag' ? 'tag' : 'slide'
+          const sourceId = source.kind === 'note' ? source.id : source.kind === 'text-block' ? source.id.slice('text-block:'.length) : source.kind === 'framework' ? source.id.slice('framework:'.length) : source.kind === 'goal-tag' ? source.id.slice('goal:'.length) : source.slide_id
+          const item = sourceId ? navigationItems.find(candidate => candidate.kind === kind && candidate.id === sourceId) : undefined
+          if (item) { jumpToItem(item); if (source.kind === 'note') openWriting(source.id) }
+          else showToast('This imported text source is available in the Assistant context.')
+        }}
+        onClose={() => { setWritingCardId(null); canvasRef.current?.focus() }}
+        onSearch={openSearch} onAssistant={openAssistant} onDetails={() => openEdit(writingCard.id)} onSave={saveWriting}
+      />}
 
       {/* Markdown styles */}
       <style>{`
@@ -2201,7 +2534,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       {toast && (
         <div style={{ position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background: dark?'#162845':'#152336',color:'white',borderRadius:10,padding:'10px 20px',fontSize:13,fontFamily:"'DM Sans',sans-serif",zIndex:2000,display:'flex',alignItems:'center',gap:10,boxShadow:'0 8px 24px rgba(0,0,0,.2)' }}>
           {toast}
-          <button onClick={() => { brd.undo(); showToast('Undone ↩') }} style={{ background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,padding:'2px 9px',cursor:'pointer',fontSize:11,color:'white',fontFamily:"'DM Sans',sans-serif" }}>Undo</button>
+          <button onClick={() => { void undoBoardAction() }} style={{ background:'rgba(255,255,255,.15)',border:'1px solid rgba(255,255,255,.3)',borderRadius:6,padding:'2px 9px',cursor:'pointer',fontSize:11,color:'white',fontFamily:"'DM Sans',sans-serif" }}>Undo</button>
         </div>
       )}
 
@@ -2242,7 +2575,9 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
               ['↑ ↓ ← →',    'Pan canvas'],
               ['Ctrl + ↑↓←→', 'Pan canvas'],
               ['Shift + arrows', 'Pan faster'],
-              ['+  /  -',    'Zoom in / out'],
+              ['+  /  -',    'Zoom in / out (5%)'],
+              ['Ctrl/⌘ + scroll', 'Zoom at pointer'],
+              ['Scroll', 'Pan canvas'],
               ['0',          'Reset zoom'],
             ] as [string, string][]).map(([key, desc]) => (
               <Fragment key={key}>
@@ -2274,6 +2609,20 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       )}
     </div>
   )
+}
+
+function toAssistantSource(source: BoardSource): AssistantSource {
+  return {
+    id: source.id,
+    board_id: source.board_id,
+    title: source.title,
+    body: source.text,
+    kind: source.kind,
+    source_label: source.kind === 'pdf-page' ? `${source.title} · Page ${source.page_number ?? 1}` : source.title,
+    slide_id: source.slide_id,
+    mime_type: source.mime_type,
+    page_number: source.page_number,
+  }
 }
 
 function SbBtn({ children, title, onClick }: { children: React.ReactNode; title: string; onClick: () => void; dark?: boolean }) {

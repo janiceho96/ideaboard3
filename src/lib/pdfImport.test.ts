@@ -8,12 +8,21 @@ const mockPdfjs: PdfjsLib = {
   getDocument: (_src) => ({
     promise: Promise.resolve({
       numPages: 2,
-      getPage: async (_n: number) => ({
+      getPage: async (n: number) => ({
         getViewport: ({ scale }: { scale: number }) => ({
           width: 800 * scale,
           height: 600 * scale,
         }),
         render: (_opts: unknown) => ({ promise: Promise.resolve() }),
+        getTextContent: async () => ({
+          items: n === 1
+            ? [
+                { str: '  First  ', hasEOL: false },
+                { str: 'page   one', hasEOL: true },
+                { str: '  Second\tline ', hasEOL: false },
+              ]
+            : [],
+        }),
       }),
     }),
   }),
@@ -53,5 +62,32 @@ describe('importPdf', () => {
     for (const p of pages) {
       expect(p.dataUrl.startsWith('data:')).toBe(true)
     }
+  })
+
+  it('extracts normalized text separately for each page', async () => {
+    const pages = await importPdf(makeFile(), mockCanvasMaker, () => Promise.resolve(mockPdfjs))
+    expect(pages[0].textContent).toBe('First page one\nSecond line')
+    expect(pages[1].textContent).toBe('')
+  })
+
+  it('keeps rendered pages when text extraction fails', async () => {
+    const pdfjsWithTextFailure: PdfjsLib = {
+      ...mockPdfjs,
+      getDocument: () => ({
+        promise: Promise.resolve({
+          numPages: 1,
+          getPage: async () => ({
+            getViewport: ({ scale }) => ({ width: 800 * scale, height: 600 * scale }),
+            render: () => ({ promise: Promise.resolve() }),
+            getTextContent: async () => { throw new Error('text extraction failed') },
+          }),
+        }),
+      }),
+    }
+
+    const pages = await importPdf(makeFile(), mockCanvasMaker, () => Promise.resolve(pdfjsWithTextFailure))
+    expect(pages).toHaveLength(1)
+    expect(pages[0].dataUrl).toBe('data:image/png;base64,mock_1200x900')
+    expect(pages[0].textContent).toBeUndefined()
   })
 })

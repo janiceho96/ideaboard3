@@ -1,6 +1,6 @@
 // src/hooks/useBoard.ts
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type { Card, CardInsert, GoalTag, GoalTagInsert, TagType } from '../types'
+import type { Card, CardFontFamily, CardInsert, GoalTag, GoalTagInsert, TagType } from '../types'
 import * as db from '../lib/db'
 
 interface UseBoardReturn {
@@ -10,7 +10,7 @@ interface UseBoardReturn {
   boardName: string
   loading: boolean
   error: string | null
-  addCard: (title: string, body: string, dateLabel: string, dueDate: string | null, tag: TagType, bg: string, worldX: number, worldY: number) => Promise<void>
+  addCard: (title: string, body: string, dateLabel: string, dueDate: string | null, tag: TagType, bg: string, worldX: number, worldY: number, fontFamily?: CardFontFamily) => Promise<void>
   updateCard: (id: string, changes: Partial<Card>) => Promise<void>
   moveCard: (id: string, x: number, y: number) => void
   commitCardMove: (id: string, x: number, y: number) => Promise<void>
@@ -67,15 +67,16 @@ export function useBoard(boardId: string | null): UseBoardReturn {
   const undo = useCallback(() => {
     if (!historyRef.current.length) return
     const prev = historyRef.current[historyRef.current.length - 1]
+    if (activeBoardId) db.restoreBoardSnapshot(activeBoardId, prev.cards, prev.goalTags)
     historyRef.current = historyRef.current.slice(0, -1)
     setCanUndo(historyRef.current.length > 0)
     setCards(prev.cards)
     setGoalTags(prev.goalTags)
-  }, [])
+  }, [activeBoardId])
 
   const addCard = useCallback(async (
     title: string, body: string, dateLabel: string, dueDate: string | null,
-    tag: TagType, bg: string, worldX: number, worldY: number
+    tag: TagType, bg: string, worldX: number, worldY: number, fontFamily: CardFontFamily = 'marker'
   ) => {
     if (!activeBoardId) return
     setCards(prev => { pushHistory(prev, goalTags); return prev })
@@ -85,7 +86,7 @@ export function useBoard(boardId: string | null): UseBoardReturn {
       x: worldX, y: worldY,
       rotation: (Math.random() - 0.5) * 3,
       card_width: 185, card_height: null,
-      collapsed: false, locked: false,
+      collapsed: false, locked: false, font_family: fontFamily,
     })
     setCards(prev => [...prev, newCard])
   }, [activeBoardId, goalTags, pushHistory])
@@ -135,6 +136,7 @@ export function useBoard(boardId: string | null): UseBoardReturn {
       card_height: original.card_height,
       collapsed: false,
       locked: false,
+      font_family: original.font_family,
     })
     setCards(prev => [...prev, newCard])
   }, [activeBoardId, cards, goalTags, pushHistory])

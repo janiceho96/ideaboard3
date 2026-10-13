@@ -1,109 +1,81 @@
-IDEABOARD - HOW TO INSTALL AND RUN
+IDEABOARD - DOWNLOAD, INSTALL, AND RUN
 
-Ideaboard is a local app. It runs on your computer and opens in your web
-browser. It is not installed from the Apple App Store or Microsoft Store.
+Download the project:
+https://github.com/janiceho96/ideaboard3/archive/refs/heads/main.zip
 
+Extract the ZIP before running anything. Open the extracted ideaboard3-main folder.
 
-FOR MAC USERS
+WINDOWS
 
-1. Put the whole Ideaboard folder somewhere easy to find, such as Downloads
-   or Applications.
+1. Install Node.js 24 LTS with npm from https://nodejs.org/en/download.
+2. Double-click launch-ideaboard.bat in the extracted project folder.
+3. The first run downloads project packages; internet is needed for setup.
+4. Ideaboard opens in your browser at:
+   http://127.0.0.1:5174/ideaboard.html
+5. Keep the command window open. Press Ctrl+C there to stop the local server.
+6. Double-click the same launcher whenever you want to use Ideaboard again.
 
-2. Open the Ideaboard folder.
+There is no Windows EXE/MSI installer yet. This is the browser version.
+Core boards, notes, imports, and manual custom frameworks work in the browser.
+AI generation and on-device OCR currently require the native Mac app.
 
-3. Make sure Xcode and Node.js are installed on your Mac.
+If the launcher fails, open the extracted folder in File Explorer, type cmd in
+its address bar, and press Enter. Run these commands in Command Prompt:
 
-4. Double-click this file:
+   node --version
+   npm --version
+   npm ci
+   npm run dev -- --host 127.0.0.1 --port 5174 --strictPort --open /ideaboard.html
 
-   macOS/install-ideaboard-mac.command
+MAC DESKTOP APP
 
-5. If macOS asks for permission to open it:
+Building requires macOS 13 or later, Node.js 24 LTS/npm, full Xcode, and an Apple
+Development signing certificate configured in Xcode.
 
-   - Right-click macOS/install-ideaboard-mac.command
-   - Choose Open
-   - Click Open again
-
-6. Wait for the installer to finish. It creates:
-
+1. Double-click macOS/install-ideaboard-mac.command in the extracted folder.
+   If Finder blocks opening it, right-click the file and choose Open.
+2. Or, from Terminal in the extracted project folder, run:
+   zsh macOS/install-ideaboard-mac.command
+3. Wait for installation, then open:
    Your Home Folder > Applications > Ideaboard.app
+4. You can keep it in your Dock. No terminal, browser, Node.js, or Xcode is
+   needed for everyday use after installation.
 
-7. Open Ideaboard.app from Applications. You can drag it to the Dock for
-   one-click launching.
+To update, quit Ideaboard and run the installer from the updated source folder.
+It replaces the same app. Previous versions are saved as ZIPs in:
+   ~/Library/Application Support/Ideaboard/App Backups
 
-The native app starts the local server and opens Ideaboard in your browser.
-You do not need to keep a Terminal window open.
-Keep the project folder in the same location after installing. If you move it,
-run macOS/install-ideaboard-mac.command again.
+MAC BROWSER ALTERNATIVE
 
-ALTERNATIVE MAC LAUNCHER
+With Node.js installed, double-click launch-ideaboard.command. This opens the
+browser version at the same browser address listed above. Keep its Terminal
+window open and press Ctrl+C to stop it. It does not create another Mac app.
 
-If you do not want to build the native app, double-click:
+YOUR BOARDS AND BACKUPS
 
-   launch-ideaboard.command
+No sign-in is required. Work is saved locally. The Mac app and browser profiles
+have separate workspaces, so keep using the same app/browser and address.
 
-Keep the Terminal window open while using this alternative launcher. Ideaboard
-should open in your browser at:
+On the home screen, choose Export workspace backup to save your work as JSON.
+To move between Windows, a browser, and the Mac app, export from the original
+workspace, then choose Import workspace backup in the destination workspace.
 
-   http://127.0.0.1:5174/ideaboard.html
+FRAMEWORK DESIGN
 
-To stop it, go back to the Terminal window and press:
-
-   Control + C
-
-
-FOR WINDOWS USERS
-
-1. Put the whole Ideaboard folder somewhere easy to find, such as Downloads
-   or Desktop.
-
-2. Open the Ideaboard folder.
-
-3. Double-click this file:
-
-   launch-ideaboard.bat
-
-4. Keep the command window open while using Ideaboard.
-
-5. Ideaboard should open in your browser at:
-
-   http://127.0.0.1:5174/ideaboard.html
-
-6. To stop Ideaboard, close the command window or press:
-
-   Ctrl + C
-
-
-FIRST RUN
-
-The first time Ideaboard runs, it may install some required packages. This can
-take a few minutes. Wait until the browser opens.
-
-
-REQUIREMENT
-
-Ideaboard needs Node.js installed on the computer.
-
-If Ideaboard does not start, install Node.js from:
-
-   https://nodejs.org/
-
-Choose the LTS version.
-
+Open Add Frame > Design a framework. Describe your goal, choose a visual shape,
+and optionally select useful board text. Preview and edit sections before saving.
+A matrix needs four sections; other layouts have two to eight. You can design
+manually on either platform. Design with AI requires the configured Mac provider.
 
 TROUBLESHOOTING
 
-If the browser does not open automatically, open your browser and go to:
+- Node/npm not found: install Node.js LTS and reopen the command window.
+- Installation fails: check internet access and retry npm ci in the project folder.
+- Port 5174 occupied: stop other Ideaboard command windows, then retry.
+- Browser does not open: visit the address above while the launcher is running.
+- Missing boards: check the app, browser profile, and address; use backup transfer
+  when switching environments. Back up before clearing browser/app storage.
+- Mac signing certificate missing: configure an Apple Development identity in
+  Xcode; the installer preserves the existing app when prerequisites fail.
 
-   http://127.0.0.1:5174/ideaboard.html
-
-If you see a message saying the file cannot be opened on Mac:
-
-   - Right-click launch-ideaboard.command
-   - Choose Open
-   - Click Open again
-
-If another app is already using the port, close old Terminal or command
-windows that were running Ideaboard, then try again.
-
-If it still does not work, restart the computer and double-click the launcher
-again.
+Read README.md for screenshots, features, and development commands.

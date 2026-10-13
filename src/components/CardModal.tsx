@@ -1,8 +1,9 @@
 // src/components/CardModal.tsx
 import { useState, useEffect, useRef } from 'react'
-import type { Card, TagType } from '../types'
+import type { Card, CardFontFamily, TagType } from '../types'
 import { Check, X } from 'lucide-react'
 import { colors, fonts, radii, shadows } from '../lib/designTokens'
+import { CARD_FONT_OPTIONS } from '../lib/cardTypography'
 
 const TAG_OPTS: { key: TagType; label: string; bg: string; color: string }[] = [
   { key: 'idea',     label: 'Idea',     bg: '#EEE9FF', color: '#4137A8' },
@@ -31,7 +32,7 @@ interface CardModalProps {
   card: Card | null
   isOpen: boolean
   onClose: () => void
-  onSave: (data: { title: string; body: string; dateLabel: string; dueDate: string | null; tag: TagType; bg: string }) => void
+  onSave: (data: { title: string; body: string; dateLabel: string; dueDate: string | null; tag: TagType; bg: string; fontFamily: CardFontFamily }) => void
   onDelete?: () => void
   dark?: boolean
 }
@@ -39,6 +40,7 @@ interface CardModalProps {
 export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dark = false }: CardModalProps) {
   const [title, setTitle]       = useState('')
   const [body, setBody]         = useState('')
+  const [fontFamily, setFontFamily] = useState<CardFontFamily>('marker')
   const [dateLabel, setDateLabel] = useState('')
   const [dueDate, setDueDate]   = useState('')
   const [tag, setTag]           = useState<TagType>('idea')
@@ -50,6 +52,7 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
   useEffect(() => {
     if (isOpen) {
       setTitle(card?.title ?? ''); setBody(card?.body ?? '')
+      setFontFamily(card?.font_family ?? 'marker')
       setDateLabel(card?.date_label ?? ''); setDueDate(card?.due_date ?? '')
       setTag(card?.tag ?? 'idea'); setBg(card?.bg ?? 'white'); setTitleErr(false)
       setActiveTemplate(null)
@@ -65,7 +68,7 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
 
   const handleSave = () => {
     if (!title.trim()) { setTitleErr(true); titleRef.current?.focus(); return }
-    onSave({ title: title.trim(), body: body.trim(), dateLabel: dateLabel.trim() || 'No date', dueDate: dueDate || null, tag, bg })
+    onSave({ title: title.trim(), body: body.trim(), dateLabel: dateLabel.trim() || 'No date', dueDate: dueDate || null, tag, bg, fontFamily })
     onClose()
   }
 
@@ -142,6 +145,21 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
             onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = colors.markerPurple}
             onBlur={e => (e.target as HTMLTextAreaElement).style.borderColor = borderC}
           />
+        </Field>
+
+        <Field label="Note font" dark={dark}>
+          <select
+            value={fontFamily}
+            onChange={e => setFontFamily(e.target.value as CardFontFamily)}
+            aria-label="Note font"
+            style={{ ...inp, height: 40, cursor: 'pointer' }}
+          >
+            {CARD_FONT_OPTIONS.map(option => (
+              <option key={option.id} value={option.id} style={{ fontFamily: option.body }}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>

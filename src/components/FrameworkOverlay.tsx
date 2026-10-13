@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import type { FrameworkType, FrameInstance } from '../types'
-import { FRAMEWORK_LABELS, FRAMEWORK_GROUPS } from '../hooks/useFrames'
+import { FrameworkLayoutSurface } from './FrameworkLayoutPreview'
+import type { BuiltinFrameworkType, FrameInstance } from '../types'
+import { FRAMEWORK_LABELS, FRAMEWORK_GROUPS, FRAMEWORK_REGISTRY, getFrameworkDefinition, getFrameworkLabel, getFrameworkSectionNotes } from '../hooks/useFrames'
 
 interface FrameworkOverlayProps {
   frame: FrameInstance
@@ -10,7 +11,7 @@ interface FrameworkOverlayProps {
   onResizeStart: (id: string, e: React.MouseEvent) => void
   onDelete: (id: string) => void
   onSelect: (id: string) => void
-  onTypeChange: (id: string, type: FrameworkType) => void
+  onTypeChange: (id: string, type: BuiltinFrameworkType) => void
   onRename: (id: string, name: string) => void
   onUpdateNotes: (id: string, notes: string) => void
   onUpdateNoteArea: (id: string, areaId: string, notes: string) => void
@@ -23,8 +24,11 @@ export default function FrameworkOverlay({
   const [typePickerOpen, setTypePickerOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const { id, type, name, x, y, width, height } = frame
-  const label = name ? `${FRAMEWORK_LABELS[type]} — ${name}` : FRAMEWORK_LABELS[type]
-  const areas = getFrameNoteAreas(type)
+  const frameworkLabel = getFrameworkLabel(type, frame.customFramework)
+  const label = name ? `${frameworkLabel} — ${name}` : frameworkLabel
+  const definition = getFrameworkDefinition(type, frame.customFramework) ?? FRAMEWORK_REGISTRY.blank
+  const areas = definition.sections
+  const earlierAreas = definition.legacySections.filter(area => getFrameworkSectionNotes(frame, area.id))
 
   return (
     <div
@@ -32,6 +36,7 @@ export default function FrameworkOverlay({
       onClick={e => { if (!(e.target as HTMLElement).closest('.no-drag')) onSelect(id) }}
       style={{
         position: 'absolute', left: x, top: y,
+        ...(type.startsWith('custom:') ? { width, height } : {}),
         userSelect: 'none',
         outline: selected ? '2px solid #49B6E5' : 'none',
         outlineOffset: 3,
@@ -134,6 +139,7 @@ export default function FrameworkOverlay({
         >×</button>
       </div>
 
+      {type === 'blank' && <div style={shell(width, height, dark)}>{header('BLANK — LEGACY NOTES')}</div>}
       {type === 'eisenhower'            && <EisenhowerMatrix   width={width} height={height} dark={dark} />}
       {type === 'ooda'                  && <OodaLoop           width={width} height={height} dark={dark} />}
       {type === 'ikigai'                && <IkigaiDiagram      width={width} height={height} dark={dark} />}
@@ -158,22 +164,43 @@ export default function FrameworkOverlay({
       {type === 'scamper'               && <SCAMPERFramework   width={width} height={height} dark={dark} />}
       {type === 'pros-cons'             && <ProsCons           width={width} height={height} dark={dark} />}
       {type === 'impact-effort'         && <ImpactEffort       width={width} height={height} dark={dark} />}
+      {type.startsWith('custom:') && frame.customFramework && <CustomFrameworkSurface frame={frame} dark={dark} />}
 
+      {type === 'wheel-of-life' && areas.map(area => (
+        <span key={`label-${area.id}`} style={{ position: 'absolute', left: '43%', top: `${area.top - 2}%`, fontSize: 9, color: dark ? '#F0EEE8' : '#263D5B', fontFamily: "'DM Sans',sans-serif", zIndex: 4 }}>{area.label}</span>
+      ))}
+      {!!earlierAreas.length && (
+        <details className="no-drag" onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}
+          style={{ position: 'absolute', top: 38, left: 8, width: '36%', color: dark ? '#F0EEE8' : '#263D5B', maxHeight: '85%', overflowY: 'auto', zIndex: 6, background: dark ? '#152336' : '#fff', border: '1.5px solid #263D5B', borderRadius: 6, padding: 6 }}>
+          <summary style={{ cursor: 'pointer', fontSize: 11 }}>Earlier notes ({earlierAreas.length})</summary>
+          <p style={{ fontSize: 11 }}>These earlier notes were written in positional boxes. Choose a life area before moving their contents.</p>
+          {earlierAreas.map(area => (
+            <label key={area.id} style={{ display: 'block', fontSize: 11, marginTop: 8 }}>
+              {area.label}
+              <textarea aria-label={area.label} value={getFrameworkSectionNotes(frame, area.id) ?? ''}
+                onChange={e => onUpdateNoteArea(id, area.storageKey, e.target.value)}
+                style={{ display: 'block', width: '100%', minHeight: 80, boxSizing: 'border-box', fontFamily: 'inherit', color: dark ? '#F0EEE8' : '#263D5B', background: dark ? '#152336' : '#fff' }} />
+            </label>
+          ))}
+        </details>
+      )}
       {areas.map(area => (
         <textarea
           key={area.id}
           className="no-drag"
-          value={frame.noteAreas?.[area.id] ?? ''}
-          onChange={e => onUpdateNoteArea(id, area.id, e.target.value)}
+          value={getFrameworkSectionNotes(frame, area.id) ?? ''}
+          onChange={e => onUpdateNoteArea(id, area.storageKey, e.target.value)}
           onMouseDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onSelect(id) }}
-          placeholder={area.placeholder}
+          aria-label={area.label}
+          placeholder={type.startsWith('custom:') ? area.writingGuidance : `${area.label}...`}
+          title={area.writingGuidance}
           style={{
             position: 'absolute',
             left: `${area.left}%`,
-            top: `${area.top}%`,
+            top: type.startsWith('custom:') ? `calc(${area.top}% + 4.5%)` : `${area.top}%`,
             width: `${area.width}%`,
-            height: `${area.height}%`,
+            height: type.startsWith('custom:') ? `calc(${area.height}% - 4.5%)` : `${area.height}%`,
             resize: 'none',
             border: selected ? '1px dashed rgba(73,182,229,.42)' : '1px solid transparent',
             borderRadius: 7,
@@ -185,7 +212,7 @@ export default function FrameworkOverlay({
             padding: 8,
             outline: 'none',
             zIndex: 4,
-            opacity: selected || frame.noteAreas?.[area.id] ? 1 : 0,
+            opacity: selected || getFrameworkSectionNotes(frame, area.id) ? 1 : 0,
             transition: 'opacity .12s, border-color .12s, background .12s',
             boxSizing: 'border-box',
           }}
@@ -242,6 +269,10 @@ export default function FrameworkOverlay({
   )
 }
 
+function CustomFrameworkSurface({ frame, dark }: { frame: FrameInstance; dark: boolean }) {
+  return <FrameworkLayoutSurface template={frame.customFramework!} dark={dark} width={frame.width} />
+}
+
 // ── Shared style helpers ──────────────────────────────────────────────────────
 
 const NAVY       = '#263D5B'
@@ -255,104 +286,6 @@ const scaleOf = (w: number, h: number, dw: number, dh: number) =>
   Math.max(0.5, Math.min(4, Math.sqrt((w / dw) * (h / dh))))
 
 const s = (base: number, sc: number) => Math.round(base * sc)
-
-type NoteArea = { id: string; placeholder: string; left: number; top: number; width: number; height: number }
-const area = (id: string, placeholder: string, left: number, top: number, width: number, height: number): NoteArea =>
-  ({ id, placeholder, left, top, width, height })
-function getFrameNoteAreas(type: FrameworkType): NoteArea[] {
-  if (type === 'eisenhower' || type === 'energy-audit') return [
-    area('top-left', 'Write here...', 16, 13, 39, 39), area('top-right', 'Write here...', 57, 13, 39, 39),
-    area('bottom-left', 'Write here...', 16, 55, 39, 39), area('bottom-right', 'Write here...', 57, 55, 39, 39),
-  ]
-  if (type === 'ooda') return [
-    area('observe', 'Observe...', 2, 23, 22, 68), area('orient', 'Orient...', 26, 23, 22, 68),
-    area('decide', 'Decide...', 51, 23, 22, 68), area('act', 'Act...', 76, 23, 22, 68),
-  ]
-  if (type === 'smart-goals') return [
-    area('specific', 'Specific...', 1, 28, 18, 63), area('measurable', 'Measurable...', 21, 28, 18, 63),
-    area('achievable', 'Achievable...', 41, 28, 18, 63), area('relevant', 'Relevant...', 61, 28, 18, 63),
-    area('time-bound', 'Time-bound...', 81, 28, 18, 63),
-  ]
-  if (type === 'start-stop-continue' || type === 'personal-kanban') return [
-    area('left', 'Write here...', 2, 23, 29, 70), area('middle', 'Write here...', 35, 23, 29, 70), area('right', 'Write here...', 69, 23, 29, 70),
-  ]
-  if (type === 'gtd') return [
-    area('inbox', 'Inbox...', 1, 29, 18, 62), area('next', 'Next actions...', 21, 29, 18, 62),
-    area('projects', 'Projects...', 41, 29, 18, 62), area('waiting', 'Waiting for...', 61, 29, 18, 62),
-    area('someday', 'Someday...', 81, 29, 18, 62),
-  ]
-  if (type === 'grow') return [
-    area('goal', 'Goal...', 3, 16, 44, 35), area('reality', 'Reality...', 53, 16, 44, 35),
-    area('options', 'Options...', 3, 57, 44, 35), area('will', 'Will...', 53, 57, 44, 35),
-  ]
-  if (type === 'daily-reflection') return [
-    area('grateful', 'Grateful for...', 4, 13, 92, 15), area('focus', 'Today focus...', 4, 30, 92, 15),
-    area('wins', 'Wins...', 4, 47, 92, 15), area('lessons', 'Lessons...', 4, 64, 92, 15),
-    area('tomorrow', 'Tomorrow...', 4, 81, 92, 15),
-  ]
-  if (type === 'okr') return [
-    area('objective', 'Objective...', 4, 16, 92, 24), area('kr1', 'Key result 1...', 4, 48, 28, 42),
-    area('kr2', 'Key result 2...', 36, 48, 28, 42), area('kr3', 'Key result 3...', 68, 48, 28, 42),
-  ]
-  if (type === 'five-whys') return [
-    area('problem', 'Problem...', 5, 14, 90, 12), area('why1', 'Why 1...', 12, 29, 82, 9),
-    area('why2', 'Why 2...', 12, 40, 82, 9), area('why3', 'Why 3...', 12, 51, 82, 9),
-    area('why4', 'Why 4...', 12, 62, 82, 9), area('why5', 'Why 5...', 12, 73, 82, 9),
-    area('root', 'Root cause...', 5, 86, 90, 10),
-  ]
-  if (type === 'eat-that-frog') return [
-    area('frog1', 'Most important task...', 5, 15, 90, 12), area('task2', 'Task...', 5, 31, 90, 12),
-    area('task3', 'Task...', 5, 47, 90, 12), area('task4', 'Task...', 5, 63, 90, 12), area('task5', 'Task...', 5, 79, 90, 12),
-  ]
-  if (type === 'ikigai' || type === 'wheel-of-life') return [
-    area('top', 'Top...', 36, 13, 28, 20), area('right', 'Right...', 64, 39, 28, 20),
-    area('bottom', 'Bottom...', 36, 67, 28, 20), area('left', 'Left...', 8, 39, 28, 20),
-    area('center', 'Center...', 36, 39, 28, 20),
-  ]
-  if (type === 'stp') return [
-    area('segment', 'Segments...', 3, 24, 29, 66), area('target', 'Target...', 35, 24, 29, 66), area('position', 'Positioning...', 68, 24, 29, 66),
-  ]
-  if (type === 'marketing-mix') return [
-    area('product', 'Product...', 4, 16, 42, 35), area('price', 'Price...', 54, 16, 42, 35),
-    area('place', 'Place...', 4, 57, 42, 35), area('promotion', 'Promotion...', 54, 57, 42, 35),
-  ]
-  if (type === 'aida') return [
-    area('attention', 'Attention...', 15, 17, 70, 17), area('interest', 'Interest...', 20, 37, 60, 17),
-    area('desire', 'Desire...', 25, 57, 50, 17), area('action', 'Action...', 31, 77, 38, 15),
-  ]
-  if (type === 'swot') return [
-    area('strengths', 'Strengths...', 4, 16, 42, 35), area('weaknesses', 'Weaknesses...', 54, 16, 42, 35),
-    area('opportunities', 'Opportunities...', 4, 57, 42, 35), area('threats', 'Threats...', 54, 57, 42, 35),
-  ]
-  if (type === 'customer-journey') return [
-    area('awareness', 'Awareness...', 1, 29, 18, 61), area('consideration', 'Consideration...', 21, 29, 18, 61),
-    area('purchase', 'Purchase...', 41, 29, 18, 61), area('onboarding', 'Onboarding...', 61, 29, 18, 61),
-    area('retention', 'Retention...', 81, 29, 18, 61),
-  ]
-  if (type === 'first-principles') return [
-    area('assumptions', 'Assumptions...', 4, 18, 42, 30), area('truths', 'Known truths...', 54, 18, 42, 30),
-    area('rebuild', 'Rebuild from basics...', 4, 58, 92, 30),
-  ]
-  if (type === 'six-thinking-hats') return [
-    area('white', 'Facts...', 2, 28, 14, 58), area('red', 'Feelings...', 18, 28, 14, 58),
-    area('black', 'Risks...', 34, 28, 14, 58), area('yellow', 'Benefits...', 50, 28, 14, 58),
-    area('green', 'Ideas...', 66, 28, 14, 58), area('blue', 'Process...', 82, 28, 14, 58),
-  ]
-  if (type === 'scamper') return [
-    area('substitute', 'Substitute...', 1, 30, 13, 60), area('combine', 'Combine...', 15, 30, 13, 60),
-    area('adapt', 'Adapt...', 29, 30, 13, 60), area('modify', 'Modify...', 43, 30, 13, 60),
-    area('put', 'Put to use...', 57, 30, 13, 60), area('eliminate', 'Eliminate...', 71, 30, 13, 60),
-    area('reverse', 'Reverse...', 85, 30, 13, 60),
-  ]
-  if (type === 'pros-cons') return [
-    area('pros', 'Pros...', 4, 22, 42, 68), area('cons', 'Cons...', 54, 22, 42, 68),
-  ]
-  if (type === 'impact-effort') return [
-    area('quick-wins', 'Quick wins...', 16, 13, 39, 39), area('major-projects', 'Major projects...', 57, 13, 39, 39),
-    area('fill-ins', 'Fill-ins...', 16, 55, 39, 39), area('time-sinks', 'Time sinks...', 57, 55, 39, 39),
-  ]
-  return []
-}
 
 const shell = (width: number, height: number, dark: boolean): React.CSSProperties => ({
   width, height,
@@ -545,21 +478,13 @@ function WheelOfLife({ width, height, dark }: { width: number; height: number; d
   const sc       = scaleOf(width, height, 500, 520)
   const HEADER_H = s(28, sc)
   const svgH = height - HEADER_H
-  const cx = width / 2
+  const cx = width * 0.20
   const cy = svgH / 2
-  const r  = Math.min(cx, cy) * 0.62
+  const r  = Math.min(width * 0.18, cy * 0.62)
   const tc = dark ? 'rgba(255,255,255,0.55)' : 'rgba(38,61,91,0.65)'
 
-  const segments = [
-    { label: 'Career',   color: 'rgba(73,182,229,0.22)' },
-    { label: 'Finance',  color: 'rgba(100,200,130,0.22)' },
-    { label: 'Health',   color: 'rgba(232,100,100,0.22)' },
-    { label: 'Family',   color: 'rgba(255,190,80,0.22)' },
-    { label: 'Romance',  color: 'rgba(200,120,200,0.22)' },
-    { label: 'Growth',   color: 'rgba(73,182,229,0.22)' },
-    { label: 'Fun',      color: 'rgba(100,200,130,0.22)' },
-    { label: 'Home',     color: 'rgba(232,190,100,0.22)' },
-  ]
+  const colors = ['rgba(73,182,229,0.22)', 'rgba(100,200,130,0.22)', 'rgba(232,100,100,0.22)', 'rgba(255,190,80,0.22)', 'rgba(200,120,200,0.22)', 'rgba(73,182,229,0.22)', 'rgba(100,200,130,0.22)', 'rgba(232,190,100,0.22)']
+  const segments = FRAMEWORK_REGISTRY['wheel-of-life'].sections.map((section, i) => ({ label: section.label, color: colors[i] }))
 
   const toRad = (d: number) => (d * Math.PI) / 180
   const n = segments.length
@@ -603,7 +528,7 @@ function WheelOfLife({ width, height, dark }: { width: number; height: number; d
           const ly = cy + labelR * Math.sin(mid)
           return (
             <text key={`lbl-${i}`} x={lx} y={ly} textAnchor="middle"
-              dominantBaseline="middle" fontSize={s(9, sc)} fill={tc} fontFamily={FONT}>
+              dominantBaseline="middle" fontSize={s(8, sc)} fill={tc} fontFamily={FONT}>
               {seg.label}
             </text>
           )

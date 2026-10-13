@@ -1,5 +1,7 @@
 // src/lib/db.ts  — local storage database (no Supabase needed)
 import type { Board, Card, CardInsert, GoalTag, GoalTagInsert, Group, BoardGroup } from '../types'
+import { isCardFontFamily } from './cardTypography'
+import { deleteBoardSourcesForBoard } from './boardSourceStore'
 
 const BOARDS_KEY       = 'ideaboard_boards'
 const CARDS_KEY        = 'ideaboard_cards'
@@ -35,6 +37,7 @@ export async function updateBoard(id: string, name: string): Promise<void> {
 }
 
 export async function deleteBoard(id: string): Promise<void> {
+  await deleteBoardSourcesForBoard(id)
   save(BOARDS_KEY, load<Board>(BOARDS_KEY).filter(b => b.id !== id))
   save(CARDS_KEY,  load<Card>(CARDS_KEY).filter(c => c.board_id !== id))
   save(TAGS_KEY,   load<GoalTag>(TAGS_KEY).filter(t => t.board_id !== id))
@@ -70,6 +73,17 @@ export async function updateCard(id: string, changes: Partial<Card>): Promise<vo
 
 export async function deleteCard(id: string): Promise<void> {
   save(CARDS_KEY, load<Card>(CARDS_KEY).filter(c => c.id !== id))
+}
+
+export function restoreBoardSnapshot(boardId: string, cards: Card[], goalTags: GoalTag[]): void {
+  save(CARDS_KEY, [
+    ...load<Card>(CARDS_KEY).filter(card => card.board_id !== boardId),
+    ...cards.filter(card => card.board_id === boardId),
+  ])
+  save(TAGS_KEY, [
+    ...load<GoalTag>(TAGS_KEY).filter(tag => tag.board_id !== boardId),
+    ...goalTags.filter(tag => tag.board_id === boardId),
+  ])
 }
 
 // ── GOAL TAGS ─────────────────────────────────────────────────
@@ -162,5 +176,6 @@ export function normaliseCard(c: Record<string, unknown>): Card {
     due_date:    (c.due_date    as string | null)  ?? null,
     collapsed:   (c.collapsed   as boolean)        ?? false,
     locked:      (c.locked      as boolean)        ?? false,
+    font_family: isCardFontFamily(c.font_family) ? c.font_family : undefined,
   } as Card
 }

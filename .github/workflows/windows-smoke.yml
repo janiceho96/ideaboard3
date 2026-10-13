@@ -1,0 +1,95 @@
+name: Windows browser launcher
+
+on:
+  push:
+    paths:
+      - '.github/workflows/windows-smoke.yml'
+      - 'launch-ideaboard.bat'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'ideaboard.html'
+      - 'src/**'
+  pull_request:
+    paths:
+      - '.github/workflows/windows-smoke.yml'
+      - 'launch-ideaboard.bat'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.ts'
+      - 'ideaboard.html'
+      - 'src/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-launcher:
+    runs-on: windows-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Ideaboard download
+    env:
+      # Use the real launcher arguments without opening a runner browser.
+      BROWSER: none
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          path: Ideaboard download
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: Ideaboard download/package-lock.json
+      - name: Verify first-run launch and occupied-port failure
+        run: |
+          $stdout = Join-Path $env:RUNNER_TEMP 'ideaboard-launch.out'
+          $stderr = Join-Path $env:RUNNER_TEMP 'ideaboard-launch.err'
+          $secondOut = Join-Path $env:RUNNER_TEMP 'ideaboard-second.out'
+          $secondErr = Join-Path $env:RUNNER_TEMP 'ideaboard-second.err'
+          $server = $null
+          $second = $null
+          try {
+            if (Test-Path node_modules) {
+              throw 'Expected a fresh download with no installed packages.'
+            }
+            $server = Start-Process -FilePath $env:ComSpec -ArgumentList '/d', '/c', 'call launch-ideaboard.bat' -WorkingDirectory (Get-Location).Path -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+            $deadline = (Get-Date).AddMinutes(3)
+            $ready = $false
+            do {
+              $server.Refresh()
+              if ($server.HasExited) {
+                throw "Launcher exited before startup with code $($server.ExitCode)."
+              }
+              try {
+                $response = Invoke-WebRequest 'http://127.0.0.1:5174/ideaboard.html' -TimeoutSec 3
+                $ready = $response.StatusCode -eq 200 -and $response.Content -match 'src/main.tsx'
+              } catch {
+                $ready = $false
+              }
+              if (-not $ready) { Start-Sleep -Seconds 1 }
+            } while (-not $ready -and (Get-Date) -lt $deadline)
+            if (-not $ready) { throw 'Ideaboard did not serve its app within three minutes.' }
+            $entry = Invoke-WebRequest 'http://127.0.0.1:5174/src/main.tsx' -TimeoutSec 30
+            if ($entry.StatusCode -ne 200) { throw 'The app entry module did not compile.' }
+            if (-not (Test-Path 'node_modules/.bin/vite.cmd')) { throw 'First-run npm ci did not install Vite.' }
+            $second = Start-Process -FilePath $env:ComSpec -ArgumentList '/d', '/c', 'call launch-ideaboard.bat' -WorkingDirectory (Get-Location).Path -RedirectStandardOutput $secondOut -RedirectStandardError $secondErr -PassThru
+            if (-not $second.WaitForExit(30000)) { throw 'A second launcher did not stop on the occupied port.' }
+            if ($second.ExitCode -ne 1) { throw "Expected second-launch exit code 1, got $($second.ExitCode)." }
+            if ((Get-Content $secondOut -Raw) -notmatch 'port 5174 is in use') { throw 'The occupied-port explanation was missing.' }
+            Write-Host 'Windows first-run install, app startup, entry compilation, and occupied-port failure passed.'
+          } finally {
+            foreach ($process in @($second, $server)) {
+              if ($null -ne $process) {
+                $process.Refresh()
+                if (-not $process.HasExited) { & taskkill /PID $process.Id /T /F | Out-Null }
+              }
+            }
+            foreach ($log in @($stdout, $stderr, $secondOut, $secondErr)) {
+              if (Test-Path $log) { Get-Content $log }
+            }
+          }

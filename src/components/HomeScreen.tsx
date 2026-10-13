@@ -5,18 +5,18 @@ import * as db from '../lib/db'
 import BoardThumbnail from './BoardThumbnail'
 import TemplatePreview from './TemplatePreview'
 import { BOARD_TEMPLATES, buildBoardTemplatePayload, type BoardTemplateId } from '../lib/boardTemplates'
-import { FolderPlus, GripVertical, LogOut, Moon, Pencil, Plus, Sun, Trash2 } from 'lucide-react'
+import { Download, FolderPlus, GripVertical, Moon, Pencil, Plus, Sun, Trash2, Upload } from 'lucide-react'
 import { colors, fonts, radii } from '../lib/designTokens'
+import { createWorkspaceBackup, restoreWorkspaceBackup } from '../lib/workspaceBackup'
 
 interface Props {
   user: LocalUser
   onOpenBoard: (board: Board) => void
-  onSignOut: () => void
   dark: boolean
   onToggleDark: () => void
 }
 
-export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggleDark }: Props) {
+export default function HomeScreen({ user, onOpenBoard, dark, onToggleDark }: Props) {
   const [boards, setBoards] = useState<Board[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [boardGroups, setBoardGroups] = useState<BoardGroup[]>([])
@@ -41,6 +41,9 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const dragOrderRef = useRef<string[]>([])
   const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null)
   const [allCards, setAllCards] = useState<Card[]>([])
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [backupStatus, setBackupStatus] = useState('')
+  const backupInputRef = useRef<HTMLInputElement>(null)
 
   const loadBoards = useCallback(async () => {
     setLoading(true)
@@ -64,6 +67,44 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   }, [])
 
   useEffect(() => { void loadBoards() }, [loadBoards])
+
+  const exportWorkspace = async () => {
+    setBackupBusy(true)
+    setBackupStatus('Preparing workspace backup...')
+    try {
+      const backup = await createWorkspaceBackup()
+      const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `ideaboard-workspace-${new Date().toISOString().slice(0, 10)}.json`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setBackupStatus(`Backup ready with ${boards.length} board${boards.length === 1 ? '' : 's'}.`)
+    } catch {
+      setBackupStatus('Backup could not be created. Check available storage and try again.')
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const importWorkspace = async (file: File | undefined) => {
+    if (!file) return
+    if (!window.confirm('Add the boards in this backup to this workspace? Matching items will be updated; other boards will stay.')) return
+
+    setBackupBusy(true)
+    setBackupStatus('Restoring workspace backup...')
+    try {
+      const result = await restoreWorkspaceBackup(await file.text())
+      await loadBoards()
+      setBackupStatus(`Restored ${result.boards} board${result.boards === 1 ? '' : 's'} and ${result.slideImages} slide image${result.slideImages === 1 ? '' : 's'}.`)
+    } catch (error) {
+      setBackupStatus(error instanceof Error ? error.message : 'This workspace backup could not be restored.')
+    } finally {
+      setBackupBusy(false)
+      if (backupInputRef.current) backupInputRef.current.value = ''
+    }
+  }
 
   const createBoard = async (groupId?: string) => {
     const template = BOARD_TEMPLATES.find(t => t.id === selectedTemplateId)
@@ -227,7 +268,6 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
   const bdr  = dark ? colors.borderDark : colors.borderLight
   const txt  = dark ? '#F7F7F2' : colors.ink
   const sub  = dark ? '#AAB5C9' : '#5F687B'
-  const displayName = user.email.split('@')[0] || 'there'
 
   const assignedIds = new Set(boardGroups.map(bg => bg.board_id))
   const uncategorized = boards.filter(b => !assignedIds.has(b.id))
@@ -306,17 +346,29 @@ export default function HomeScreen({ user, onOpenBoard, onSignOut, dark, onToggl
         <div className="ib-logo" aria-hidden="true">I</div>
         <span className="ib-brand-name">Ideaboard</span>
         <div className="ib-topbar-spacer" />
-        <span className="ib-subtle" style={{ fontSize: 12 }}>{user.email}</span>
+        <button className="ib-icon-button" onClick={exportWorkspace} disabled={backupBusy} aria-label="Export workspace backup" title="Export workspace backup">
+          <Download size={16} />
+        </button>
+        <button className="ib-icon-button" onClick={() => backupInputRef.current?.click()} disabled={backupBusy} aria-label="Import workspace backup" title="Import workspace backup">
+          <Upload size={16} />
+        </button>
         <button className="ib-icon-button" onClick={onToggleDark} aria-label={dark ? 'Use light mode' : 'Use dark mode'} title={dark ? 'Use light mode' : 'Use dark mode'}>
           {dark ? <Sun size={16} /> : <Moon size={16} />}
         </button>
-        <button className="ib-action" onClick={onSignOut} title="Sign out"><LogOut size={15} /> Sign out</button>
+        <input
+          ref={backupInputRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={event => { void importWorkspace(event.target.files?.[0]) }}
+        />
       </div>
 
       <main className="ib-content">
+        {backupStatus && <p className="ib-subtle" role="status" style={{ marginBottom: 12 }}>{backupStatus}</p>}
         <div className="ib-welcome">
           <div>
-            <h1>Good to see you, {displayName}.</h1>
+            <h1>Good to see you.</h1>
             <p>Pick up an idea or start with a fresh board.</p>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>

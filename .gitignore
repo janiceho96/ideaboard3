@@ -7,6 +7,8 @@ macOS/.build/
 .env.local
 *.log
 coverage/
+.playwright-cli/
+output/
 .DS_Store
 .claude/
 .superpowers/

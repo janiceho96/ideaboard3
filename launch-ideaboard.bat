@@ -1,11 +1,9 @@
 @echo off
+setlocal
 title Ideaboard
-color 0A
 
 cd /d "%~dp0"
-set SCRIPT_PATH=%~dp0launch-ideaboard.bat
-set SHORTCUT_DESKTOP=%USERPROFILE%\Desktop\Ideaboard.lnk
-set SHORTCUT_START=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Ideaboard.lnk
+if errorlevel 1 goto folder_failed
 
 echo.
 echo  =============================
@@ -13,82 +11,64 @@ echo    Ideaboard - Starting up...
 echo  =============================
 echo.
 
-:: ── Offer to create shortcuts on first run ───────────────────────────────────
-if not exist "%SHORTCUT_DESKTOP%" (
-    echo  Tip: Add Ideaboard as a shortcut for easy access.
-    set /p CREATE_SHORTCUT= Create Desktop ^& Start Menu shortcut now? [y/N]:
-    if /i "%CREATE_SHORTCUT%"=="y" (
-        call :create_shortcuts
-    )
-    echo.
-)
-
-:: ── Check Node.js ─────────────────────────────────────────────────────────────
 where node >nul 2>&1
-if %errorlevel% neq 0 (
-    echo  ERROR: Node.js is not installed.
-    echo  Download it from https://nodejs.org
-    echo.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto missing_node
+node --version >nul 2>&1
+if errorlevel 1 goto missing_node
+where npm >nul 2>&1
+if errorlevel 1 goto missing_npm
+call npm --version >nul 2>&1
+if errorlevel 1 goto missing_npm
 
-:: ── Install packages on first run ─────────────────────────────────────────────
-if not exist "node_modules\" (
-    echo  First run - installing packages, please wait...
-    echo.
-    call npm install
-    echo.
-)
+if not exist "package.json" goto missing_project
+if not exist "package-lock.json" goto missing_project
+if exist "node_modules\" goto start_server
 
-echo  Starting server... browser will open in a few seconds.
-echo  Keep this window open while using Ideaboard.
-echo  Close this window to stop the app.
+echo  First run - installing packages. An internet connection is required.
+echo.
+call npm ci
+if errorlevel 1 goto installation_failed
+
+:start_server
+echo.
+echo  The browser will open when Ideaboard is ready.
+echo  Address: http://127.0.0.1:5174/ideaboard.html
+echo  Keep this window open. Press Ctrl+C to stop Ideaboard.
 echo.
 
-start "" cmd /c "timeout /t 4 /nobreak >nul && start http://localhost:5174/ideaboard.html"
-call npm run dev -- --port 5174
-
-pause
+rem A fixed host and port keep browser storage consistent between launches.
+rem strictPort prevents Vite from silently opening a different board store.
+call npm run dev -- --host 127.0.0.1 --port 5174 --strictPort --open /ideaboard.html
+if errorlevel 1 goto server_failed
 exit /b 0
 
-:: ── Subroutine: create shortcuts via PowerShell ───────────────────────────────
-:create_shortcuts
+:folder_failed
+echo  ERROR: Cannot open the Ideaboard project folder.
+goto failed
+
+:missing_node
+echo  ERROR: Install Node.js 24 LTS from https://nodejs.org, then reopen this launcher.
+goto failed
+
+:missing_npm
+echo  ERROR: npm is unavailable. Reinstall Node.js 24 LTS from https://nodejs.org.
+goto failed
+
+:missing_project
+echo  ERROR: Extract the entire Ideaboard download before opening this launcher.
+goto failed
+
+:installation_failed
+echo  ERROR: Package installation failed.
+echo  Check the message above and your internet connection, then try again.
+goto failed
+
+:server_failed
+echo  ERROR: The server could not start.
+echo  If port 5174 is in use, stop the other browser launcher and try again.
+goto failed
+
+:failed
 echo.
-echo  Creating shortcuts...
-
-:: Desktop shortcut
-powershell -NoProfile -Command ^
-  "$ws = New-Object -ComObject WScript.Shell;" ^
-  "$s = $ws.CreateShortcut('%SHORTCUT_DESKTOP%');" ^
-  "$s.TargetPath = '%SCRIPT_PATH%';" ^
-  "$s.WorkingDirectory = '%~dp0';" ^
-  "$s.Description = 'Launch Ideaboard';" ^
-  "$s.Save()"
-
-:: Start Menu shortcut
-powershell -NoProfile -Command ^
-  "$ws = New-Object -ComObject WScript.Shell;" ^
-  "$s = $ws.CreateShortcut('%SHORTCUT_START%');" ^
-  "$s.TargetPath = '%SCRIPT_PATH%';" ^
-  "$s.WorkingDirectory = '%~dp0';" ^
-  "$s.Description = 'Launch Ideaboard';" ^
-  "$s.Save()"
-
-if exist "%SHORTCUT_DESKTOP%" (
-    echo  [OK] Desktop shortcut created
-) else (
-    echo  [!] Desktop shortcut failed
-)
-if exist "%SHORTCUT_START%" (
-    echo  [OK] Start Menu shortcut created
-) else (
-    echo  [!] Start Menu shortcut failed
-)
-
-echo.
-echo  You can now pin Ideaboard to your Taskbar:
-echo    1. Open the Start Menu and search for Ideaboard
-echo    2. Right-click it and choose "Pin to taskbar"
-echo.
-goto :eof
+if not defined CI pause
+exit /b 1

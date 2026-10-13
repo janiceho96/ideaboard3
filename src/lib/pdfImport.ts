@@ -2,6 +2,8 @@
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+
 interface PdfjsViewport {
   width: number
   height: number
@@ -10,6 +12,7 @@ interface PdfjsViewport {
 interface PdfjsPage {
   getViewport: (opts: { scale: number }) => PdfjsViewport
   render: (opts: { canvasContext: CanvasRenderingContext2D; viewport: PdfjsViewport }) => { promise: Promise<void> }
+  getTextContent?: () => Promise<{ items: Array<{ str?: string; hasEOL?: boolean }> }>
 }
 
 interface PdfjsDoc {
@@ -32,6 +35,7 @@ export interface CanvasMaker {
 export interface RenderedPage {
   dataUrl: string
   aspectRatio: number  // width / height
+  textContent?: string
 }
 
 // ── Defaults (browser only) ──────────────────────────────────────────────────
@@ -51,15 +55,29 @@ const defaultCanvasMaker: CanvasMaker = {
 }
 
 async function defaultPdfjsLoader(): Promise<PdfjsLib> {
-  const lib = await import(
-    /* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs'
-  ) as unknown as PdfjsLib
-  lib.GlobalWorkerOptions.workerSrc =
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs'
+  const lib = await import('pdfjs-dist') as unknown as PdfjsLib
+  lib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl
   return lib
 }
 
 // ── Main function ────────────────────────────────────────────────────────────
+
+function normalizeTextContent(items: Array<{ str?: string; hasEOL?: boolean }>): string {
+  const lines: string[] = []
+  let line = ''
+
+  for (const item of items) {
+    const text = item.str?.replace(/\s+/g, ' ').trim() ?? ''
+    if (text) line = line ? `${line} ${text}` : text
+    if (item.hasEOL && line) {
+      lines.push(line)
+      line = ''
+    }
+  }
+
+  if (line) lines.push(line)
+  return lines.join('\n')
+}
 
 export async function importPdf(
   file: File,
@@ -77,9 +95,21 @@ export async function importPdf(
     const viewport = page.getViewport({ scale: 1.5 })
     const { ctx, toDataURL } = canvasMaker.makeCanvas(viewport.width, viewport.height)
     await page.render({ canvasContext: ctx, viewport }).promise
+
+    let textContent: string | undefined
+    if (page.getTextContent) {
+      try {
+        const content = await page.getTextContent()
+        textContent = normalizeTextContent(content.items)
+      } catch {
+        // Text extraction is best-effort; preserve the existing visual import.
+      }
+    }
+
     pages.push({
       dataUrl: toDataURL(),
       aspectRatio: viewport.width / viewport.height,
+      ...(textContent !== undefined ? { textContent } : {}),
     })
   }
 

@@ -1,427 +1,184 @@
 # Ideaboard
 
-Ideaboard is a local-first visual workspace for planning, brainstorming, organizing PDFs and slides, and turning messy ideas into clear boards.
+A local-first visual workspace for brainstorming, research, planning, and designing your own thinking frameworks. Keep notes, documents, goals, and frameworks together on a zoomable board.
 
-It runs on your computer and opens in your browser. It is not an Apple App Store app, Windows Store app, or cloud service. Your boards are saved locally in your browser storage.
+**[Download the source ZIP](https://github.com/janiceho96/ideaboard3/archive/refs/heads/main.zip)** · [Windows setup](#windows-download-and-run) · [Mac setup](#mac-install-the-desktop-app) · [Plain-language guide](HOW_TO_INSTALL_AND_RUN.txt)
 
-![Ideaboard promo](marketing/ideaboard-promo.svg)
+The current download is source code. Windows runs the browser version; there is no Windows `.exe` or `.msi` installer. The native Mac app is available by building this project.
 
-## Real App Screenshots
+![Ideaboard overview](marketing/ideaboard-promo.svg)
 
-These screenshots show sample boards with different layouts, so each example demonstrates a different way to use Ideaboard.
+## Platform support
 
-### Board Dashboard
+| Feature | Windows / browser | Mac desktop app |
+| --- | --- | --- |
+| Boards, notes, canvas text, goals, pan and zoom | Yes | Yes |
+| Built-in frameworks and manual custom framework design | Yes | Yes |
+| Grid, step-by-step, matrix, and cycle layouts | Yes | Yes |
+| PDF, image, Markdown, and text imports | Yes | Yes |
+| Workspace and whiteboard backup / restore | Yes | Yes |
+| AI-generated board drafts and framework designs | Not available | Requires a configured OpenAI API provider |
+| On-device OCR for images and scanned pages | Not available | Yes |
+| Standalone window without a terminal | Not available | Yes, after installation |
 
-The home screen keeps boards together in a simple visual dashboard. Each board card shows a small thumbnail preview, so users can recognize the board before opening it.
+No sign-in is required. Core board work stays on your device. AI generation needs an internet connection, an API key, and may incur provider charges.
 
-![Ideaboard Marker Workshop dashboard](marketing/screenshots/marker-workshop-dashboard.png)
+## Windows: download and run
 
-### Project Brainstorm Board
+1. Install **Node.js 24 LTS**, including npm, from the [official Node.js download page](https://nodejs.org/en/download). Reopen any command windows after installation.
+2. Download the [source ZIP](https://github.com/janiceho96/ideaboard3/archive/refs/heads/main.zip), or use GitHub's **Code → Download ZIP**.
+3. Right-click the ZIP and choose **Extract All**. Open the extracted `ideaboard3-main` folder. Do not launch from inside the ZIP.
+4. Double-click **`launch-ideaboard.bat`**. On the first run it installs dependencies, which requires internet access.
+5. Ideaboard opens at **http://127.0.0.1:5174/ideaboard.html** in your browser. Keep the command window open while using it.
+6. To stop the server, press **Ctrl+C** in the command window. Run the launcher again whenever you want to use Ideaboard.
 
-This example uses a Start / Stop / Continue framework for a cafe promotion. It shows messy campaign thinking: goals, audience clues, wild hooks, an AI prompt, and the next experiment all living on the same board.
+This starts the browser app; it does not install a Windows desktop application. Keep using the same browser profile and address to find your saved boards.
 
-![Ideaboard Marker Workshop project brainstorm board](marketing/screenshots/marker-workshop-workspace.png)
+### Manual Windows startup
 
-### Content Calendar Board
+Open the extracted folder in File Explorer, type `cmd` in the address bar, and press Enter. In **Command Prompt**, run:
 
-This example shows a creator workflow mapped from idea to publish. Cards move through planning, drafting, review, and publishing, making it useful for videos, posts, scripts, newsletters, and repurposed content.
-
-![Ideaboard Marker Workshop content calendar board](marketing/screenshots/marker-workshop-content-calendar.png)
-
-### Decision Matrix Board
-
-This example shows a product planning workflow. An impact / effort matrix helps compare feature ideas, risks, and next actions before deciding what to build first.
-
-![Ideaboard Marker Workshop decision matrix board](marketing/screenshots/marker-workshop-decision-matrix.png)
-
-## Example: AI Work Done With Ideaboard
-
-Ideaboard is useful when AI gives you a lot of output and you need to turn it into a plan.
-
-Example workflow:
-
-1. Ask AI to generate raw ideas, research summaries, campaign hooks, lesson activities, or product options.
-2. Paste the best AI output into Ideaboard as cards or text blocks.
-3. Group the cards by theme, stage, priority, or decision criteria.
-4. Move weak ideas aside and keep useful ideas near the framework.
-5. Turn the final board into a checklist, content calendar, lesson plan, sprint plan, or client workshop outline.
-
-Example board:
-
-```text
-Board name: AI Research Sprint
-
-Cards:
-- AI summary of customer pain points
-- Useful quotes from source PDFs
-- Repeated objections
-- Feature ideas suggested by AI
-- Risks and claims to verify
-- Final recommendation
-
-Result:
-The AI output becomes a visual decision board instead of a long chat transcript.
+```bat
+node --version
+npm --version
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5174 --strictPort --open /ideaboard.html
 ```
 
-## What You Can Do With Ideaboard
+If port 5174 is occupied, stop the other Ideaboard command window and retry. The launcher keeps a fixed address because changing it would select a different browser workspace.
 
-- Create visual boards for projects, lessons, campaigns, research, workshops, or content plans.
-- Add movable idea cards, text blocks, slides, and framework overlays.
-- Import PDF pages as visual slide tiles.
-- Arrange ideas spatially on a zoomable board.
-- Resize and move cards, slides, and frameworks.
-- Use snap-to-grid and magnetic positioning to keep boards tidy.
-- Organize boards by category.
-- Generate board thumbnails for easier browsing.
-- Use the app offline after setup.
-- Keep work private on your own machine.
+## Mac: install the desktop app
 
-## Real World Examples
+Building from source requires **macOS 13 or later**, Node.js 24 LTS/npm, and full Xcode with an **Apple Development signing certificate** configured. The installer checks for this certificate before replacing an existing app.
 
-![Real world examples](marketing/use-examples/real-world-detailed-examples.svg)
+1. Download and extract the [source ZIP](https://github.com/janiceho96/ideaboard3/archive/refs/heads/main.zip), or clone the repository.
+2. Double-click **`macOS/install-ideaboard-mac.command`**. If Finder blocks opening it, right-click the file and choose **Open**. Alternatively, run this from Terminal in the extracted project folder:
 
-### 1. Teacher Lesson Planning
+   ```bash
+   zsh macOS/install-ideaboard-mac.command
+   ```
 
-A teacher can create a board called `Week 4 Science Lesson`.
+3. Open **`~/Applications/Ideaboard.app`**, in your home folder's Applications directory. You can keep it in the Dock.
 
-Example cards:
+The installed app bundles its interface and opens in its own window. Node.js, Xcode, and a terminal are not needed for everyday use after installation.
 
-- Warm-up quiz
-- Main concept
-- PDF page 3 diagram
-- Group activity
-- Homework task
-- Questions students may ask
+### Updating the Mac app
 
-How Ideaboard helps:
+Quit Ideaboard, download the updated source, and run the installer again. It replaces the same `~/Applications/Ideaboard.app`. Previous versions are preserved as verified ZIPs in:
 
-- Import a lesson PDF and place key pages beside teaching notes.
-- Arrange class flow from left to right.
-- Add sticky-note reminders beside slides.
-- Keep activities, examples, and homework on one board.
+```text
+~/Library/Application Support/Ideaboard/App Backups
+```
 
-Outcome:
+Updates retain the app identity and local workspace address. Do not change the native app's saved local port to work around a startup problem; your workspace is associated with that address.
 
-The teacher can see the full lesson before teaching instead of jumping between documents.
+### Browser version on Mac
 
-### 2. Small Business Campaign Planning
+Double-click **`launch-ideaboard.command`**, or use the development commands below. This launcher opens the browser version and does not create or replace the native app. Keep its terminal window open.
 
-A cafe owner can create a board called `Weekend Drink Promo`.
+## Design a custom framework
 
-Example cards:
+Open **Add Frame → Design a framework**.
 
-- Goal: sell 100 drinks
-- Offer: buy 2 drinks, get 1 pastry
-- Instagram post
-- Flyer copy
-- Staff reminder
-- Email message
-- Launch checklist
+1. Describe the decision, investigation, or process you want to organize.
+2. Choose **Idea grid**, **Step-by-step**, **2 × 2 matrix**, or **Learning cycle**.
+3. Optionally select board material. Each item shows its availability and a text preview. Empty items and pictures without extracted text cannot be included. Your brief alone is enough to start.
+4. In the Mac app, choose **Design with AI**. Progress shows when the request starts and when a response arrives; **Stop** keeps your brief and edits. In either version, you can add and edit sections manually.
+5. Review the live preview, section names, and writing prompts. Choose **Save framework** for your library, or **Save & add to board**.
 
-How Ideaboard helps:
+A matrix has exactly four sections; other layouts support two to eight. Reference material is limited to 12 text items and a 24,000-character request budget. Sharing selected material requires explicit consent, and changing the selection resets that consent.
 
-- Put marketing channels, offer details, and tasks on one visual board.
-- Group unfinished tasks together.
-- Move urgent work to the top.
-- Keep a simple launch checklist visible.
+Unsaved designs recover locally after closing or restarting. Sharing consent is not restored automatically. Editing a library template does not change previously placed frames: each placed frame keeps its own saved template snapshot.
 
-Outcome:
+## Board Assistant and source material
 
-The business owner can plan a campaign without needing a complicated project management tool.
+In the Mac app, open **AI Settings** to configure the OpenAI provider, then open **Board Assistant**. The API key is stored in macOS Keychain.
 
-### 3. Consultant Workshop Planning
+- Draft a board, fill or expand a framework, or revise a note using an explicit goal and selected context.
+- Continue a separate local assistant conversation on each board.
+- Review suggested replacements before applying them. Undo an assistant change while its affected writing is unchanged.
+- Ask to move a named note relative to another, or delete explicitly named notes after confirming. These local board actions do not send note content to the provider.
+- Open **Context → Add PDF, image, Markdown, or text**, or use the board's import button, to add reference material.
 
-A consultant can create a board called `Client Strategy Workshop`.
+Notes, canvas text, goals, framework writing, imported text, and searchable PDF pages can provide text context. Images and scanned PDF pages can use **Extract text** for OCR on the Mac. Board Assistant can also send individually selected images for visual reading; the **framework designer uses extracted text only**, not original pictures.
 
-Example cards:
+AI requests can include your message, recent conversation, selected material, and authorized target writing after sharing is confirmed. OCR itself runs on the Mac. Supported imports are PDF, `.md`, `.markdown`, `.txt`, PNG, JPEG, and WebP. Office document imports are not implemented.
 
-- Client goals
-- Interview notes
-- Agenda block 1
-- Agenda block 2
-- Exercise instructions
-- Discussion questions
-- Follow-up actions
+## Save, back up, and move your workspace
 
-How Ideaboard helps:
+Boards are stored locally using `localStorage` and IndexedDB. The Mac app uses its own WebKit profile; each browser profile and local address has separate storage.
 
-- Turn messy discovery notes into a workshop structure.
-- Arrange agenda sections in order.
-- Put client pain points next to relevant exercises.
-- Use the board during preparation and review.
+- On the home screen, use **Export workspace backup** to back up the whole workspace, and **Import workspace backup** to restore or transfer it.
+- On a board, use **Export full whiteboard as JSON backup** for that board.
+- To move work from Windows or a browser into the Mac app, export in the original workspace, open the Mac app, and import the JSON backup. The original copy remains in place.
 
-Outcome:
+Workspace backups include locally stored board data, framework templates, imported source text, and saved slide images. They contain your work, so keep them somewhere you trust. Make a backup before clearing app/browser storage or switching browser profiles.
 
-The consultant can create a workshop that feels structured, visual, and easy to explain.
+## Example boards
 
-### 4. Student Research Assignment
+Use Ideaboard for a lesson plan, research sprint, cafe campaign, creator calendar, workshop, or product decision. Add cards and documents, choose a framework, and arrange the material so the next action is visible.
 
-A student can create a board called `History Essay Research`.
+### Board dashboard
 
-Example cards:
+![Board dashboard](marketing/screenshots/marker-workshop-dashboard.png)
 
-- Research question
-- Source 1
-- Source 2
-- Key quote
-- Evidence
-- Counterargument
-- Essay outline
-- Final conclusion
+### Project brainstorm
 
-How Ideaboard helps:
+![Cafe campaign brainstorm](marketing/screenshots/marker-workshop-workspace.png)
 
-- Import research PDFs.
-- Put quotes and evidence beside each source.
-- Group notes into introduction, body, and conclusion.
-- Turn scattered research into a clear argument.
+### Content calendar
 
-Outcome:
+![Creator content calendar](marketing/screenshots/marker-workshop-content-calendar.png)
 
-The student can understand the shape of the essay before writing.
+### Decision matrix
 
-### 5. Content Creator Planning
+![Product decision matrix](marketing/screenshots/marker-workshop-decision-matrix.png)
 
-A creator can create a board called `YouTube Video Ideas`.
+## Development
 
-Example cards:
-
-- Tutorial idea
-- Case study idea
-- Hook
-- Script notes
-- Thumbnail concept
-- Publish date
-- Repurpose for TikTok
-
-How Ideaboard helps:
-
-- Keep content ideas visible instead of buried in notes.
-- Move video ideas from draft to ready.
-- Place hook, script, and thumbnail ideas beside each video topic.
-- Plan a simple content calendar visually.
-
-Outcome:
-
-The creator can move from idea to publishable content with less friction.
-
-### 6. Product Roadmap Planning
-
-A founder or product team can create a board called `Next Sprint Ideas`.
-
-Example cards:
-
-- User request
-- Bug report
-- Feature idea
-- Customer pain point
-- Effort estimate
-- Priority
-- Next sprint
-- Later
-
-How Ideaboard helps:
-
-- Group requests by user type.
-- Compare priority and effort visually.
-- Import meeting notes or PDF research.
-- Move decided items into a sprint plan.
-
-Outcome:
-
-The team can make roadmap decisions with the work visible in front of them.
-
-## More Visual Use Examples
-
-![How to use Ideaboard](marketing/use-examples/how-to-use-ideaboard.svg)
-
-Individual example visuals are available in:
-
-- `marketing/use-examples/brainstorm-project.svg`
-- `marketing/use-examples/marketing-campaign.svg`
-- `marketing/use-examples/pdf-slides.svg`
-- `marketing/use-examples/research-board.svg`
-- `marketing/use-examples/real-world-detailed-examples.svg`
-
-## How The App Works
-
-Ideaboard is built as a local React and Vite web app.
-
-There is no server database in the current local version. The app stores data on your machine using:
-
-- `localStorage` for boards, cards, goal tags, slide metadata, themes, and framework settings
-- IndexedDB for imported PDF page images
-
-This makes it useful for private planning and personal workflows.
-
-## Requirements
-
-Install Node.js before running Ideaboard.
-
-Recommended:
-
-- Node.js LTS
-- npm
-- A modern browser such as Chrome, Safari, Edge, or Firefox
-
-Download Node.js from:
-
-https://nodejs.org/
-
-## Quick Start
-
-Clone or download the project, then install packages:
+Clone the repository and install the locked dependencies:
 
 ```bash
-npm install
+git clone https://github.com/janiceho96/ideaboard3.git
+cd ideaboard3
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5174 --strictPort --open /ideaboard.html
 ```
 
-Start the app:
+Node.js 24 LTS is recommended. Vite accepts Node 20.19 or Node 22.12 and later supported releases; see the [Vite requirements](https://vite.dev/guide/#scaffolding-your-first-vite-project).
 
-```bash
-npm run dev -- --port 5174
-```
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Vite for development |
+| `npm run build` | Type-check and build the landing page and board app |
+| `npm test` | Run Vitest tests |
+| `npx vitest run src/lib/customFrameworks.test.ts` | Run one relevant test file |
+| `npm run lint` | Run ESLint |
+| `npx tsc --noEmit` | Type-check without building |
 
-Open:
+The production build bundles PDF.js and fonts. Core board editing and PDF rendering do not need an external CDN after the app and its assets have loaded. AI generation requires the provider connection.
 
 ```text
-http://127.0.0.1:5174/ideaboard.html
+src/components/    Board, notes, assistant, framework designer, and home screen
+src/hooks/         Board, frame, slide, and text state
+src/lib/           Storage, assistant validation, imports, backups, and utilities
+src/types/         Shared application types
+macOS/             Native Mac app, installer, assets, and native contract checks
+marketing/         Public product illustrations and example screenshots
 ```
 
-Keep the Terminal window open while using Ideaboard.
+There is no application server database or required cloud account. The unused Supabase scaffolding does not power the local workspace.
 
-Port note: the app uses port 5174 because port 5173 may already be in use.
+## Troubleshooting
 
-## One-Click Launchers
-
-This project includes launcher files for people who do not want to type commands.
-
-### Mac
-
-Recommended: build the native Mac app once by double-clicking:
-
-```text
-macOS/install-ideaboard-mac.command
-```
-
-This uses Xcode to register `Ideaboard.app` in your Applications folder. After the installer finishes, open:
-
-```text
-~/Applications/Ideaboard.app
-```
-
-You can move it to the Dock for one-click launching. It starts the local server and opens Ideaboard in your browser without leaving a Terminal window open.
-
-Keep the project folder in place after installing. If you move it, run the Mac installer again so the app can register the new location.
-
-If you do not want to build the native app, the terminal launcher is also available:
-
-```text
-launch-ideaboard.command
-```
-
-If macOS blocks it:
-
-1. Right-click `launch-ideaboard.command`.
-2. Choose `Open`.
-3. Click `Open` again.
-
-### Windows
-
-Double-click:
-
-```text
-launch-ideaboard.bat
-```
-
-The command window must stay open while the app is running.
-
-## Detailed Install Instructions For Non-Technical Users
-
-See:
-
-```text
-HOW_TO_INSTALL_AND_RUN.txt
-```
-
-That file explains how to run the app on Mac and Windows in plain language.
-
-## Available Commands
-
-```bash
-npm run dev        # Start local dev server
-npm run build      # Type-check and build production files
-npm test           # Run tests
-npx tsc --noEmit   # Type-check only
-npm run lint       # Run ESLint
-npm run format     # Format files with Prettier
-```
-
-Run a single test file:
-
-```bash
-npx vitest run src/lib/db.test.ts
-```
-
-## Known TypeScript Note
-
-There is a known pre-existing TypeScript warning in `src/lib/pdfImport.ts` for the dynamic CDN import of `pdfjs-dist`.
-
-The app loads PDF.js dynamically from a CDN at runtime. If `npx tsc --noEmit` reports `TS2307` for that dynamic import, it is expected for this local version.
-
-## Project Structure
-
-```text
-src/
-  components/       UI components such as Board, cards, slides, auth, and home screen
-  hooks/            React hooks for auth, boards, slides, frames, and text blocks
-  lib/              Local storage, PDF import, snapping, export/import, themes, utilities
-  types/            Shared TypeScript types
-
-marketing/
-  ideaboard-promo.svg
-  use-examples/
-
-public/
-  favicon.svg
-```
-
-## Privacy
-
-Ideaboard is local-first.
-
-In the current version:
-
-- There is no required cloud account.
-- Passwords are ignored by the local-only auth screen.
-- Boards persist locally under a fixed local user ID.
-- Supabase files exist in the repo but are not used by the local app.
-
-Important:
-
-Browser storage can be cleared by the browser or user. Export important work if you need a backup.
-
-## Suggested Demo Script
-
-Use this simple demo when showing Ideaboard to someone:
-
-> Open Ideaboard, create a board, and add cards for the pieces of your work. Import PDFs or slides when you have documents. Move things around until the plan makes sense. Use the board as a private visual workspace before you share the final result.
-
-## Who Ideaboard Is For
-
-Ideaboard is useful for:
-
-- Teachers and tutors
-- Students and researchers
-- Coaches and consultants
-- Small business owners
-- Content creators
-- Solo founders
-- Product teams
-- Anyone who thinks better visually
+- **Node or npm not found:** install Node.js LTS, then reopen the command window.
+- **Dependency installation fails:** check the network connection and retry `npm ci` from the extracted folder. Do not continue with a partial installation.
+- **Browser does not open:** with the launcher running, visit http://127.0.0.1:5174/ideaboard.html.
+- **Boards appear missing:** check the app, browser profile, and address. Use export/import when switching environments.
+- **AI unavailable on Windows:** manual framework design and core board tools work there; the native AI bridge and OCR are currently Mac-only.
+- **Mac installer cannot sign:** configure an Apple Development identity in Xcode, then retry. The installer preserves the existing app when prerequisites fail.
+- **Mac local address unavailable:** restore the loopback address reported by the startup error rather than switching the saved workspace port.
 
 ## License
 
-No license has been selected yet.
-
-Before sharing publicly or accepting outside contributions, choose a license such as MIT, Apache-2.0, GPL, or a custom proprietary license.
+No license has been selected yet. The repository does not currently grant a separate open-source license.

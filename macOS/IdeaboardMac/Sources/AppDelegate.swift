@@ -630,6 +630,7 @@ private final class IdeaboardAIService: NSObject, WKScriptMessageHandler {
             Label proposed targets, brainstormed ideas, causal hypotheses and assumptions clearly as drafts.
             Personal reflection must not invent lived experiences, feelings or ratings.
             Framework sections must use the supplied section IDs and semantic guidance.
+            For build, choose the best-fitting supplied framework and include frameworkRecommendation with its exact type and a concise user-facing rationale tied to the goal and sources (at most 1000 characters). That type must match a framework in frames. For fill, expand and revise, return frameworkRecommendation as null.
             Preserve existing writing unless the instruction explicitly requests a reviewed replacement.
             """
     }
@@ -678,8 +679,17 @@ private final class IdeaboardAIService: NSObject, WKScriptMessageHandler {
             }
             canonical = try? JSONEncoder().encode(design)
         } else {
+            guard let object = try? JSONSerialization.jsonObject(with: outputData) as? [String: Any],
+                  object.keys.contains("frameworkRecommendation") else {
+                return .failure(id, "invalid_response", "The AI draft was missing its framework recommendation. Try again; your notes were kept.")
+            }
             guard operations.contains(operation), let draft = try? JSONDecoder().decode(AIBoardDraft.self, from: outputData), draft.isBounded else {
                 return .failure(id, "invalid_response", "OpenAI did not return a valid JSON draft. Your notes were kept.")
+            }
+            guard operation == "build"
+                ? draft.frameworkRecommendation.map({ recommendation in draft.frames.contains { $0.type == recommendation.type } }) == true
+                : draft.frameworkRecommendation == nil else {
+                return .failure(id, "invalid_response", "The AI draft did not identify a matching framework for this action. Try again; your notes were kept.")
             }
             canonical = try? JSONEncoder().encode(draft)
         }
@@ -729,8 +739,11 @@ private final class IdeaboardAIService: NSObject, WKScriptMessageHandler {
             "kind": ["type": "string", "enum": ["note", "action"]]
         ])
         let revision = object(["cardId": string, "title": string, "body": string, "sourceIds": sourceIDs])
+        let recommendation = object(["type": ["type": "string", "minLength": 1, "maxLength": 100],
+                                     "rationale": ["type": "string", "minLength": 1, "maxLength": 1000]])
         return object([
             "explanation": string, "assumptions": array(string), "frames": array(frame),
+            "frameworkRecommendation": ["anyOf": [recommendation, ["type": "null"]]],
             "sections": array(write), "cards": array(card), "revisions": array(revision)
         ])
     }
@@ -842,15 +855,33 @@ private struct AIFrameworkDesign: Codable {
 private struct AIBoardDraft: Codable {
     let explanation: String
     let assumptions: [String]
+    let frameworkRecommendation: Recommendation?
     let frames: [Frame]
     let sections: [Write]
     let cards: [Card]
     let revisions: [Revision]
+    struct Recommendation: Codable { let type: String; let rationale: String }
     struct Section: Codable { let id: String; let text: String; let sourceIds: [String] }
     struct Frame: Codable { let type: String; let name: String; let sections: [Section] }
     struct Write: Codable { let frameId: String; let sectionId: String; let text: String; let sourceIds: [String] }
     struct Card: Codable { let title: String; let body: String; let kind: String; let sourceIds: [String] }
     struct Revision: Codable { let cardId: String; let title: String; let body: String; let sourceIds: [String] }
+
+    private enum CodingKeys: String, CodingKey {
+        case explanation, assumptions, frameworkRecommendation, frames, sections, cards, revisions
+    }
+
+    // The frontend contract requires an explicit null for editing operations.
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(explanation, forKey: .explanation)
+        try container.encode(assumptions, forKey: .assumptions)
+        try container.encode(frameworkRecommendation, forKey: .frameworkRecommendation)
+        try container.encode(frames, forKey: .frames)
+        try container.encode(sections, forKey: .sections)
+        try container.encode(cards, forKey: .cards)
+        try container.encode(revisions, forKey: .revisions)
+    }
 
     var isBounded: Bool {
         func text(_ value: String, max: Int) -> Bool {
@@ -860,6 +891,10 @@ private struct AIBoardDraft: Codable {
             values.count <= 128 && values.allSatisfy(IdeaboardAIService.validID)
         }
         return text(explanation, max: 1200) && assumptions.count <= 20 && assumptions.allSatisfy { text($0, max: 600) }
+            && (frameworkRecommendation.map {
+                IdeaboardAIService.validID($0.type) && $0.type.utf16.count <= 100
+                    && !$0.rationale.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.rationale.utf16.count <= 1000
+            } ?? true)
             && frames.count <= 4 && frames.allSatisfy { frame in
                 IdeaboardAIService.validID(frame.type) && text(frame.name, max: 100) && frame.sections.count <= 12
                     && frame.sections.allSatisfy { IdeaboardAIService.validID($0.id) && text($0.text, max: 6000) && ids($0.sourceIds) }

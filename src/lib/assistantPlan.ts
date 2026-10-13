@@ -94,6 +94,7 @@ export function validateAssistantPlan(value: unknown, context: AssistantContext,
   const rawRecommendation = raw.frameworkRecommendation
   let frameworkRecommendation: AssistantPlan['frameworkRecommendation'] = null
   if (context.command === 'build') {
+    if (rawRecommendation == null) throw new Error('The AI draft is missing its framework recommendation. Your notes are kept; try again.')
     const recommendation = object(rawRecommendation)
     const recommendedType = text(recommendation.type, 100) as FrameworkType
     if (!registry.some(def => def.type === recommendedType && def.type !== 'blank') || !frames.some(frame => frame.type === recommendedType)) {

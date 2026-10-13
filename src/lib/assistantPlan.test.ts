@@ -16,6 +16,9 @@ const draft = () => ({ explanation: 'SWOT compares relevant factors.', assumptio
 ] }], sections: [], cards: [{ title: 'Check stock', body: 'Proposed: check strawberry drink stock.', kind: 'action', sourceIds: ['source'] }], revisions: [] })
 
 describe('assistant authorization and output validation', () => {
+  it('explains an omitted native framework recommendation without a generic object error', () => {
+    expect(() => validateAssistantPlan({ ...draft(), frameworkRecommendation: undefined }, context, registry)).toThrow('missing its framework recommendation')
+  })
   it('accepts a complete framework with selected-source references', () => {
     const plan = validateAssistantPlan(draft(), context, registry)
     expect(plan.frames[0].type).toBe('swot')

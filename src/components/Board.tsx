@@ -22,6 +22,8 @@ import { htmlToPlainText } from '../lib/sourceText'
 import { importImageFile, prepareImageAttachment } from '../lib/imageAttachment'
 import { extractNativeImageText } from '../lib/nativeAssistant'
 import type { AssistantSource } from '../lib/assistantPlan'
+import { discardAssistantFrameworkDesign, FRAMEWORK_DESIGN_CHANGED, type AssistantFrameworkDesign } from '../lib/assistantFrameworkDesign'
+import { mergeAssistantConversationResult, readAssistantConversation, updateAssistantConversationLastResult } from '../lib/assistantConversation'
 import SlideTile from './SlideTile'
 import type { SlideTile as SlideTileType } from '../types'
 import TextBlockItem, { TEXT_MIN_W } from './TextBlockItem'
@@ -227,6 +229,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [addFrameMenuOpen, setAddFrameMenuOpen]  = useState(false)
   const [customFrameworks, setCustomFrameworks] = useState(() => readCustomFrameworks())
   const [frameworkDesignerOpen, setFrameworkDesignerOpen] = useState(false)
+  const [assistantFrameworkDesign, setAssistantFrameworkDesign] = useState<AssistantFrameworkDesign | null>(null)
   const [editingFramework, setEditingFramework] = useState<CustomFrameworkTemplate | null>(null)
   const addFrameBtnRef = useRef<HTMLDivElement>(null)
   const [showShortcuts, setShowShortcuts] = useState(false)
@@ -276,12 +279,17 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [])
 
   const openFrameworkDesigner = (template?: CustomFrameworkTemplate) => {
+    setAssistantFrameworkDesign(null)
     setEditingFramework(template ?? null)
     setFrameworkDesignerOpen(true)
     setAddFrameMenuOpen(false)
   }
   const saveFrameworkTemplate = (template: CustomFrameworkTemplate): boolean => {
     setCustomFrameworks(saveCustomFrameworkTemplate(template))
+    if (assistantFrameworkDesign?.template.id === template.id) {
+      discardAssistantFrameworkDesign(board.id, template.id)
+      window.dispatchEvent(new CustomEvent(FRAMEWORK_DESIGN_CHANGED, { detail: board.id }))
+    }
     showToast('Framework saved to My frameworks')
     return true
   }
@@ -297,6 +305,14 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       const camera = cameraRef.current
       const frame = frmRef.current.addCustomFrame(template, rect.width / 2, rect.height / 2, camera.zoom, camera.panX, camera.panY)
       setSelectedFrameId(frame.id)
+      if (assistantFrameworkDesign?.template.id === template.id) {
+        try {
+          const previous = readAssistantConversation(board.id, localStorage).lastResult
+          const result = mergeAssistantConversationResult(previous, { taskId: `framework-design-${template.id}`, frameIds: [frame.id], cardIds: [], createdAt: new Date().toISOString() })
+          updateAssistantConversationLastResult(board.id, result, localStorage)
+          window.dispatchEvent(new CustomEvent(FRAMEWORK_DESIGN_CHANGED, { detail: board.id }))
+        } catch { showToast('Framework added. Its chat reference could not be saved.') }
+      }
       setAddFrameMenuOpen(false)
       showToast(`${template.label} added to the canvas`)
       return true
@@ -2259,16 +2275,18 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
       )}
 
       {frameworkDesignerOpen && <FrameworkDesignerModal
-        key={editingFramework?.id ?? 'new-framework'}
+        key={editingFramework?.id ?? assistantFrameworkDesign?.template.id ?? 'new-framework'}
         open={frameworkDesignerOpen}
         boardId={board.id}
         dark={dark}
         sources={assistantSources}
         initialTemplate={editingFramework ?? undefined}
+        initialDesign={assistantFrameworkDesign ?? undefined}
+        onImportFiles={handleImportSources}
         onSave={saveFrameworkTemplate}
         onDelete={removeFrameworkTemplate}
         onAdd={addCustomFrameworkToBoard}
-        onClose={() => { setFrameworkDesignerOpen(false); setEditingFramework(null) }}
+        onClose={() => { setFrameworkDesignerOpen(false); setEditingFramework(null); setAssistantFrameworkDesign(null) }}
       />}
 
       <BoardAssistantPanel
@@ -2297,6 +2315,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
         }}
         onRemoveSource={removeAssistantSource}
         onImportFiles={handleImportSources}
+        onReviewFrameworkDesign={design => { setAssistantFrameworkDesign(design); setEditingFramework(null); setFrameworkDesignerOpen(true) }}
         loadSourceImage={source => source.slide_id ? getImage(source.slide_id) : Promise.resolve(null)}
         onExtractSourceText={extractSourceText}
         onSearch={openSearch}

@@ -63,9 +63,15 @@ workspace, then choose Import workspace backup in the destination workspace.
 FRAMEWORK DESIGN
 
 Open Add Frame > Design a framework. Describe your goal, choose a visual shape,
-and optionally select useful board text. Preview and edit sections before saving.
+and use Add Markdown or text to import your reference file, or select useful board
+text. Preview and edit sections before saving.
 A matrix needs four sections; other layouts have two to eight. You can design
 manually on either platform. Design with AI requires the configured Mac provider.
+
+In the Mac Board Assistant, select the Markdown file in Context, allow sharing,
+then ask: "Use the selected Markdown to design a reusable custom framework with
+4-6 sections and practical writing questions. Keep the sections empty."
+Choose Edit & save framework on the resulting preview, review it, and save.
 
 TROUBLESHOOTING
 

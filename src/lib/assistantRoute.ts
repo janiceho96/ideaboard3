@@ -1,4 +1,4 @@
-import type { FrameworkType } from '../types'
+import type { FrameworkLayout, FrameworkType } from '../types'
 import type { AssistantCommand } from './assistantPlan'
 
 export interface AssistantCreatedFrameRef {
@@ -42,6 +42,7 @@ interface AssistantCommandRoute {
 
 export type AssistantRouteResult =
   | AssistantCommandRoute
+  | { status: 'design'; layout: FrameworkLayout }
   | {
       status: 'action'
       action: 'move'
@@ -285,6 +286,15 @@ export function routeAssistantRequest(input: AssistantRouteInput): AssistantRout
   if (!validInput(input)) return clarify('I could not safely match that request. Please shorten it or start with a clear instruction.')
 
   const message = normalize(input.message)
+  const customDesign = /\b(?:design|create|make|build|draft|generate)\b.{0,100}\b(?:(?:a|an|my|our|new|brand|reusable|original)\s+)*(?:custom|own|new|reusable|original)\s+framework\b/.test(message)
+  const negatedDesign = /\b(?:do not|don t|dont|never|avoid|not)\b.{0,24}\b(?:design|create|make|build|draft|generate)\b.{0,100}\bframework\b/.test(message)
+  if (customDesign) {
+    if (negatedDesign) return clarify('I will not design a custom framework from that wording. Tell me what you want to organize instead.')
+    const layout: FrameworkLayout = /\bmatrix\b|\b2\s+2\b/.test(message) ? 'matrix'
+      : /\bcycle\b|\bloop\b/.test(message) ? 'cycle'
+      : /\bflow\b|\bstep by step\b/.test(message) ? 'flow' : 'grid'
+    return { status: 'design', layout }
+  }
   const boardAction = routeBoardAction(message, input)
   if (boardAction) return boardAction
 

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, FileUp, Paperclip, Search, Send, Settings2, Sparkles, Square, Trash2, Undo2, X } from 'lucide-react'
 import type { Card, CustomFrameworkTemplate, FrameInstance } from '../types'
 import { FRAMEWORK_REGISTRY, getFrameworkLabel } from '../hooks/useFrames'
-import { frameworkTypeFor } from '../lib/customFrameworks'
+import { buildFrameworkDesignerRequest, frameworkTypeFor, validateFrameworkDesign } from '../lib/customFrameworks'
+import FrameworkLayoutPreview from './FrameworkLayoutPreview'
+import { assertFrameworkDesignSourcesCurrent, discardAssistantFrameworkDesign, FRAMEWORK_DESIGN_CHANGED, readAssistantFrameworkDesign, saveAssistantFrameworkDesign, type AssistantFrameworkDesign } from '../lib/assistantFrameworkDesign'
 import { colors, fonts } from '../lib/designTokens'
 import { AssistantExplanationStream } from '../lib/assistantStream'
 import { ASSISTANT_LIMITS, assertAssistantContextCurrent, assistantRequest, assistantSectionText, buildAssistantEffects, validateAssistantPlan, type AssistantCommand, type AssistantContext, type AssistantFramework, type AssistantImageAttachment, type AssistantPlan, type AssistantSource } from '../lib/assistantPlan'
@@ -39,6 +41,7 @@ interface Props {
   onLocateSource: (source: AssistantSource) => void
   onRemoveSource: (source: AssistantSource) => Promise<void>
   onImportFiles: (files: File[]) => Promise<AssistantSource[]>
+  onReviewFrameworkDesign: (design: AssistantFrameworkDesign) => void
   loadSourceImage: (source: AssistantSource) => Promise<string | null>
   onExtractSourceText: (source: AssistantSource) => Promise<void>
   onSearch: () => void
@@ -161,6 +164,7 @@ export default function BoardAssistantPanel(props: Props) {
   const [progress, setProgress] = useState('')
   const [streamSummary, setStreamSummary] = useState('')
   const [error, setError] = useState('')
+  const [frameworkReview, setFrameworkReview] = useState(() => readAssistantFrameworkDesign(boardId))
   const chatThreadRef = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const sourceFileInputRef = useRef<HTMLInputElement>(null)
@@ -236,6 +240,18 @@ export default function BoardAssistantPanel(props: Props) {
     ? routeMessage(goal.trim(), conversationRef.current)
     : null
 
+  useEffect(() => {
+    const changed = (event: Event) => {
+      if ((event as CustomEvent).detail !== boardId) return
+      setFrameworkReview(readAssistantFrameworkDesign(boardId))
+      const latest = readAssistantConversation(boardId, localStorage)
+      conversationRef.current = latest
+      setConversation(latest)
+    }
+    window.addEventListener(FRAMEWORK_DESIGN_CHANGED, changed)
+    return () => window.removeEventListener(FRAMEWORK_DESIGN_CHANGED, changed)
+  }, [boardId])
+
   const refreshStatus = async () => {
     try { setStatus(await nativeAIStatus()) } catch (e) { setError(message(e)) }
   }
@@ -279,7 +295,7 @@ export default function BoardAssistantPanel(props: Props) {
   const needsFrame = command === 'fill' || command === 'expand'
   const canGenerate = status.configured && consent && goal.trim() && !blockedByTask && !review && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
   const canRunLocalAction = promptRoute?.status === 'action' || promptRoute?.status === 'clarify'
-  const canSubmit = !!goal.trim() && !blockedByTask && !review && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
+  const canSubmit = !!goal.trim() && !blockedByTask && !review && !frameworkReview && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
 
   const apply = async (plan: AssistantPlan, context: AssistantContext, signal: AbortSignal) => {
     const current = propsRef.current
@@ -330,6 +346,32 @@ export default function BoardAssistantPanel(props: Props) {
     let turnId: string | null = null
     try {
       turnId = beginTurn(prompt)
+      const customRoute = routeMessage(prompt, priorConversation)
+      if (customRoute.status === 'design') {
+        const selected = scope === 'board'
+          ? props.availableSources.filter(source => source.body.trim() && source.kind !== 'image')
+          : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : []
+        assertFrameworkDesignSourcesCurrent(boardId, selected, propsRef.current.availableSources)
+        const request = buildFrameworkDesignerRequest(boardId, prompt, selected.map(source => ({ id: source.id, title: source.source_label ?? source.title, body: source.body })), customRoute.layout)
+        busyRef.current = true
+        setBusy(true)
+        setStreamSummary('')
+        setProgress('Designing your custom framework…')
+        const controller = new AbortController()
+        abort.current = controller
+        const output = await generateNativeAssistant(request, controller.signal, chunk => {
+          if (chunk && !controller.signal.aborted) setProgress('AI response arriving · designing your sections…')
+        })
+        if (controller.signal.aborted) { finishTurn(turnId, 'Design stopped. Your request and notes are kept.'); return }
+        assertFrameworkDesignSourcesCurrent(boardId, selected, propsRef.current.availableSources)
+        const template = validateFrameworkDesign(output, undefined, customRoute.layout)
+        const draft = { template, goal: prompt, sourceIds: selected.map(source => source.id) }
+        setFrameworkReview(draft)
+        try { saveAssistantFrameworkDesign(boardId, draft) } catch (cause) { setError(message(cause)) }
+        finishTurn(turnId, `Designed “${template.label}” with ${template.sections.length} sections. The writing areas are empty. Open Edit & save framework to review the questions and add it to your library or board.`)
+        setProgress('Framework draft ready for review. Your board is unchanged.')
+        return
+      }
       let routedCommand: AssistantCommand = command === 'auto' ? 'build' : command
       let routedFrame = command !== 'auto' && (command === 'fill' || command === 'expand') ? frame : undefined
       let routedCard = command === 'revise' ? targetNote : undefined
@@ -373,6 +415,7 @@ export default function BoardAssistantPanel(props: Props) {
           setProgress('Note moved. Undo is available on the board.')
           return
         }
+        if (route.status !== 'route') return
         routedCommand = route.command
         routedReplace = route.replace
         routedSection = route.targetSectionId
@@ -636,6 +679,17 @@ export default function BoardAssistantPanel(props: Props) {
         <strong>Assumptions / open questions</strong>
         <ul>{summary.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul>
       </section>}
+      {frameworkReview && <section className="ib-chat-result" aria-labelledby="ib-custom-framework-title">
+        <h3 id="ib-custom-framework-title" style={{ margin: 0, fontSize: 15 }}>Custom framework draft</h3>
+        <strong>{frameworkReview.template.label}</strong>
+        <FrameworkLayoutPreview template={frameworkReview.template} dark={dark} />
+        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>Review the structure and writing questions. Your board stays unchanged until you save and add it.</p>
+        <button type="button" className="ib-panel-button" disabled={busy} onClick={() => props.onReviewFrameworkDesign(frameworkReview)}>Edit &amp; save framework</button>
+        <button type="button" className="ib-panel-small" disabled={busy} onClick={() => {
+          try { discardAssistantFrameworkDesign(boardId, frameworkReview.template.id); setFrameworkReview(null); setProgress('Framework draft discarded. Your board is unchanged.') }
+          catch (cause) { setError(message(cause)) }
+        }}>Discard framework draft</button>
+      </section>}
       {task && <section className="ib-chat-result">
         <strong style={{ fontSize: 14 }}>{task.status === 'complete' ? 'Latest board change' : 'Interrupted task'}</strong>
         <span style={{ fontSize: 12, lineHeight: 1.5 }}>{task.status === 'complete' ? 'Your chat can continue. Undo reverses this change if its writing has not been edited since.' : 'Some drafts may have been saved. Undo restores the previous writing, or keep the partial result.'}</span>
@@ -712,7 +766,7 @@ export default function BoardAssistantPanel(props: Props) {
         </button>
         {!status.available && <span className="ib-composer-hint">Mac app required for AI</span>}
       </div>
-      <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
+      <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!frameworkReview || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={frameworkReview ? 'Review, save, or discard the framework draft to continue…' : status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
       <div className="ib-chat-composer-bottom">
         <span className="ib-composer-hint">{status.available && !consent ? 'Confirm sharing in Context' : status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'Your notes stay editable'}</span>
         {busy ? <button type="button" className="ib-panel-small ib-stop-button" onClick={() => abort.current?.abort()}><Square size={13} /> Stop</button> : <button type="submit" className="ib-send-button" aria-label="Send message" title="Send message" disabled={!canSubmit}><Send size={16} /></button>}

@@ -82,7 +82,7 @@ Open **Add Frame → Design a framework**.
 
 1. Describe the decision, investigation, or process you want to organize.
 2. Choose **Idea grid**, **Step-by-step**, **2 × 2 matrix**, or **Learning cycle**.
-3. Optionally select board material. Each item shows its availability and a text preview. Empty items and pictures without extracted text cannot be included. Your brief alone is enough to start.
+3. Use **Add Markdown or text** to import a reference file directly, or select existing board material. Each item shows its availability and a text preview. Empty items and pictures without extracted text cannot be included. Your brief alone is enough to start.
 4. In the Mac app, choose **Design with AI**. Progress shows when the request starts and when a response arrives; **Stop** keeps your brief and edits. In either version, you can add and edit sections manually.
 5. Review the live preview, section names, and writing prompts. Choose **Save framework** for your library, or **Save & add to board**.
 
@@ -93,6 +93,12 @@ Unsaved designs recover locally after closing or restarting. Sharing consent is 
 ## Board Assistant and source material
 
 In the Mac app, open **AI Settings** to configure the OpenAI provider, then open **Board Assistant**. The API key is stored in macOS Keychain.
+
+To create a completely new framework from chat, select your Markdown material in **Context**, allow sharing, and send a prompt such as:
+
+> Use the selected Markdown document to design a reusable custom framework. Create 4–6 sections with clear names and practical writing questions. Keep the sections empty for me to complete.
+
+The assistant previews the custom structure without changing your board. Choose **Edit & save framework** to review its names, layout, and writing questions, then save it to your library or add it to the board. Unfinished custom drafts recover in the assistant after reopening. Instructions inside imported documents are reference material, not commands for the assistant to execute.
 
 - Draft a board, fill or expand a framework, or revise a note using an explicit goal and selected context.
 - Continue a separate local assistant conversation on each board.

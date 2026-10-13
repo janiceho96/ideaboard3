@@ -119,11 +119,65 @@ for value in malformed {
 }
 check(!IdeaboardAIService.decodeProvider(provider(design(), status: "incomplete"), id: "test", model: "mock", operation: "design-framework").ok, "Incomplete response accepted")
 check(!IdeaboardAIService.decodeProvider(provider(design(), type: "refusal"), id: "test", model: "mock", operation: "design-framework").ok, "Refusal accepted")
-let boardDraft: [String: Any] = ["explanation": "Draft prepared", "assumptions": [], "frames": [], "sections": [], "cards": [], "revisions": []]
+let boardDraft: [String: Any] = [
+    "explanation": "SWOT separates internal factors from external opportunities and threats.", "assumptions": [],
+    "frameworkRecommendation": ["type": "swot", "rationale": "SWOT helps compare what is known with open questions before choosing an action."],
+    "frames": [["type": "swot", "name": "Decision context", "sections":
+        ["strengths", "weaknesses", "opportunities", "threats"].map {
+            ["id": $0, "text": "Open question: What evidence informs \($0)?", "sourceIds": []] as [String: Any]
+        }]],
+    "sections": [], "cards": [], "revisions": []
+]
+private let canonicalBoard = IdeaboardAIService.decodeProvider(provider(boardDraft), id: "native-board-fixture", model: "mock", operation: "build")
+check(canonicalBoard.ok, "Complete board build rejected")
+if case .object(let result)? = canonicalBoard.result,
+   case .object(let recommendation)? = result["frameworkRecommendation"] {
+    if case .string(let type)? = recommendation["type"] {
+        check(type == "swot", "Recommendation type changed during native canonical encoding")
+    } else { fatalError("Canonical recommendation type missing") }
+    if case .string(let rationale)? = recommendation["rationale"] {
+        check(rationale == (boardDraft["frameworkRecommendation"] as! [String: String])["rationale"], "Recommendation rationale changed during encoding")
+    } else { fatalError("Canonical recommendation rationale missing") }
+} else { fatalError("Native decoder stripped the framework recommendation") }
+let boardSchema = IdeaboardAIService.outputSchema(operation: "build")
+check((boardSchema["required"] as! [String]).contains("frameworkRecommendation"), "Recommendation missing from required board schema")
+let recommendationSchema = (boardSchema["properties"] as! [String: Any])["frameworkRecommendation"] as! [String: Any]
+let recommendationOptions = recommendationSchema["anyOf"] as! [[String: Any]]
+check(recommendationOptions.count == 2 && recommendationOptions.contains { $0["type"] as? String == "null" }, "Recommendation schema must allow explicit null")
+let recommendationObject = recommendationOptions.first { $0["type"] as? String == "object" }!
+check(Set(recommendationObject["required"] as! [String]) == ["type", "rationale"] && recommendationObject["additionalProperties"] as? Bool == false, "Recommendation schema fields are not strict")
+let recommendationFields = recommendationObject["properties"] as! [String: Any]
+check((recommendationFields["rationale"] as! [String: Any])["maxLength"] as? Int == 1000, "Recommendation rationale bound differs from frontend")
+check(IdeaboardAIService.providerInstructions(operation: "build").contains("frameworkRecommendation"), "Provider not told to include recommendation")
+check(IdeaboardAIService.providerInstructions(operation: "fill").contains("frameworkRecommendation as null"), "Editing instructions omit null recommendation")
+var missingRecommendation = boardDraft; missingRecommendation.removeValue(forKey: "frameworkRecommendation")
+private let missingReply = IdeaboardAIService.decodeProvider(provider(missingRecommendation), id: "test", model: "mock")
+check(!missingReply.ok && missingReply.error?.message.contains("Try again") == true, "Missing recommendation did not give an actionable error")
+for value: Any in [NSNull(), ["type": "swot"], ["type": "swot", "rationale": " "],
+                   ["type": "swot", "rationale": String(repeating: "a", count: 1001)],
+                   ["type": "swot", "rationale": String(repeating: "🧭", count: 501)],
+                   ["type": "other", "rationale": "Mismatch"], ["type": "bad/id", "rationale": "Invalid ID"], "swot"] {
+    var invalid = boardDraft; invalid["frameworkRecommendation"] = value
+    check(!IdeaboardAIService.decodeProvider(provider(invalid), id: "test", model: "mock").ok, "Invalid recommendation accepted")
+}
+var boundaryRecommendation = boardDraft
+boundaryRecommendation["frameworkRecommendation"] = ["type": "swot", "rationale": String(repeating: "🧭", count: 500)]
+check(IdeaboardAIService.decodeProvider(provider(boundaryRecommendation), id: "test", model: "mock").ok, "Bounded UTF-16 recommendation rejected")
 for operation in ["build", "fill", "expand", "revise"] {
     var board = context; board["command"] = operation
     check(IdeaboardAIService.validGenerationContext(payload(board)) != nil, "Existing board request rejected")
-    check(IdeaboardAIService.decodeProvider(provider(boardDraft), id: "test", model: "mock", operation: operation).ok, "Existing board reply rejected")
+    var draft = boardDraft
+    if operation != "build" {
+        draft["frameworkRecommendation"] = NSNull(); draft["frames"] = []
+        check(!IdeaboardAIService.decodeProvider(provider(boardDraft), id: "test", model: "mock", operation: operation).ok, "Editing reply with recommendation accepted")
+    }
+    let reply = IdeaboardAIService.decodeProvider(provider(draft), id: "test", model: "mock", operation: operation)
+    check(reply.ok, "Existing board reply rejected")
+    if operation != "build" {
+        if case .object(let result)? = reply.result, case .null? = result["frameworkRecommendation"] {
+            check(true, "Editing null retained")
+        } else { fatalError("Native canonical encoding omitted required null recommendation") }
+    }
 }
 check(!IdeaboardAIService.decodeProvider(provider(boardDraft), id: "test", model: "mock", operation: "design-framework").ok, "Board reply accepted as design")
 check(!IdeaboardAIService.decodeProvider(provider(design()), id: "test", model: "mock").ok, "Design reply accepted as board")
@@ -134,6 +188,11 @@ if let path = ProcessInfo.processInfo.environment["IDEABOARD_DESIGN_REQUEST_FIXT
     let data = try Data(contentsOf: URL(fileURLWithPath: path))
     let browserPayload = try JSONSerialization.jsonObject(with: data) as! [String: Any]
     check(IdeaboardAIService.validGenerationContext(browserPayload) != nil, "Actual browser-generated design request rejected by native bridge")
+}
+if let path = ProcessInfo.processInfo.environment["IDEABOARD_NATIVE_BOARD_FIXTURE"] {
+    // Persist the real native decoder's bridge reply for frontend contract validation.
+    try JSONEncoder().encode(canonicalBoard).write(to: URL(fileURLWithPath: path))
+    print("Actual native board reply fixture written to \(path)")
 }
 print("Native framework design regression: \(checks) checks passed; no provider calls or app launches.")
 '''

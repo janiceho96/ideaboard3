@@ -26,6 +26,14 @@ function input(overrides: Partial<AssistantRouteInput> = {}): AssistantRouteInpu
 }
 
 describe('routeAssistantRequest', () => {
+  it('routes explicit custom framework design separately from writing a board', () => {
+    expect(routeAssistantRequest(input({ message: 'Use the selected Markdown document to design a reusable custom framework. Create 4–6 sections with clear names and practical writing questions. Keep the sections empty for me to complete.', isFirstRequest: true }))).toMatchObject({ status: 'design', layout: 'grid' })
+    expect(routeAssistantRequest(input({ message: 'Create a new framework from this Markdown as a learning cycle' }))).toMatchObject({ status: 'design', layout: 'cycle' })
+    expect(routeAssistantRequest(input({ message: 'Design my own framework as a matrix' }))).toMatchObject({ status: 'design', layout: 'matrix' })
+    expect(routeAssistantRequest(input({ message: 'Design a custom framework to decide which notes to delete' }))).toMatchObject({ status: 'design' })
+    expect(routeAssistantRequest(input({ message: 'Create a new SWOT framework' }))).toMatchObject({ status: 'route', command: 'build' })
+    expect(routeAssistantRequest(input({ message: 'Do not design a custom framework', isFirstRequest: true }))).toMatchObject({ status: 'clarify' })
+  })
   it('builds on the first request and when asked for another plan or framework', () => {
     expect(routeAssistantRequest(input({ isFirstRequest: true }))).toMatchObject({ status: 'route', command: 'build', replace: false })
     expect(routeAssistantRequest(input({ message: 'Create a new marketing plan' }))).toMatchObject({ status: 'route', command: 'build' })

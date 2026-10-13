@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { FrameworkLayoutSurface } from './FrameworkLayoutPreview'
 import type { BuiltinFrameworkType, FrameInstance } from '../types'
 import { FRAMEWORK_LABELS, FRAMEWORK_GROUPS, FRAMEWORK_REGISTRY, getFrameworkDefinition, getFrameworkLabel, getFrameworkSectionNotes } from '../hooks/useFrames'
@@ -17,7 +17,7 @@ interface FrameworkOverlayProps {
   onUpdateNoteArea: (id: string, areaId: string, notes: string) => void
 }
 
-export default function FrameworkOverlay({
+function FrameworkOverlay({
   frame, dark, selected,
   onMoveStart, onResizeStart, onDelete, onSelect, onTypeChange, onRename, onUpdateNotes, onUpdateNoteArea,
 }: FrameworkOverlayProps) {
@@ -1030,3 +1030,5 @@ function ImpactEffort({ width, height, dark }: { width: number; height: number; 
     </div>
   )
 }
+
+export default memo(FrameworkOverlay)

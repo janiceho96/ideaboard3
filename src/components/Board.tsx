@@ -159,6 +159,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
   const [zoom, setZoom] = useState(1)
+  const today = new Date().setHours(0, 0, 0, 0)
   const minimapCamera = useMemo(() => ({ panX, panY, zoom }), [panX, panY, zoom])
 
   const canvasRef    = useRef<HTMLDivElement>(null)
@@ -586,6 +587,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }
 
   const onCardMoveStart = useCallback((id: string, cx: number, cy: number) => {
+    const { panX, panY, zoom } = cameraRef.current
+    const cards = brdRef.current.cards
     setSelectedCardId(id)
     if (!selectedCardIds.includes(id)) setSelectedCardIds([id])
     isDragging.current  = true
@@ -594,7 +597,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     snapZoom.current    = zoom
     snapPanX.current    = panX
     snapPanY.current    = panY
-    const card = brd.cards.find(c => c.id === id)
+    const card = cards.find(c => c.id === id)
     if (!card) return
     const cr = canvasRef.current!.getBoundingClientRect()
     const mwx = (cx - cr.left - panX) / zoom
@@ -603,7 +606,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     dragStartWY.current = card.y
     const ids = selectedCardIds.includes(id) ? selectedCardIds : [id]
     multiDragStart.current = Object.fromEntries(
-      brd.cards
+      cards
         .filter(c => ids.includes(c.id))
         .map(c => [c.id, { x: c.x, y: c.y }]),
     )
@@ -614,7 +617,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     )
     dragOffWX.current = mwx - card.x
     dragOffWY.current = mwy - card.y
-  }, [zoom, panX, panY, brd.cards, selectedCardIds, selectedTileIds])
+  }, [selectedCardIds, selectedTileIds])
 
   const onTagMoveStart = useCallback((id: string, cx: number, cy: number, tx: number, ty: number) => {
     isDragging.current = true
@@ -641,6 +644,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [])
 
   const onFrameMoveStart = useCallback((id: string, e: React.MouseEvent) => {
+    const { panX, panY, zoom } = cameraRef.current
     const frame = frmRef.current.frames.find(f => f.id === id)
     if (!frame) return
     isDragging.current  = true
@@ -655,7 +659,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     const cr = canvasRef.current!.getBoundingClientRect()
     dragOffWX.current = (e.clientX - cr.left - panX) / zoom - frame.x
     dragOffWY.current = (e.clientY - cr.top  - panY) / zoom - frame.y
-  }, [zoom, panX, panY])
+  }, [])
 
   const onFrameResizeStart = useCallback((id: string, e: React.MouseEvent) => {
     const frame = frmRef.current.frames.find(f => f.id === id)
@@ -777,7 +781,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     setBulkDeleteSelection({})
     setBulkDeleteOpen(false)
     showToast(`Deleted ${items.length} item${items.length !== 1 ? 's' : ''}`)
-  }, [brd, handleDeleteTile, selectedBulkItems, selectedCardId, selectedFrameId, showToast])
+  }, [brd, handleDeleteTile, selectedBulkItems, selectedCardId, selectedFrameId, showToast, setBulkDeleteOpen])
 
   const handleImportSources = useCallback(async (files: File[]): Promise<AssistantSource[]> => {
     if (!files.length) return []
@@ -923,8 +927,8 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   }, [])
 
   const duplicateCardPreservingFont = useCallback(async (id: string) => {
-    await brd.duplicateCard(id)
-  }, [brd])
+    await brdRef.current.duplicateCard(id)
+  }, [])
 
   const duplicateSelectedCards = useCallback(async () => {
     const ids = selectedCardIds
@@ -1562,14 +1566,37 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   // ── Colour picker ───────────────────────────────────────────
   const handleColorPick = useCallback((cardId: string, clientX: number, clientY: number) => {
     setColourPicker({ cardId, x: clientX, y: clientY })
-  }, [])
+  }, [setColourPicker])
 
   // ── Modal ───────────────────────────────────────────────────
   const openEdit = (id: string) => { setEditingCard(brd.cards.find(c => c.id === id) ?? null); setModalOpen(true) }
-  const openWriting = (id: string) => {
+  const openWriting = useCallback((id: string) => {
     setSelectedCardId(id); setSelectedCardIds([id]); setWritingCardId(id)
     setShowBoardPanel(false); setAssistantOpen(false)
-  }
+  }, [])
+  const deleteCard = useCallback(async (id: string) => {
+    setSelectedCardId(prev => prev === id ? null : prev)
+    setSelectedCardIds(prev => prev.filter(cardId => cardId !== id))
+    await brdRef.current.removeCard(id)
+    showToast('Card deleted')
+  }, [showToast])
+  const renameCard = useCallback(async (id: string, title: string) => {
+    await brdRef.current.updateCard(id, { title }); showToast('Renamed ✓')
+  }, [showToast])
+  const toggleCardCollapse = useCallback(async (id: string) => {
+    await brdRef.current.updateCard(id, { collapsed: !brdRef.current.cards.find(c => c.id === id)?.collapsed })
+  }, [])
+  const duplicateCard = useCallback(async (id: string) => {
+    await duplicateCardPreservingFont(id); showToast('Card duplicated ✓')
+  }, [duplicateCardPreservingFont, showToast])
+  const toggleCardLock = useCallback(async (id: string) => {
+    const locked = !brdRef.current.cards.find(c => c.id === id)?.locked
+    await brdRef.current.updateCard(id, { locked })
+    showToast(locked ? 'Card locked 🔒' : 'Card unlocked')
+  }, [showToast])
+  const deleteFrame = useCallback((id: string) => {
+    frmRef.current.deleteFrame(id); setSelectedFrameId(null)
+  }, [])
   const openAssistant = () => { setAssistantOpen(true); setShowBoardPanel(false); setWritingCardId(null) }
   const openSearch = () => { setShowBoardPanel(true); setAssistantOpen(false); setWritingCardId(null) }
   let assistantSnapshot = { boardId: board.id, cards: brd.cards, frames: frm.frames }
@@ -1917,12 +1944,12 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
                 selected={selectedFrameId === frame.id}
                 onMoveStart={onFrameMoveStart}
                 onResizeStart={onFrameResizeStart}
-                onDelete={id => { frmRef.current.deleteFrame(id); setSelectedFrameId(null) }}
+                onDelete={deleteFrame}
                 onSelect={setSelectedFrameId}
-                onTypeChange={(id, type) => frmRef.current.changeFrameType(id, type)}
-                onRename={(id, name) => frmRef.current.renameFrame(id, name)}
-                onUpdateNotes={(id, notes) => frmRef.current.updateFrameNotes(id, notes)}
-                onUpdateNoteArea={(id, areaId, notes) => frmRef.current.updateFrameNoteArea(id, areaId, notes)}
+                onTypeChange={frm.changeFrameType}
+                onRename={frm.renameFrame}
+                onUpdateNotes={frm.updateFrameNotes}
+                onUpdateNoteArea={frm.updateFrameNoteArea}
               />
             ))}
 
@@ -2000,24 +2027,15 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
             {visibleCards.map(card => (
               <div key={card.id} className="world-item" data-board-card-id={card.id}>
                 <IdeaCard
-                  card={card} dark={dark}
+                  card={card} dark={dark} today={today}
                   onMoveStart={onCardMoveStart}
                   onResizeStart={onResizeStart}
                   onEdit={openWriting}
-                  onDelete={async id => {
-                    if (id === selectedCardId) setSelectedCardId(null)
-                    setSelectedCardIds(prev => prev.filter(cardId => cardId !== id))
-                    await brd.removeCard(id)
-                    showToast('Card deleted')
-                  }}
-                  onInlineTitle={async (id, title) => { await brd.updateCard(id, { title }); showToast('Renamed ✓') }}
-                  onToggleCollapse={async id => { await brd.updateCard(id, { collapsed: !brd.cards.find(c => c.id === id)?.collapsed }) }}
-                  onDuplicate={async id => { await duplicateCardPreservingFont(id); showToast('Card duplicated ✓') }}
-                  onToggleLock={async id => {
-                    const locked = !brd.cards.find(c => c.id === id)?.locked
-                    await brd.updateCard(id, { locked })
-                    showToast(locked ? 'Card locked 🔒' : 'Card unlocked')
-                  }}
+                  onDelete={deleteCard}
+                  onInlineTitle={renameCard}
+                  onToggleCollapse={toggleCardCollapse}
+                  onDuplicate={duplicateCard}
+                  onToggleLock={toggleCardLock}
                   onColorPick={handleColorPick}
                 />
               </div>

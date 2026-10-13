@@ -9,7 +9,7 @@
 //   - Lock button prevents dragging and resizing
 //   - Right-click opens quick colour picker
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import type { Card, TagType } from '../types'
 import { marked } from 'marked'
 import { sanitizeHtml } from '../lib/sanitizeHtml'
@@ -34,11 +34,10 @@ const DOT_COLORS: Record<TagType, string> = {
 }
 
 // Returns null | 'soon' | 'overdue' based on due_date
-function getDueStatus(dueDate: string | null): null | 'soon' | 'overdue' {
+function getDueStatus(dueDate: string | null, today: number): null | 'soon' | 'overdue' {
   if (!dueDate) return null
-  const today = new Date(); today.setHours(0, 0, 0, 0)
   const due   = new Date(dueDate + 'T00:00:00')
-  const diff  = (due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  const diff  = (due.getTime() - today) / (1000 * 60 * 60 * 24)
   if (diff < 0)  return 'overdue'
   if (diff <= 2) return 'soon'
   return null
@@ -56,12 +55,13 @@ interface IdeaCardProps {
   onToggleLock:     (id: string) => void
   onColorPick:      (id: string, clientX: number, clientY: number) => void
   dark: boolean
+  today: number
 }
 
-export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInlineTitle, onToggleCollapse, onDuplicate, onToggleLock, onColorPick, dark }: IdeaCardProps) {
+function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInlineTitle, onToggleCollapse, onDuplicate, onToggleLock, onColorPick, dark, today }: IdeaCardProps) {
   const tm        = TAG_META[card.tag] ?? TAG_META.idea
   const dotColor  = DOT_COLORS[card.tag] ?? colors.markerPurple
-  const dueStatus = getDueStatus(card.due_date)
+  const dueStatus = getDueStatus(card.due_date, today)
 
   const legacyDarkCard = card.bg === '#152336' || card.bg === colors.inkDark
 
@@ -247,3 +247,5 @@ export default function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onD
     </div>
   )
 }
+
+export default memo(IdeaCard)

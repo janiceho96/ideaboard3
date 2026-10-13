@@ -8,6 +8,7 @@ import { readAssistantTask, savedAssistantSnapshot, undoAssistantTask, type Assi
 import type { LocalUser, Board as BoardType, Card, CardFontFamily, CustomFrameworkTemplate, GoalTagInsert, TagType } from '../types'
 import { useBoard } from '../hooks/useBoard'
 import IdeaCard from './IdeaCard'
+import BoardMinimap, { type MinimapItem } from './BoardMinimap'
 import CardModal from './CardModal'
 import { snapPosition, snapPositionGeneric } from '../lib/snapPosition'
 import { playSnapSound } from '../lib/snapSound'
@@ -158,6 +159,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
   const [panX, setPanX] = useState(0)
   const [panY, setPanY] = useState(0)
   const [zoom, setZoom] = useState(1)
+  const minimapCamera = useMemo(() => ({ panX, panY, zoom }), [panX, panY, zoom])
 
   const canvasRef    = useRef<HTMLDivElement>(null)
   const worldRef     = useRef<HTMLDivElement>(null)
@@ -426,6 +428,23 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
     () => brd.cards.filter(card => selectedCardIds.includes(card.id)),
     [brd.cards, selectedCardIds],
   )
+  const minimapItems = useMemo<MinimapItem[]>(() => {
+    const visible = new Set(visibleCards.map(card => card.id))
+    return [
+    ...frameRects.map(({ rect }, index) => ({ id: `frame:${frm.frames[index].id}`, label: frm.frames[index].name || 'Framework', rect, color: colors.markerPurple, frame: true })),
+    ...tileRects.map(({ rect }, index) => ({ id: `slide:${sld.tiles[index].id}`, label: sld.tiles[index].filename, rect, color: colors.markerCyan })),
+    ...textRects.map(({ rect }, index) => ({ id: `text:${txt.blocks[index].id}`, label: 'Canvas text', rect, color: colors.markerMint })),
+    ...tagRects.map(({ rect }, index) => ({ id: `tag:${brd.goalTags[index].id}`, label: brd.goalTags[index].label, rect, color: brd.goalTags[index].bg })),
+    ...cardRects.flatMap(({ rect }, index) => visible.has(brd.cards[index].id) ? [{ id: `card:${brd.cards[index].id}`, label: brd.cards[index].title, rect, color: brd.cards[index].bg || colors.markerYellow }] : []),
+    ]
+  }, [cardRects, frameRects, tileRects, textRects, tagRects, brd.cards, brd.goalTags, frm.frames, sld.tiles, txt.blocks, visibleCards])
+  const navigateMinimap = useCallback((x: number, y: number) => {
+    const rect = canvasRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const next = { ...cameraRef.current, panX: rect.width / 2 - x * cameraRef.current.zoom, panY: rect.height / 2 - y * cameraRef.current.zoom }
+    cameraRef.current = next
+    setPanX(next.panX); setPanY(next.panY)
+  }, [])
   const selectedBoardItemCount = selectedCardIds.length + selectedTileIds.length
   const slideGroupViews = useMemo(() => slideGroups.map(group => {
     const tiles = sld.tiles.filter(tile => group.tileIds.includes(tile.id))
@@ -2150,14 +2169,7 @@ export default function Board({ user, board, onBack, dark, onToggleDark }: Board
           ><CircleHelp size={16} /></button>
 
           {/* Minimap */}
-          <div style={{ position:'absolute', right:62, bottom:22, width:110, height:74, background: dark?'#152336':'white', borderRadius:9, border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.1)'}`, boxShadow:'0 2px 8px rgba(0,0,0,.1)', overflow:'hidden', zIndex:50, opacity:.85 }}>
-            <div style={{ width:'100%',height:'100%',background: dark?'#0D1B2E':'#f0ede5',position:'relative' }}>
-              {[['12%','8%','#D4EDD8'],['52%','8%','#FFF3B0'],['12%','52%','#FFD6C2'],['52%','52%','#E8E0F5']].map(([l,t,bg],i)=>(
-                <div key={i} style={{ position:'absolute',left:l,top:t,width:'36%',height:'40%',background:bg,border:'1px solid rgba(0,0,0,.1)',borderRadius:3,opacity: dark?.5:1 }}/>
-              ))}
-              <div style={{ position:'absolute',inset:'5%',border:'1.5px solid #6C63FF',borderRadius:3,pointerEvents:'none' }}/>
-            </div>
-          </div>
+          <BoardMinimap items={minimapItems} camera={minimapCamera} canvasRef={canvasRef} dark={dark} onNavigate={navigateMinimap} />
 
           {/* World coords */}
           <div style={{ position:'absolute',left:18,bottom:22,fontSize:10,color:dark?'#444':subC,fontFamily:"'JetBrains Mono',monospace",background: dark?'rgba(26,26,36,.8)':'rgba(255,255,255,.8)',padding:'3px 8px',borderRadius:6,border:`1px solid ${dark?'#1E3451':'rgba(0,0,0,.06)'}` }}>

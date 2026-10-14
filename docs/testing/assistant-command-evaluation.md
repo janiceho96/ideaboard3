@@ -23,3 +23,18 @@ Select a framework with writing, or choose note sources in Add context. Send the
 - “Remove the highlight from the exact phrase ‘YOUR PHRASE’ in ‘YOUR NOTE’.”
 
 The full phrase catalog is in [assistantCommandExamples.ts](../../src/lib/assistantCommandExamples.ts). Requests outside the supported operations should receive a clarification or explanation instead of claiming a board change.
+
+## Sentence spacing and important words follow-up
+
+All generation paths now request a space or paragraph break between sentences. Exact source quotes, existing text being highlighted, code, URLs, filenames and decimals stay intact. A read-only review found no whitespace-removal behavior in the Markdown renderer, sanitizer, writing areas, or plan validators; the reported missing separators were not reproduced in saved writing.
+
+For general key-point requests, the provider now chooses a few meaningful phrases, usually 1–6 words, covering concepts, decisions, evidence, requirements or constraints. Negations, qualifiers and units remain part of a phrase when they change its meaning. Explicit full-sentence and exact-quote requests remain supported.
+
+Four additional live OpenAI checks on fictional text passed:
+
+- Framework key points changed from a whole sentence to phrases including “imports Medium articles,” “Google App Password,” and “every 30 minutes.”
+- Note highlights selected “Do not launch,” “until approval,” “budget limit is $500,” and “deadline is 20 October,” leaving generic meeting filler unmarked and preserving all source wording.
+- An explicit whole-sentence request highlighted precisely the requested sentence.
+- A new three-sentence setup note kept proper sentence spacing, `medium_agent/.env`, `https://example.com/guide`, version `2.5`, and the inline command `medium_agent.py --setup`.
+
+Playwright replayed the actual provider replies through the app's bridge interface and checked visible phrases, sentence spacing, review before apply, save/reload, editing and Undo. The focused frontend checks and all 108 native bridge checks passed; production type-check/build and scoped lint passed. The transport was simulated in the browser; the provider responses came from the real configured native client. Importance remains an AI judgment, so users review the proposed marks before applying them. These changes guide new writing; they do not silently rewrite saved notes.

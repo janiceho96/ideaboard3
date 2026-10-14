@@ -14,9 +14,14 @@ const cards: Card[] = [
 ]
 const frame: FrameInstance = { id: 'qa-frame', type: 'ooda', x: 80, y: 400, width: 800, height: 560, notes: '', noteAreas: { observe: 'MediumAstroAgent imports Medium articles into an Obsidian vault.', orient: 'Setup requires Google 2-Step Verification and a Google App Password.', decide: 'Gmail digest emails and a direct URL are alternative inputs.', act: 'An optional macOS LaunchAgent checks every 30 minutes.' } }
 const sources: AssistantSource[] = cards.map(card => ({ id: card.id, board_id: card.board_id, title: card.title, body: card.body, kind: 'note', source_label: `Note · ${card.title}` }))
+const importantNote = { ...cards[0], body: 'Do not launch until approval. The budget limit is $500. The deadline is 20 October. The meeting had many interesting conversations.' }
+const importantSource = { ...sources[0], body: importantNote.body }
 const base: AssistantBoardCommandContext = { boardId: 'command-qa', intent: 'emphasis', goal: '', today: '2026-10-14', history: [], sources, cards, frames: [] }
 export const commandLiveFixtures = [
   { id: 'screenshot-highlight', context: { ...base, goal: 'help me to highlight some key point', cards: [], sources: [], frames: [frame] } },
+  { id: 'important-words', context: { ...base, goal: 'Highlight only the truly important words in this note in yellow. Keep the wording unchanged.', cards: [importantNote], sources: [importantSource] } },
+  { id: 'whole-sentence', context: { ...base, goal: 'Highlight the entire exact sentence "The survey follow-up is complete." in yellow in Activation plan.' } },
+  { id: 'sentence-spacing', context: { ...base, intent: 'create' as const, goal: 'Create one note with a short paragraph of three complete sentences about this setup. Keep the URL, filename and version exactly as supplied. Put the command in inline code.', cards: [], sources: [{ id: 'qa-setup', board_id: 'command-qa', title: 'Setup facts', body: 'Config file medium_agent/.env. Documentation https://example.com/guide. Version 2.5. Run medium_agent.py --setup. Configure first, then run.', kind: 'note' as const }] } },
   { id: 'note-highlight', context: { ...base, goal: 'Highlight the exact phrase "low-friction product trial" in mint in Activation plan.' } },
   { id: 'find', context: { ...base, intent: 'find' as const, goal: 'Find notes mentioning activation and cite the selected source.' } },
   { id: 'create', context: { ...base, intent: 'create' as const, goal: 'Create one concise note summarizing the team decision from Activation plan.' } },
@@ -56,8 +61,35 @@ it.runIf(!!liveReport)('verifies the actual provider replies against requested e
     switch (fixture.id) {
       case 'screenshot-highlight':
         expect(effects.sections.length).toBeGreaterThan(0)
+        expect(plan.operations.filter(operation => operation.type === 'highlight_section').every(operation => operation.exactQuote.split(/\s+/).length <= 6 && !/[.!?]$/.test(operation.exactQuote))).toBe(true)
         for (const write of effects.sections) expect(write.after.replace(/\{\{(?:ib-highlight:[a-z]+|\/ib-highlight)\}\}/g, '')).toBe(write.before)
         break
+      case 'important-words': {
+        const quotes = plan.operations.filter(operation => operation.type === 'highlight_text').map(operation => operation.exactQuote)
+        expect(quotes.length).toBeGreaterThan(1)
+        expect(quotes.every(quote => quote.split(/\s+/).length <= 6 && !/[.!?]$/.test(quote)), 'Short phrases, not whole sentences').toBe(true)
+        expect(quotes.some(quote => /approval|Do not launch/.test(quote)), 'Launch condition').toBe(true)
+        expect(quotes.some(quote => quote.includes('$500')), 'Budget constraint').toBe(true)
+        expect(quotes.some(quote => quote.includes('20 October')), 'Deadline with its unit').toBe(true)
+        expect(quotes.filter(quote => /launch/i.test(quote)).every(quote => /not/i.test(quote)), 'Retain negation').toBe(true)
+        expect(quotes.every(quote => !/interesting conversations/.test(quote)), 'Skip filler').toBe(true)
+        expect(effects.cardWrites[0].after.body?.replace(/\{\{(?:ib-highlight:[a-z]+|\/ib-highlight)\}\}/g, '')).toBe(importantNote.body)
+        break
+      }
+      case 'whole-sentence':
+        expect(effects.cardWrites[0].after.body).toContain('{{ib-highlight:yellow}}The survey follow-up is complete.{{/ib-highlight}}')
+        break
+      case 'sentence-spacing': {
+        expect(effects.cards).toHaveLength(1)
+        const body = effects.cards[0].body
+        expect(body).toContain('medium_agent/.env')
+        expect(body).toContain('https://example.com/guide')
+        expect(body).toContain('2.5')
+        expect(body).toContain('`medium_agent.py --setup`')
+        expect(body).toMatch(/[.!?][ \n]+[A-Z]/)
+        expect(body).not.toMatch(/[a-z]{2}[.!?](?:\*{1,2})?[A-Z][a-z]/)
+        break
+      }
       case 'note-highlight':
         expect(effects.cardWrites[0].after.body).toContain('{{ib-highlight:mint}}low-friction product trial{{/ib-highlight}}')
         break

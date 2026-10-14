@@ -13,6 +13,9 @@ import { appendAssistantConversationTurn, mergeAssistantConversationResult, read
 import { routeAssistantRequest, type AssistantBoardCardRef, type AssistantMoveDirection, type AssistantRouteResult } from '../lib/assistantRoute'
 import { generateNativeAssistant, nativeAIRequest, nativeAIStatus, type NativeAIStatus } from '../lib/nativeAssistant'
 import { prepareImageAttachment } from '../lib/imageAttachment'
+import { assistantCommandRequest, assertAssistantCommandContextCurrent, classifyAssistantCommand, validateAssistantBoardCommandPlan, type AssistantBoardCommandContext, type AssistantBoardCommandPlan, type AssistantBoardOperation } from '../lib/assistantCommandPlan'
+import { buildAssistantCommandEffects } from '../lib/assistantCommandEffects'
+import { NOTE_HIGHLIGHT_SWATCHES } from '../lib/noteHighlight'
 
 const builtinAssistantFrameworks: AssistantFramework[] = Object.values(FRAMEWORK_REGISTRY).filter(d => d.selectable).map(d => ({
   type: d.type, label: d.label, guidance: `${d.selectionGuidance} ${d.sourceRequirements}`,
@@ -169,6 +172,7 @@ export default function BoardAssistantPanel(props: Props) {
   const sourceFileInputRef = useRef<HTMLInputElement>(null)
   const shouldFollowChatRef = useRef(true)
   const [review, setReview] = useState<{ plan: AssistantPlan; context: AssistantContext; turnId: string } | null>(null)
+  const [commandReview, setCommandReview] = useState<{ plan: AssistantBoardCommandPlan; context: AssistantBoardCommandContext; turnId: string } | null>(null)
   const [pendingDelete, setPendingDelete] = useState<{ refs: AssistantBoardCardRef[]; turnId: string } | null>(null)
   const reviewRef = useRef(review)
   reviewRef.current = review
@@ -278,7 +282,7 @@ export default function BoardAssistantPanel(props: Props) {
   useEffect(() => { if (open) void refreshStatus() }, [open])
   useEffect(() => {
     if (shouldFollowChatRef.current) chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
-  }, [open, messages, busy, progress, streamSummary, review, pendingDelete, summary, task, error])
+  }, [open, messages, busy, progress, streamSummary, review, commandReview, pendingDelete, summary, task, error])
   useEffect(() => { if (selectedFrameId && !busyRef.current && !review) setFrameId(selectedFrameId) }, [selectedFrameId, review])
   useEffect(() => {
     if (selectedNoteIds.length === 1 && !busyRef.current && !reviewRef.current) setNoteId(selectedNoteIds[0])
@@ -292,9 +296,10 @@ export default function BoardAssistantPanel(props: Props) {
     : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : [], [scope, props.availableSources, sourceSelection])
   const targetNote = cards.find(c => c.id === noteId)
   const needsFrame = command === 'fill' || command === 'expand'
-  const canGenerate = status.configured && goal.trim() && !blockedByTask && !review && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
-  const canRunLocalAction = promptRoute?.status === 'action' || promptRoute?.status === 'clarify'
-  const canSubmit = !!goal.trim() && !blockedByTask && !review && !frameworkReview && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
+  const promptIntent = command === 'auto' ? classifyAssistantCommand(goal.trim()) : null
+  const canGenerate = status.configured && goal.trim() && !blockedByTask && !review && !commandReview && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
+  const canRunLocalAction = promptRoute?.status === 'action' || (promptRoute?.status === 'clarify' && !promptIntent)
+  const canSubmit = !!goal.trim() && !blockedByTask && !review && !commandReview && !frameworkReview && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
 
   const apply = async (plan: AssistantPlan, context: AssistantContext, signal: AbortSignal) => {
     const current = propsRef.current
@@ -379,11 +384,6 @@ export default function BoardAssistantPanel(props: Props) {
 
       if (command === 'auto') {
         const route = routeMessage(prompt, priorConversation)
-        if (route.status === 'clarify') {
-          finishTurn(turnId, route.message)
-          setProgress('')
-          return
-        }
         if (route.status === 'action') {
           if (route.action === 'delete') {
             setPendingDelete({ refs: route.targetCardRefs, turnId })
@@ -412,6 +412,64 @@ export default function BoardAssistantPanel(props: Props) {
           props.onLocateNote(target.id)
           finishTurn(turnId, `Moved “${target.title}” ${route.direction} of “${destination.title}”. Use Undo on the board to move it back.`)
           setProgress('Note moved. Undo is available on the board.')
+          return
+        }
+        const intent = classifyAssistantCommand(prompt)
+        if (intent && intent !== 'framework') {
+          const requestSources = sources
+          const sourceNoteIds = new Set(requestSources.filter(source => source.kind === 'note').map(source => source.id))
+          const commandContext: AssistantBoardCommandContext = JSON.parse(JSON.stringify({
+            boardId,
+            intent,
+            goal: prompt,
+            today: localDate(),
+            history: priorConversation.turns.flatMap(turn => turn.messages.map(entry => ({ role: entry.role, text: entry.content }))),
+            sources: requestSources,
+            cards: cards.filter(card => sourceNoteIds.has(card.id)),
+            frames: frames.filter(frame => selectedFrameId ? frame.id === selectedFrameId : priorConversation.lastResult?.frameIds.includes(frame.id)),
+          }))
+          const assertCurrent = () => assertAssistantCommandContextCurrent(commandContext, {
+            boardId,
+            cards: propsRef.current.cards,
+            frames: propsRef.current.frames,
+            sources: propsRef.current.availableSources,
+          })
+          assertCurrent()
+          busyRef.current = true
+          setBusy(true)
+          setProgress('Working through your request…')
+          const controller = new AbortController()
+          abort.current = controller
+          const output = await generateNativeAssistant(assistantCommandRequest(commandContext), controller.signal)
+          if (controller.signal.aborted) {
+            finishTurn(turnId, 'I stopped before changing the board. Your notes are unchanged.')
+            setProgress('')
+            return
+          }
+          const plan = validateAssistantBoardCommandPlan(output, commandContext)
+          assertCurrent()
+          const deletion = plan.operations.find(operation => operation.type === 'delete_notes')
+          if (deletion?.type === 'delete_notes') {
+            const refs = deletion.cardIds.map(id => commandContext.cards.find(card => card.id === id)!).map(card => ({ id: card.id, title: card.title, locked: card.locked }))
+            setPendingDelete({ refs, turnId })
+            finishTurn(turnId, `${plan.response ? `${plan.response}\n\n` : ''}Review and confirm the ${refs.length === 1 ? 'note' : `${refs.length} notes`} to delete.`)
+            setProgress('Review the selected note(s) before deleting.')
+            return
+          }
+          const hasBoardChange = plan.operations.some(operation => operation.type !== 'answer')
+          if (!hasBoardChange) {
+            const answer = plan.operations.filter(operation => operation.type === 'answer').map(operation => `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandContext.sources.find(source => source.id === id)?.source_label ?? commandContext.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}`).join('\n\n')
+            finishTurn(turnId, [plan.response, answer].filter(Boolean).join('\n\n') || 'I could not find enough information to answer that from the selected material.')
+            setProgress('Answer ready.')
+            return
+          }
+          setCommandReview({ plan, context: commandContext, turnId })
+          setProgress('Review the proposed board changes before applying them.')
+          return
+        }
+        if (route.status === 'clarify') {
+          finishTurn(turnId, route.message)
+          setProgress('')
           return
         }
         if (route.status !== 'route') return
@@ -511,6 +569,67 @@ export default function BoardAssistantPanel(props: Props) {
     }
     catch (e) { setError(message(e)) }
     finally { busyRef.current = false; setBusy(false); abort.current = null }
+  }
+
+  const applyCommandReview = async () => {
+    if (!commandReview || busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+    setError('')
+    setProgress('Applying the changes you reviewed…')
+    try {
+      const current = propsRef.current
+      assertAssistantCommandContextCurrent(commandReview.context, {
+        boardId,
+        cards: current.cards,
+        frames: current.frames,
+        sources: current.availableSources,
+      })
+      const id = crypto.randomUUID()
+      const effects = buildAssistantCommandEffects(commandReview.plan, commandReview.context, id, current.getOrigin())
+      const next: AssistantTask = {
+        version: 1,
+        id,
+        boardId,
+        status: 'applying',
+        createdAt: new Date().toISOString(),
+        effects: { frames: [], cards: effects.cards, sections: effects.sections, revisions: effects.revisions, cardWrites: effects.cardWrites },
+      }
+      const complete = await applyAssistantTask(next, current.operations, localStorage, setProgress)
+      const saved = current.operations.getSnapshot()
+      const changedCardIds = [...new Set([
+        ...complete.effects.revisions.map(write => write.cardId),
+        ...(complete.effects.cardWrites ?? []).map(write => write.cardId),
+        ...saved.cards.filter(card => (card as Card & { ai_task_id?: string }).ai_task_id === complete.id).map(card => card.id),
+      ])]
+      updateLastResult(mergeAssistantConversationResult(conversationRef.current.lastResult, {
+        taskId: complete.id,
+        frameIds: [...new Set(complete.effects.sections.map(write => write.frameId))],
+        cardIds: changedCardIds,
+        createdAt: complete.createdAt,
+      }))
+      setTask(complete)
+      setCommandReview(null)
+      current.locate(complete)
+      const answer = commandReview.plan.operations.filter(operation => operation.type === 'answer').map(operation => `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandReview.context.sources.find(source => source.id === id)?.source_label ?? commandReview.context.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}`).join('\n\n')
+      finishTurn(commandReview.turnId, [commandReview.plan.response, answer].filter(Boolean).join('\n\n') || 'Done. The requested board changes are saved as an AI-assisted task; Undo is available.')
+      setProgress('Changes saved. Undo is available.')
+    } catch (cause) {
+      setError(message(cause))
+    } finally {
+      const savedTask = readAssistantTask(boardId, localStorage)
+      setTask(savedTask)
+      if (savedTask) propsRef.current.onTaskBoundary()
+      busyRef.current = false
+      setBusy(false)
+    }
+  }
+
+  const discardCommandReview = () => {
+    if (!commandReview || busyRef.current) return
+    finishTurn(commandReview.turnId, 'Draft discarded. Your board is unchanged.')
+    setCommandReview(null)
+    setProgress('Draft discarded. Your board is unchanged.')
   }
 
   const undoTask = async () => {
@@ -665,6 +784,33 @@ export default function BoardAssistantPanel(props: Props) {
         <button className="ib-panel-button" disabled={busy} onClick={applyReview}><Check size={15} /> Apply reviewed task</button>
         <button className="ib-panel-small" disabled={busy} onClick={() => { finishTurn(review.turnId, 'Draft discarded. Your writing is unchanged.'); setReview(null); setProgress('Draft discarded. Your writing is unchanged.') }}>Discard draft</button>
       </section>}
+      {commandReview && <section className="ib-chat-result" aria-labelledby="ib-command-review-title">
+        <h3 id="ib-command-review-title" style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>Review board changes</h3>
+        {commandReview.plan.response && <p style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>{commandReview.plan.response}</p>}
+        {commandReview.plan.operations.map((operation, index) => {
+          const note = 'cardId' in operation ? commandReview.context.cards.find(card => card.id === operation.cardId) : undefined
+          const noteNames = 'cardIds' in operation
+            ? operation.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note')
+            : operation.type === 'group_notes' ? operation.groups.flatMap(group => group.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note')) : []
+          return <div key={`${operation.type}:${index}`} style={{ display: 'grid', gap: 7, paddingTop: 8, borderTop: '1px solid #A5ABBA' }}>
+            <strong style={{ fontSize: 12 }}>{assistantCommandOperationTitle(operation, note?.title, noteNames)}</strong>
+            {operation.type === 'answer' && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.text}{operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandReview.context.sources.find(source => source.id === id)?.source_label ?? commandReview.context.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}</p>}
+            {operation.type === 'create_note' && <pre style={{ margin: 0 }}>{operation.body || '(Empty note)'}</pre>}
+            {operation.type === 'revise_note' && note && <Comparison label="Note writing" before={`${note.title}\n\n${note.body}`} after={`${operation.title}\n\n${operation.body}`} />}
+            {operation.type === 'highlight_text' && note && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.mode === 'remove' ? 'Remove the highlight from' : 'Highlight'} <mark style={{ background: operation.mode === 'remove' ? 'transparent' : NOTE_HIGHLIGHT_SWATCHES[operation.color], color: operation.mode === 'remove' ? 'inherit' : '#172038' }}>{operation.exactQuote}</mark> in {note.title}.</p>}
+            {operation.type === 'highlight_section' && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.mode === 'remove' ? 'Remove the mark from' : 'Highlight'} <mark style={{ background: operation.mode === 'remove' ? 'transparent' : NOTE_HIGHLIGHT_SWATCHES[operation.color], color: operation.mode === 'remove' ? 'inherit' : '#172038' }}>{operation.exactQuote}</mark> in the {operation.sectionId} section.</p>}
+            {operation.type === 'group_notes' && <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.groups.map(group => <li key={group.label}>{group.label}: {group.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note').join(', ')}</li>)}</ul>}
+            {operation.type === 'update_note' && note && <>
+              {(operation.changes.title !== undefined || operation.changes.body !== undefined) && <Comparison label="Note writing" before={`${note.title}\n\n${note.body}`} after={`${operation.changes.title ?? note.title}\n\n${operation.changes.body ?? note.body}`} />}
+              <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{Object.entries(operation.changes).filter(([key]) => key !== 'title' && key !== 'body').map(([key, value]) => <li key={key}>{assistantCommandChangeLabel(key)}: {assistantCommandChangeValue(key, value)}</li>)}</ul>
+            </>}
+          </div>
+        })}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <button type="button" className="ib-panel-small" disabled={busy} onClick={discardCommandReview}><X size={14} /> Discard</button>
+          <button type="button" className="ib-panel-button" disabled={busy} onClick={() => void applyCommandReview()}><Check size={14} /> Apply changes</button>
+        </div>
+      </section>}
       {pendingDelete && <section className="ib-chat-result" aria-labelledby="ib-delete-confirm-title">
         <h3 id="ib-delete-confirm-title" style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>Delete these notes?</h3>
         <ul>{pendingDelete.refs.map(ref => <li key={ref.id}>{ref.title}</li>)}</ul>
@@ -703,13 +849,13 @@ export default function BoardAssistantPanel(props: Props) {
       {contextOpen && <div className="ib-chat-context" role="group" aria-label="Task and context settings">
         <div className="ib-chat-context-head"><strong>Context</strong><span>Choose a task mode or select source material</span></div>
         <label>Task
-          <select className="ib-panel-control" value={command} disabled={busy || !!review || blockedByTask} onChange={e => { setCommand(e.target.value as AssistantCommand | 'auto'); setReplace(false) }}>
+          <select className="ib-panel-control" value={command} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => { setCommand(e.target.value as AssistantCommand | 'auto'); setReplace(false) }}>
             {commands.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
           </select>
           <span className="ib-context-help">{commands.find(c => c.id === command)!.help}</span>
         </label>
         <label>Source material
-          <select className="ib-panel-control" value={scope} disabled={busy || !!review || blockedByTask} onChange={e => setScope(e.target.value as typeof scope)}>
+          <select className="ib-panel-control" value={scope} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => setScope(e.target.value as typeof scope)}>
             <option value="selected">Selected sources ({sourceSelection.length})</option>
             <option value="board">All board sources ({props.availableSources.length})</option>
             <option value="goal">Goal only</option>
@@ -718,17 +864,17 @@ export default function BoardAssistantPanel(props: Props) {
         <div className="ib-context-sources">
           {props.availableSources.length > 0 && <div className="ib-source-list" style={{ maxHeight: 170 }}>
             {props.availableSources.map(source => <div key={source.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" aria-label={`Include ${source.source_label ?? source.title}`} checked={sources.some(selected => selected.id === source.id)} disabled={scope === 'board' || busy || !!review} onChange={event => setSourceSelection(current => event.target.checked ? [...new Set([...current, source.id])] : current.filter(id => id !== source.id))} />
+              <input type="checkbox" aria-label={`Include ${source.source_label ?? source.title}`} checked={sources.some(selected => selected.id === source.id)} disabled={scope === 'board' || busy || !!review || !!commandReview} onChange={event => setSourceSelection(current => event.target.checked ? [...new Set([...current, source.id])] : current.filter(id => id !== source.id))} />
               <button type="button" className="ib-panel-small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${sourceTypeName(source.kind)} · ${source.source_label ?? source.title}`} onClick={() => {
                 if (source.kind === 'markdown' || source.kind === 'text') setPreviewSourceId(current => current === source.id ? null : source.id)
                 else props.onLocateSource(source)
               }}>{source.source_label ?? source.title}</button>
-              {status.available && (source.kind === 'image' || source.kind === 'pdf-page') && !source.body.trim() && <button type="button" className="ib-panel-small" title="Extract text on this Mac" aria-label={`Extract text from ${source.title}`} disabled={busy} onClick={() => void props.onExtractSourceText(source)}><Search size={13} /></button>}
-              {(source.kind === 'markdown' || source.kind === 'text') && <button type="button" className="ib-panel-small" title="Remove imported source" aria-label={`Remove ${source.title}`} disabled={busy} onClick={() => void props.onRemoveSource(source).then(() => setSourceSelection(current => current.filter(id => id !== source.id))).catch(error => setError(message(error)))}><X size={13} /></button>}
+              {status.available && (source.kind === 'image' || source.kind === 'pdf-page') && !source.body.trim() && <button type="button" className="ib-panel-small" title="Extract text on this Mac" aria-label={`Extract text from ${source.title}`} disabled={busy || !!commandReview} onClick={() => void props.onExtractSourceText(source)}><Search size={13} /></button>}
+              {(source.kind === 'markdown' || source.kind === 'text') && <button type="button" className="ib-panel-small" title="Remove imported source" aria-label={`Remove ${source.title}`} disabled={busy || !!commandReview} onClick={() => void props.onRemoveSource(source).then(() => setSourceSelection(current => current.filter(id => id !== source.id))).catch(error => setError(message(error)))}><X size={13} /></button>}
             </div>)}
           </div>}
           {previewSourceId && props.availableSources.find(source => source.id === previewSourceId) && <div style={{ maxHeight: 110, overflow: 'auto', padding: 8, border: '1px solid #8891A4', borderRadius: 6, fontSize: 10, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{props.availableSources.find(source => source.id === previewSourceId)!.body.slice(0, 3000)}</div>}
-          <button type="button" className="ib-panel-small" onClick={() => sourceFileInputRef.current?.click()} disabled={busy}><FileUp size={13} /> Add PDF, image, Markdown, or text</button>
+          <button type="button" className="ib-panel-small" onClick={() => sourceFileInputRef.current?.click()} disabled={busy || !!commandReview}><FileUp size={13} /> Add PDF, image, Markdown, or text</button>
           <input ref={sourceFileInputRef} hidden type="file" multiple accept=".pdf,.md,.markdown,.txt,image/png,image/jpeg,image/webp" onChange={event => {
             const files = Array.from(event.currentTarget.files ?? [])
             event.currentTarget.value = ''
@@ -737,34 +883,34 @@ export default function BoardAssistantPanel(props: Props) {
           {sources.length ? <strong>{sources.length} source{sources.length === 1 ? '' : 's'} selected</strong> : <span>Only your prompt will be used. Unknown facts stay assumptions or questions.</span>}
           <span className="ib-context-help">Text and searchable PDF pages can be sent as text. Images are sent only when selected. Scanned pages can be read with on-device OCR.</span>
         </div>
-        {sources.some(source => source.kind === 'pdf-page' && source.body.trim()) && <label className="ib-context-check"><input type="checkbox" checked={includePageImages} disabled={busy || !!review} onChange={event => setIncludePageImages(event.target.checked)} /> Also send selected PDF page images for visual details</label>}
+        {sources.some(source => source.kind === 'pdf-page' && source.body.trim()) && <label className="ib-context-check"><input type="checkbox" checked={includePageImages} disabled={busy || !!review || !!commandReview} onChange={event => setIncludePageImages(event.target.checked)} /> Also send selected PDF page images for visual details</label>}
         {needsFrame && <label>Framework
-          <select className="ib-panel-control" value={frameId} disabled={busy || !!review} onChange={e => setFrameId(e.target.value)}>
+          <select className="ib-panel-control" value={frameId} disabled={busy || !!review || !!commandReview} onChange={e => setFrameId(e.target.value)}>
             <option value="">Select a framework</option>
             {frames.filter(f => assistantFrameworks.some(d => d.type === f.type)).map(f => <option key={f.id} value={f.id}>{f.name || getFrameworkLabel(f.type, f.customFramework)}</option>)}
           </select>
           <span className="ib-context-help">Its current writing is included as context.</span>
         </label>}
         {command === 'expand' && definition && <label>Section
-          <select className="ib-panel-control" value={currentSectionId} disabled={busy || !!review} onChange={e => setSectionId(e.target.value)}>{definition.sections.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
+          <select className="ib-panel-control" value={currentSectionId} disabled={busy || !!review || !!commandReview} onChange={e => setSectionId(e.target.value)}>{definition.sections.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
         </label>}
         {command === 'revise' && <label>Note to revise
-          <select className="ib-panel-control" value={noteId} disabled={busy || !!review} onChange={e => setNoteId(e.target.value)}>
+          <select className="ib-panel-control" value={noteId} disabled={busy || !!review || !!commandReview} onChange={e => setNoteId(e.target.value)}>
             <option value="">Select a note</option>
             {cards.map(c => <option key={c.id} value={c.id} disabled={c.locked}>{c.title}{c.locked ? ' (locked)' : ''}</option>)}
           </select>
           <span className="ib-context-help">Locked notes cannot be revised.</span>
         </label>}
-        {needsFrame && <label className="ib-context-check"><input type="checkbox" checked={replace} disabled={busy || !!review || blockedByTask} onChange={e => setReplace(e.target.checked)} /> Suggest replacements with a comparison</label>}
+        {needsFrame && <label className="ib-context-check"><input type="checkbox" checked={replace} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => setReplace(e.target.checked)} /> Suggest replacements with a comparison</label>}
         {status.available && <button type="button" className="ib-panel-small" onClick={refreshStatus}>Check AI connection</button>}
       </div>}
       <div className="ib-chat-composer-tools">
-          <button type="button" className="ib-panel-small ib-context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)} disabled={busy || !!review || blockedByTask}>
+          <button type="button" className="ib-panel-small ib-context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)} disabled={busy || !!review || !!commandReview || blockedByTask}>
           <Paperclip size={14} /> {sources.length ? `${sources.length} source${sources.length === 1 ? '' : 's'}` : 'Add context'} <ChevronDown size={13} />
         </button>
         {!status.available && <span className="ib-composer-hint">Mac app required for AI</span>}
       </div>
-      <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!frameworkReview || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={frameworkReview ? 'Review, save, or discard the framework draft to continue…' : status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
+      <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!commandReview || !!frameworkReview || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={frameworkReview ? 'Review, save, or discard the framework draft to continue…' : status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
       {status.configured && <span className="ib-context-help">AI requests share your message, recent chat, selected sources, and target writing with your configured provider.</span>}
       <div className="ib-chat-composer-bottom">
         <span className="ib-composer-hint">{status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'Your notes stay editable'}</span>
@@ -776,6 +922,30 @@ export default function BoardAssistantPanel(props: Props) {
 
 function Comparison({ label, before, after }: { label: string; before: string; after: string }) {
   return <div style={{ border: '1px solid #8891A4', borderRadius: 7, padding: 12 }}><strong style={{ fontSize: 13 }}>{label}</strong><div style={{ fontSize: 11, marginTop: 12, opacity: .75 }}>Current writing</div><pre>{before || '(Empty)'}</pre><div style={{ fontSize: 11, opacity: .75 }}>Suggested replacement</div><pre>{after}</pre></div>
+}
+function assistantCommandOperationTitle(operation: AssistantBoardOperation, noteTitle?: string, noteNames: string[] = []) {
+  switch (operation.type) {
+    case 'answer': return 'Answer from the selected material'
+    case 'highlight_text': return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in ${noteTitle ?? 'a note'}`
+    case 'highlight_section': return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in a framework section`
+    case 'create_note': return `Create ${operation.kind === 'action' ? 'an action' : 'a note'}: ${operation.title}`
+    case 'revise_note': return `Revise ${noteTitle ?? 'a note'}`
+    case 'update_note': return `Update ${noteTitle ?? 'a note'}`
+    case 'move_note': return `Move ${noteTitle ?? 'a note'} ${operation.direction} of another note`
+    case 'arrange_notes': return `Arrange ${operation.cardIds.length} notes as a ${operation.layout.replace('_', ' ')}`
+    case 'group_notes': return `Group ${operation.groups.reduce((total, group) => total + group.cardIds.length, 0)} notes into ${operation.groups.length} groups`
+    case 'lock_notes': return `${operation.locked ? 'Lock' : 'Unlock'} ${noteNames.join(', ')}`
+    case 'delete_notes': return `Delete ${noteNames.join(', ')}`
+  }
+}
+function assistantCommandChangeLabel(key: string) {
+  return ({ title: 'Title', body: 'Writing', tag: 'Status', color: 'Color', dueDate: 'Due date', dateLabel: 'Date label', collapsed: 'Visibility' } as Record<string, string>)[key] ?? key
+}
+function assistantCommandChangeValue(key: string, value: unknown) {
+  if (key === 'dueDate' && value === null) return 'No due date'
+  if (key === 'collapsed' && typeof value === 'boolean') return value ? 'Collapsed' : 'Expanded'
+  if (key === 'tag' && typeof value === 'string') return value[0].toUpperCase() + value.slice(1)
+  return String(value)
 }
 function estimatedCardHeight(card: Card) {
   if (card.collapsed) return 52
@@ -798,6 +968,10 @@ function relativeNotePosition(note: Card, destination: Card, direction: Assistan
   }
 }
 function message(e: unknown) { return e instanceof Error ? e.message : 'The task could not be completed. Your request is kept.' }
+function localDate() {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
 function sourceTypeName(kind: AssistantSource['kind']) {
   switch (kind) {
     case 'pdf-page': return 'PDF page'

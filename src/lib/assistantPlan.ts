@@ -184,11 +184,14 @@ export function assistantRequest(context: AssistantContext, registry: AssistantF
   }
 }
 
+export type AssistantCardWriteFields = Partial<Pick<Card, 'title' | 'body' | 'tag' | 'bg' | 'date_label' | 'due_date' | 'collapsed' | 'locked' | 'x' | 'y' | 'ai_source_ids' | 'ai_assisted'>>
+
 export interface AssistantEffects {
   frames: FrameInstance[]
   cards: (CardInsert & { ai_task_id: string; ai_source_ids: string[]; ai_assisted: true })[]
   sections: { frameId: string; storageKey: string; semanticId?: string; before: string; after: string }[]
   revisions: { cardId: string; beforeTitle: string; beforeBody: string; afterTitle: string; afterBody: string; beforeSourceIds?: string[]; afterSourceIds?: string[]; beforeAiAssisted?: boolean; afterAiAssisted?: true }[]
+  cardWrites?: { cardId: string; before: AssistantCardWriteFields; after: AssistantCardWriteFields }[]
 }
 
 export function buildAssistantEffects(plan: AssistantPlan, context: AssistantContext, registry: AssistantFramework[], taskId: string, origin: { x: number; y: number }, makeId: () => string = () => crypto.randomUUID()): AssistantEffects {

@@ -194,6 +194,32 @@ if let path = ProcessInfo.processInfo.environment["IDEABOARD_NATIVE_BOARD_FIXTUR
     try JSONEncoder().encode(canonicalBoard).write(to: URL(fileURLWithPath: path))
     print("Actual native board reply fixture written to \(path)")
 }
+
+let commandContext: [String: Any] = ["command": "board-command", "boardId": "qa-board", "goal": "Highlight a key point", "intent": "emphasis", "today": "2026-10-14", "conversation": [], "notes": [], "sources": [], "frameworks": [["id": "qa-frame", "name": "Workflow", "type": "ooda", "sections": [["id": "observe", "label": "Observe", "text": "The agent imports articles."]]]], "examples": []]
+check(IdeaboardAIService.validGenerationContext(payload(commandContext)) != nil, "Native bridge rejected a bounded board command")
+let commandDraft: [String: Any] = ["response": "Highlighted the workflow.", "operations": [["type": "highlight_section", "frameId": "qa-frame", "sectionId": "observe", "exactQuote": "imports articles", "color": "yellow", "mode": "add"]]]
+check(IdeaboardAIService.decodeProvider(provider(commandDraft), id: "command", model: "test", operation: "board-command").ok, "Native bridge rejected a valid highlight command result")
+var badContext = commandContext; badContext["boardId"] = "../another-board"
+check(IdeaboardAIService.validGenerationContext(payload(badContext)) == nil, "Native command accepted an invalid board ID")
+var badDraft = commandDraft; badDraft["operations"] = [["type": "execute_code", "code": "bad"]]
+check(!IdeaboardAIService.decodeProvider(provider(badDraft), id: "bad-command", model: "test", operation: "board-command").ok, "Native bridge accepted an unsupported operation")
+
+let fakeHighlight: [String: Any] = ["response": "Highlighted.", "operations": [["type": "answer", "text": "Highlighted.", "sourceIds": []]]]
+check(!IdeaboardAIService.decodeProvider(provider(fakeHighlight), id: "fake-highlight", model: "test", operation: "board-command", context: commandContext).ok, "A highlight request accepted an answer without a mark")
+var findContext = commandContext; findContext["intent"] = "find"; findContext["goal"] = "Find the selected writing"
+let wrongFind: [String: Any] = ["response": "Found.", "operations": [["type": "arrange_notes", "cardIds": ["qa-note"], "layout": "row"]]]
+check(!IdeaboardAIService.decodeProvider(provider(wrongFind), id: "wrong-find", model: "test", operation: "board-command", context: findContext).ok, "A find request accepted card movement")
+var noteContext = commandContext; noteContext["intent"] = "canvas"; noteContext["goal"] = "Lock both selected notes"; noteContext["frameworks"] = []
+noteContext["notes"] = ["qa-note-a", "qa-note-b"].map { ["id": $0, "board_id": "qa-board", "title": "A note", "body": "Keep this writing", "locked": false] as [String: Any] }
+let lockDraft: [String: Any] = ["response": "Locking proposed.", "operations": [["type": "lock_notes", "cardIds": ["qa-note-a", "qa-note-b"], "locked": true]]]
+check(IdeaboardAIService.decodeProvider(provider(lockDraft), id: "lock", model: "test", operation: "board-command", context: noteContext).ok, "A valid lock request was rejected")
+let wrongLock: [String: Any] = ["response": "Locked.", "operations": [["type": "lock_notes", "cardIds": ["qa-note-a", "qa-note-b"], "locked": false]]]
+check(!IdeaboardAIService.decodeProvider(provider(wrongLock), id: "wrong-lock", model: "test", operation: "board-command", context: noteContext).ok, "A lock request accepted unlocking")
+
+if let path = ProcessInfo.processInfo.environment["IDEABOARD_NATIVE_COMMAND_FIXTURE"] {
+    try JSONEncoder().encode(IdeaboardAIService.decodeProvider(provider(commandDraft), id: "command", model: "test", operation: "board-command")).write(to: URL(fileURLWithPath: path))
+}
+
 print("Native framework design regression: \(checks) checks passed; no provider calls or app launches.")
 '''
 

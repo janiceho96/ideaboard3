@@ -11,14 +11,10 @@
 
 import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import type { Card, TagType } from '../types'
-import { marked } from 'marked'
-import { sanitizeHtml } from '../lib/sanitizeHtml'
+import { renderNoteMarkdown } from '../lib/noteHighlight'
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy, Lock, LockOpen, Trash2 } from 'lucide-react'
 import { colors, fonts, radii, shadows } from '../lib/designTokens'
 import { getCardTypography } from '../lib/cardTypography'
-
-// Configure marked: safe, no wrapping <p> for single lines
-marked.setOptions({ breaks: true })
 
 const TAG_META: Record<TagType, { label: string; bg: string; color: string }> = {
   idea:     { label: 'Idea',     bg: '#EEE9FF', color: '#4137A8' },
@@ -86,9 +82,7 @@ function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInline
 
   // Render markdown body safely
   const markdownHtml = useMemo(() => card.body
-    ? sanitizeHtml((marked.parse(card.body) as string)
-        .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
-      )
+    ? renderNoteMarkdown(card.body).replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
     : '', [card.body])
 
   const cardBg = legacyDarkCard ? colors.inkDark

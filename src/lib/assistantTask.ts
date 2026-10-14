@@ -16,7 +16,7 @@ export interface AssistantOperations {
   writeSection: (frameId: string, key: string, text: string) => void
   deleteFrame: (id: string) => void
   addCards: (cards: AssistantEffects['cards']) => Promise<void>
-  updateCard: (id: string, changes: Pick<Card, 'title' | 'body'> & Partial<Pick<Card, 'ai_source_ids' | 'ai_assisted'>>) => Promise<void>
+  updateCard: (id: string, changes: Partial<Card>) => Promise<void>
   deleteCard: (id: string) => Promise<void>
 }
 export interface TaskStorage { getItem: (key: string) => string | null; setItem: (key: string, value: string) => void; removeItem: (key: string) => void }
@@ -32,7 +32,7 @@ export function readAssistantTask(boardId: string, storage: TaskStorage): Assist
   if (!raw) return null
   try {
     const t = JSON.parse(raw) as AssistantTask
-    if (t.version !== 1 || t.boardId !== boardId || typeof t.id !== 'string' || !['applying', 'complete', 'recovering'].includes(t.status) || !Array.isArray(t.effects.frames) || !Array.isArray(t.effects.cards) || !Array.isArray(t.effects.sections) || !Array.isArray(t.effects.revisions)) throw new Error()
+    if (t.version !== 1 || t.boardId !== boardId || typeof t.id !== 'string' || !['applying', 'complete', 'recovering'].includes(t.status) || !Array.isArray(t.effects.frames) || !Array.isArray(t.effects.cards) || !Array.isArray(t.effects.sections) || !Array.isArray(t.effects.revisions) || (t.effects.cardWrites !== undefined && !Array.isArray(t.effects.cardWrites))) throw new Error()
     return t
   } catch { throw new Error('The assistant recovery record cannot be read. Export a workspace backup before clearing browser storage.') }
 }
@@ -56,6 +56,9 @@ function generatedCards(task: AssistantTask, snapshot: AssistantSnapshot) {
 function sameCardContent(card: Card, draft: AssistantEffects['cards'][number]) {
   return Object.entries(draft).every(([k, v]) => JSON.stringify((card as unknown as Record<string, unknown>)[k]) === JSON.stringify(v))
 }
+function matchesCardFields(card: Card | undefined, fields: Partial<Card>) {
+  return !!card && Object.entries(fields).every(([key, value]) => JSON.stringify((card as unknown as Record<string, unknown>)[key]) === JSON.stringify(value))
+}
 
 export async function applyAssistantTask(task: AssistantTask, ops: AssistantOperations, storage: TaskStorage, onProgress: (message: string) => void, signal?: AbortSignal): Promise<AssistantTask> {
   assertBoard(task, ops.getSnapshot())
@@ -75,7 +78,9 @@ export async function applyAssistantTask(task: AssistantTask, ops: AssistantOper
   })
   const afterCards = (JSON.parse(oldCards) as Card[]).map(c => {
     const write = task.effects.revisions.find(w => w.cardId === c.id)
-    return write ? { ...c, title: write.afterTitle, body: write.afterBody } : c
+    const revision = write ? { ...c, title: write.afterTitle, body: write.afterBody } : c
+    const cardWrite = task.effects.cardWrites?.find(w => w.cardId === c.id)
+    return cardWrite ? { ...revision, ...cardWrite.after } : revision
   })
   const growth = Math.max(0, JSON.stringify(afterFrames).length - oldFrames.length)
     + Math.max(0, JSON.stringify([...afterCards, ...task.effects.cards]).length + task.effects.cards.length * 256 - oldCards.length) + 1024
@@ -95,9 +100,13 @@ export async function applyAssistantTask(task: AssistantTask, ops: AssistantOper
     if (revision.afterSourceIds !== undefined) { changes.ai_source_ids = revision.afterSourceIds; changes.ai_assisted = revision.afterAiAssisted }
     await ops.updateCard(revision.cardId, changes)
   }
+  for (const write of task.effects.cardWrites ?? []) {
+    check()
+    await ops.updateCard(write.cardId, write.after)
+  }
   check()
   const saved = savedAssistantSnapshot(task.boardId, storage)
-  if (task.effects.frames.some(f => !saved.frames.some(now => JSON.stringify(now) === JSON.stringify(f))) || generatedCards(task, saved).length !== task.effects.cards.length || task.effects.sections.some(w => saved.frames.find(f => f.id === w.frameId)?.noteAreas?.[w.storageKey] !== w.after) || task.effects.revisions.some(w => { const c = saved.cards.find(c => c.id === w.cardId); return c?.title !== w.afterTitle || c.body !== w.afterBody || (w.afterSourceIds !== undefined && JSON.stringify(c.ai_source_ids ?? []) !== JSON.stringify(w.afterSourceIds)) })) throw new Error('Some drafts could not be saved. The task recovery record is retained; use Undo task before trying again.')
+  if (task.effects.frames.some(f => !saved.frames.some(now => JSON.stringify(now) === JSON.stringify(f))) || generatedCards(task, saved).length !== task.effects.cards.length || task.effects.sections.some(w => saved.frames.find(f => f.id === w.frameId)?.noteAreas?.[w.storageKey] !== w.after) || task.effects.revisions.some(w => { const c = saved.cards.find(c => c.id === w.cardId); return c?.title !== w.afterTitle || c.body !== w.afterBody || (w.afterSourceIds !== undefined && JSON.stringify(c.ai_source_ids ?? []) !== JSON.stringify(w.afterSourceIds)) }) || (task.effects.cardWrites ?? []).some(w => !matchesCardFields(saved.cards.find(c => c.id === w.cardId), w.after))) throw new Error('Some drafts could not be saved. The task recovery record is retained; use Undo task before trying again.')
   const complete: AssistantTask = { ...task, status: 'complete' }
   storage.setItem(key(task.boardId), JSON.stringify(complete))
   onProgress('Drafts saved. Ready to edit.')
@@ -130,6 +139,10 @@ export async function undoAssistantTask(task: AssistantTask, ops: AssistantOpera
     const matchesBefore = card?.title === write.beforeTitle && card.body === write.beforeBody && (write.afterSourceIds === undefined || (write.beforeSourceIds === undefined ? card.ai_source_ids === undefined : JSON.stringify(card.ai_source_ids ?? []) === JSON.stringify(write.beforeSourceIds)))
     if (!card || card.locked || !(matchesAfter || matchesBefore)) throw new Error('The revised note changed or was locked. Keep this task to preserve the newer writing.')
   }
+  for (const write of task.effects.cardWrites ?? []) {
+    const card = snapshot.cards.find(c => c.id === write.cardId)
+    if (!card || (card.locked && write.after.locked !== true) || !(matchesCardFields(card, write.after) || matchesCardFields(card, write.before))) throw new Error('A note changed after the assistant updated it. Keep this task to preserve the newer writing.')
+  }
   storage.setItem(key(task.boardId), JSON.stringify({ ...task, status: 'recovering' }))
   for (const card of created) await ops.deleteCard(card.id)
   for (const frame of task.effects.frames) ops.deleteFrame(frame.id)
@@ -139,7 +152,8 @@ export async function undoAssistantTask(task: AssistantTask, ops: AssistantOpera
     if (write.afterSourceIds !== undefined) { changes.ai_source_ids = write.beforeSourceIds; changes.ai_assisted = write.beforeAiAssisted }
     await ops.updateCard(write.cardId, changes)
   }
+  for (const write of [...(task.effects.cardWrites ?? [])].reverse()) await ops.updateCard(write.cardId, write.before)
   const after = savedAssistantSnapshot(task.boardId, storage)
-  if (generatedCards(task, after).length || task.effects.frames.some(f => after.frames.some(now => now.id === f.id)) || task.effects.sections.some(w => (after.frames.find(f => f.id === w.frameId)?.noteAreas?.[w.storageKey] ?? '') !== w.before) || task.effects.revisions.some(w => { const c = after.cards.find(c => c.id === w.cardId); return c?.title !== w.beforeTitle || c.body !== w.beforeBody || (w.afterSourceIds !== undefined && (w.beforeSourceIds === undefined ? c.ai_source_ids !== undefined : JSON.stringify(c.ai_source_ids ?? []) !== JSON.stringify(w.beforeSourceIds))) })) throw new Error('Recovery is incomplete. The task record was kept; retry Undo task.')
+  if (generatedCards(task, after).length || task.effects.frames.some(f => after.frames.some(now => now.id === f.id)) || task.effects.sections.some(w => (after.frames.find(f => f.id === w.frameId)?.noteAreas?.[w.storageKey] ?? '') !== w.before) || task.effects.revisions.some(w => { const c = after.cards.find(c => c.id === w.cardId); return c?.title !== w.beforeTitle || c.body !== w.beforeBody || (w.afterSourceIds !== undefined && (w.beforeSourceIds === undefined ? c.ai_source_ids !== undefined : JSON.stringify(c.ai_source_ids ?? []) !== JSON.stringify(w.beforeSourceIds))) }) || (task.effects.cardWrites ?? []).some(w => !matchesCardFields(after.cards.find(c => c.id === w.cardId), w.before))) throw new Error('Recovery is incomplete. The task record was kept; retry Undo task.')
   keepAssistantTask(task.boardId, storage)
 }

@@ -50,6 +50,34 @@ describe('assistant durable task recovery', () => {
     expect(restored?.title).toBe('Original')
     expect(restored?.ai_source_ids).toBeUndefined()
   })
+  it('applies and undoes assistant note styling and canvas writes', async () => {
+    const { storage, ops } = fixture()
+    const writeTask = task()
+    writeTask.effects.frames = []
+    writeTask.effects.cards = []
+    writeTask.effects.sections = []
+    writeTask.effects.revisions = []
+    writeTask.effects.cardWrites = [{ cardId: originalCard.id, before: { tag: 'idea', x: 0 }, after: { tag: 'critical', x: 240 } }]
+    const complete = await applyAssistantTask(writeTask, ops, storage, () => {})
+    expect(ops.getSnapshot().cards.find(card => card.id === originalCard.id)).toMatchObject({ tag: 'critical', x: 240 })
+    await undoAssistantTask(complete, ops, storage)
+    expect(ops.getSnapshot().cards.find(card => card.id === originalCard.id)).toMatchObject({ tag: 'idea', x: 0 })
+  })
+  it('does not undo an assistant note write over a later edit or lock', async () => {
+    const { storage, ops, values } = fixture()
+    const writeTask = task()
+    writeTask.effects.frames = []
+    writeTask.effects.cards = []
+    writeTask.effects.sections = []
+    writeTask.effects.revisions = []
+    writeTask.effects.cardWrites = [{ cardId: originalCard.id, before: { tag: 'idea' }, after: { tag: 'critical' } }]
+    const complete = await applyAssistantTask(writeTask, ops, storage, () => {})
+    const cards = JSON.parse(values.get('ideaboard_cards')!) as Card[]
+    values.set('ideaboard_cards', JSON.stringify(cards.map(card => card.id === originalCard.id ? { ...card, locked: true } : card)))
+    const beforeUndo = values.get('ideaboard_cards')
+    await expect(undoAssistantTask(complete, ops, storage)).rejects.toThrow('changed after the assistant updated it')
+    expect(values.get('ideaboard_cards')).toBe(beforeUndo)
+  })
   it('saves and undoes a multi-store task as one action without touching another board', async () => {
     const { storage, ops, values } = fixture()
     const result = await applyAssistantTask(task(), ops, storage, () => {})

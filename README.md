@@ -94,7 +94,9 @@ Unsaved designs recover locally after closing or restarting. Sharing consent is 
 
 In the Mac app, open **AI Settings** to configure the OpenAI provider, then open **Board Assistant**. The API key is stored in macOS Keychain.
 
-To create a completely new framework from chat, select your Markdown material in **Context**, allow sharing, and send a prompt such as:
+Chat can propose colored text highlights in notes and framework sections, status/date changes, note arrangement, grouping, and locking. Select the relevant note sources or a framework with writing, send the command, review its proposal, then choose **Apply changes**. Highlighting preserves your words; Undo restores the previous writing. Framework writing displays formatted Markdown between edits. See the [command evaluation and sample prompts](docs/testing/assistant-command-evaluation.md) for tested coverage.
+
+To create a completely new framework from chat, select your Markdown material in **Add context** and send a prompt such as:
 
 > Use the selected Markdown document to design a reusable custom framework. Create 4–6 sections with clear names and practical writing questions. Keep the sections empty for me to complete.
 

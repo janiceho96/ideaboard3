@@ -1,4 +1,5 @@
 import { useState, memo } from 'react'
+import FrameworkWritingArea from './FrameworkWritingArea'
 import { FrameworkLayoutSurface } from './FrameworkLayoutPreview'
 import type { BuiltinFrameworkType, FrameInstance } from '../types'
 import { FRAMEWORK_LABELS, FRAMEWORK_GROUPS, FRAMEWORK_REGISTRY, getFrameworkDefinition, getFrameworkLabel, getFrameworkSectionNotes } from '../hooks/useFrames'
@@ -185,16 +186,14 @@ function FrameworkOverlay({
         </details>
       )}
       {areas.map(area => (
-        <textarea
+        <FrameworkWritingArea
           key={area.id}
-          className="no-drag"
           value={getFrameworkSectionNotes(frame, area.id) ?? ''}
-          onChange={e => onUpdateNoteArea(id, area.storageKey, e.target.value)}
-          onMouseDown={e => e.stopPropagation()}
-          onClick={e => { e.stopPropagation(); onSelect(id) }}
-          aria-label={area.label}
+          onChange={value => onUpdateNoteArea(id, area.storageKey, value)}
+          onSelect={() => onSelect(id)}
+          label={area.label}
           placeholder={type.startsWith('custom:') ? area.writingGuidance : `${area.label}...`}
-          title={area.writingGuidance}
+          guidance={area.writingGuidance}
           style={{
             position: 'absolute',
             left: `${area.left}%`,
@@ -219,12 +218,11 @@ function FrameworkOverlay({
         />
       ))}
       {!areas.length && (
-        <textarea
-          className="no-drag"
+        <FrameworkWritingArea
           value={frame.notes ?? ''}
-          onChange={e => onUpdateNotes(id, e.target.value)}
-          onMouseDown={e => e.stopPropagation()}
-          onClick={e => { e.stopPropagation(); onSelect(id) }}
+          onChange={value => onUpdateNotes(id, value)}
+          onSelect={() => onSelect(id)}
+          label="Framework writing"
           placeholder="Write on this framework..."
           style={{
             position: 'absolute',

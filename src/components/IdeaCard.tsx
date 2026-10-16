@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import type { Card, TagType } from '../types'
 import { renderNoteMarkdown } from '../lib/noteHighlight'
+import { toggleMarkdownChecklistItem } from '../lib/markdownEditor'
 import { AlertTriangle, CalendarDays, ChevronDown, ChevronRight, Clock3, Copy, Lock, LockOpen, Trash2 } from 'lucide-react'
 import { colors, fonts, radii, shadows } from '../lib/designTokens'
 import { getCardTypography } from '../lib/cardTypography'
@@ -46,6 +47,7 @@ interface IdeaCardProps {
   onEdit:           (id: string) => void
   onDelete:         (id: string) => void
   onInlineTitle:    (id: string, title: string) => void
+  onUpdateBody:     (id: string, body: string) => void
   onToggleCollapse: (id: string) => void
   onDuplicate:      (id: string) => void
   onToggleLock:     (id: string) => void
@@ -54,7 +56,7 @@ interface IdeaCardProps {
   today: number
 }
 
-function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInlineTitle, onToggleCollapse, onDuplicate, onToggleLock, onColorPick, dark, today }: IdeaCardProps) {
+function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInlineTitle, onUpdateBody, onToggleCollapse, onDuplicate, onToggleLock, onColorPick, dark, today }: IdeaCardProps) {
   const tm        = TAG_META[card.tag] ?? TAG_META.idea
   const dotColor  = DOT_COLORS[card.tag] ?? colors.markerPurple
   const dueStatus = getDueStatus(card.due_date, today)
@@ -82,8 +84,8 @@ function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInline
 
   // Render markdown body safely
   const markdownHtml = useMemo(() => card.body
-    ? renderNoteMarkdown(card.body).replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
-    : '', [card.body])
+    ? renderNoteMarkdown(card.body, { checklistsInteractive: !card.locked }).replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
+    : '', [card.body, card.locked])
 
   const cardBg = legacyDarkCard ? colors.inkDark
                : dark && card.bg === 'white' ? colors.surfaceDark
@@ -212,6 +214,14 @@ function IdeaCard({ card, onMoveStart, onResizeStart, onEdit, onDelete, onInline
       {!card.collapsed && card.body && (
         <div className="no-drag md-body"
           dangerouslySetInnerHTML={{ __html: markdownHtml }}
+          onClick={event => {
+            const checkbox = (event.target as HTMLElement).closest<HTMLInputElement>('input[data-ideaboard-task]')
+            if (!checkbox || card.locked) return
+            event.preventDefault()
+            event.stopPropagation()
+            const next = toggleMarkdownChecklistItem(card.body, Number(checkbox.dataset.ideaboardTask), checkbox.dataset.checked !== 'true')
+            if (next !== card.body) onUpdateBody(card.id, next)
+          }}
           style={{ fontSize: card.font_family === 'caveat' ? 14 : 11, fontFamily: typography.body, fontWeight: typography.bodyWeight, color: mutedColor, lineHeight: 1.55 }}
         />
       )}

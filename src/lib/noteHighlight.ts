@@ -20,6 +20,8 @@ export const NOTE_HIGHLIGHT_SWATCHES: Record<NoteHighlightColor, string> = {
   cyan: '#A8DADC',
 }
 
+let renderSequence = 0
+
 const OPEN_PREFIX = '{{ib-highlight:'
 const CLOSE_MARKER = '{{/ib-highlight}}'
 const OPEN_MARKER_RE = /^\{\{ib-highlight:(yellow|mint|coral|cyan)\}\}/
@@ -171,15 +173,27 @@ export const noteHighlightMarkedExtension: MarkedExtension = {
   ],
 }
 
-/** Parses note Markdown with the highlight extension and the existing HTML sanitizer. */
-export function renderNoteMarkdown(markdown: string): string {
+/** Parses note Markdown with safe highlighting and interactive task checkboxes. */
+export function renderNoteMarkdown(markdown: string, options: { checklistsInteractive?: boolean } = {}): string {
   const parser = new Marked({ breaks: true, gfm: true })
+  const taskStates: boolean[] = []
+  const taskTokenPrefix = `\uE000IDEABOARD_TASK_${Date.now()}_${++renderSequence}_`
   parser.use(noteHighlightMarkedExtension)
   const markedCode = (escaped: string) => escaped.replace(HIGHLIGHT_RANGE_RE, (_match, color: NoteHighlightColor, text: string) => `<mark style="background-color: ${NOTE_HIGHLIGHT_SWATCHES[color]}">${text}</mark>`)
   const codeRenderer = new Renderer()
   parser.use({ renderer: {
     codespan: text => markedCode(codeRenderer.codespan(text)),
     code: (text, language, escaped) => markedCode(codeRenderer.code(text, language, escaped)),
+    checkbox: checked => {
+      const index = taskStates.push(checked) - 1
+      return `${taskTokenPrefix}${index}\uE001`
+    },
   } })
-  return sanitizeHtml(parser.parse(markdown) as string)
+  let html = sanitizeHtml(parser.parse(markdown) as string)
+  taskStates.forEach((checked, index) => {
+    const token = `${taskTokenPrefix}${index}\uE001`
+    const input = `<input type="checkbox" data-ideaboard-task="${index}" data-checked="${checked}" aria-label="Checklist item ${index + 1}"${checked ? ' checked' : ''}${options.checklistsInteractive === false ? ' disabled' : ''}>`
+    html = html.split(token).join(input)
+  })
+  return html
 }

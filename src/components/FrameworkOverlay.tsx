@@ -178,8 +178,8 @@ function FrameworkOverlay({
           {earlierAreas.map(area => (
             <label key={area.id} style={{ display: 'block', fontSize: 11, marginTop: 8 }}>
               {area.label}
-              <textarea aria-label={area.label} value={getFrameworkSectionNotes(frame, area.id) ?? ''}
-                onChange={e => onUpdateNoteArea(id, area.storageKey, e.target.value)}
+              <FrameworkWritingArea label={area.label} value={getFrameworkSectionNotes(frame, area.id) ?? ''}
+                onChange={value => onUpdateNoteArea(id, area.storageKey, value)} onSelect={() => onSelect(id)} dark={dark}
                 style={{ display: 'block', width: '100%', minHeight: 80, boxSizing: 'border-box', fontFamily: 'inherit', color: dark ? '#F0EEE8' : '#263D5B', background: dark ? '#152336' : '#fff' }} />
             </label>
           ))}
@@ -194,6 +194,7 @@ function FrameworkOverlay({
           label={area.label}
           placeholder={type.startsWith('custom:') ? area.writingGuidance : `${area.label}...`}
           guidance={area.writingGuidance}
+          dark={dark}
           style={{
             position: 'absolute',
             left: `${area.left}%`,
@@ -224,6 +225,7 @@ function FrameworkOverlay({
           onSelect={() => onSelect(id)}
           label="Framework writing"
           placeholder="Write on this framework..."
+          dark={dark}
           style={{
             position: 'absolute',
             left: 16,

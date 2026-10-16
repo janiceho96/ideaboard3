@@ -123,3 +123,18 @@ describe('highlights in code', () => {
     expect(html).toContain('&lt;script&gt;')
   })
 })
+
+describe('Markdown task list previews', () => {
+  it('renders accessible task checkboxes outside fenced code and records their checked state', () => {
+    const html = renderNoteMarkdown('```md\n- [ ] example only\n```\n\n- [ ] first task\n- [x] completed task')
+    expect(html.match(/<input type="checkbox"/g)).toHaveLength(2)
+    expect(html).toContain('data-ideaboard-task="0" data-checked="false" aria-label="Checklist item 1"')
+    expect(html).toContain('data-ideaboard-task="1" data-checked="true" aria-label="Checklist item 2" checked')
+    expect(html).not.toContain('IDEABOARD_TASK_')
+  })
+
+  it('renders task checkboxes disabled in read-only previews', () => {
+    expect(renderNoteMarkdown('- [ ] locked', { checklistsInteractive: false }))
+      .toContain('<input type="checkbox" data-ideaboard-task="0" data-checked="false" aria-label="Checklist item 1" disabled>')
+  })
+})

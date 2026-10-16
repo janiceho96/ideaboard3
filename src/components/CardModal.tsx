@@ -4,6 +4,7 @@ import type { Card, CardFontFamily, TagType } from '../types'
 import { Check, X } from 'lucide-react'
 import { colors, fonts, radii, shadows } from '../lib/designTokens'
 import { CARD_FONT_OPTIONS } from '../lib/cardTypography'
+import MarkdownEditor from './MarkdownEditor'
 
 const TAG_OPTS: { key: TagType; label: string; bg: string; color: string }[] = [
   { key: 'idea',     label: 'Idea',     bg: '#EEE9FF', color: '#4137A8' },
@@ -139,11 +140,8 @@ export default function CardModal({ card, isOpen, onClose, onSave, onDelete, dar
         </Field>
 
         <Field label="Description (markdown supported)" dark={dark}>
-          <textarea value={body} onChange={e => setBody(e.target.value)}
-            placeholder={'**bold**, - bullet list, [link](url)'}
-            rows={3} style={inp}
-            onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = colors.markerPurple}
-            onBlur={e => (e.target as HTMLTextAreaElement).style.borderColor = borderC}
+          <MarkdownEditor value={body} onChange={setBody} label="Description" placeholder="Write a note..."
+            rows={5} dark={dark} textareaStyle={inp}
           />
         </Field>
 

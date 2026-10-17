@@ -12,8 +12,21 @@ export type AssistantCardColor = AssistantMarkerColor | 'lavender' | 'paper' | '
 
 export type AssistantBoardOperation =
   | { type: 'answer'; text: string; sourceIds: string[] }
-  | { type: 'highlight_text'; cardId: string; exactQuote: string; color: AssistantMarkerColor; mode?: 'add' | 'remove' }
-  | { type: 'highlight_section'; frameId: string; sectionId: string; exactQuote: string; color: AssistantMarkerColor; mode?: 'add' | 'remove' }
+  | {
+      type: 'highlight_text'
+      cardId: string
+      exactQuote: string
+      color: AssistantMarkerColor
+      mode?: 'add' | 'remove'
+    }
+  | {
+      type: 'highlight_section'
+      frameId: string
+      sectionId: string
+      exactQuote: string
+      color: AssistantMarkerColor
+      mode?: 'add' | 'remove'
+    }
   | {
       type: 'create_note'
       title: string
@@ -123,7 +136,11 @@ function date(value: unknown): string | null {
   if (value === null) return null
   const result = string(value, 10)
   const parsed = new Date(`${result}T00:00:00.000Z`)
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(result) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== result)
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(result) ||
+    Number.isNaN(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== result
+  )
     throw new Error('The assistant returned an invalid calendar date.')
   return result
 }
@@ -152,14 +169,16 @@ function countOccurrences(text: string, quote: string) {
 
 export function classifyAssistantCommand(message: string): AssistantCommandIntent | null {
   const text = message.normalize('NFKC').toLowerCase()
-  if (/\b(?:stand out|easy to spot|bring .* to the front|distinguish must.haves)\b/.test(text)) return 'emphasis'
+  if (/\b(?:stand out|easy to spot|bring .* to the front|distinguish must.haves)\b/.test(text))
+    return 'emphasis'
   if (
     /\b(?:design|create|make|build|draft|generate|choose|recommend|compare|fill|expand)\b.{0,100}\b(?:framework|swot|canvas|matrix|journey|decision tree)\b/.test(
       text,
     )
   )
     return 'framework'
-  if (/\b(?:fill|expand)\b.{0,70}\bsections?\b|\buse\b.{0,60}\bdecision tree\b/.test(text)) return 'framework'
+  if (/\b(?:fill|expand)\b.{0,70}\bsections?\b|\buse\b.{0,60}\bdecision tree\b/.test(text))
+    return 'framework'
   if (/\b(?:expand|turn)\b.{0,100}\b(?:note|card)\b/.test(text)) return 'revise'
   if (
     /\b(?:highlight|emphasize|make .* stand out|call out|flag|mark .* critical|color.?code|change .* color|tag)\b/.test(
@@ -192,7 +211,11 @@ export function classifyAssistantCommand(message: string): AssistantCommandInten
     )
   )
     return 'actions'
-  if (/\b(?:source|cite|citation|pdf|markdown file|quote|uploaded|attached|spreadsheet|unsupported details|evidence from)\b/.test(text))
+  if (
+    /\b(?:source|cite|citation|pdf|markdown file|quote|uploaded|attached|spreadsheet|unsupported details|evidence from)\b/.test(
+      text,
+    )
+  )
     return 'sources'
   if (
     /\b(?:rename|duplicate|resize|lock|unlock|collapse|delete|canvas|board)\b|\b(?:collapse|expand)\b.{0,40}\b(?:note|card)\b/.test(
@@ -206,6 +229,15 @@ export function classifyAssistantCommand(message: string): AssistantCommandInten
     )
   )
     return 'analyze'
+  if (
+    /^(?:what|why|how|which|who|when|where|should|do|does|is|are)\b/.test(text) ||
+    /^(?:can|could|would)\s+you\s+(?:explain|suggest|recommend|tell|show|compare|summari[sz]e|help me understand)\b/.test(
+      text,
+    ) ||
+    /^(?:tell me|suggest|recommend|give me|any ideas|help me understand|explain)\b/.test(text) ||
+    /\b(?:any suggestions|some suggestions|ways to|ideas for|recommendations for)\b/.test(text)
+  )
+    return 'conversation'
   return null
 }
 
@@ -224,9 +256,17 @@ export function assistantCommandRequest(context: AssistantBoardCommandContext) {
   const input = JSON.stringify({
     command: 'board-command',
     boardId: context.boardId,
-    frameworks: (context.frames ?? []).map(frame => ({
-      id: frame.id, type: frame.type, name: frame.name ?? '',
-      sections: (getFrameworkDefinition(frame.type, frame.customFramework)?.sections ?? []).map(section => ({ id: section.id, label: section.label, text: getFrameworkSectionNotes(frame, section.id) ?? '' })),
+    frameworks: (context.frames ?? []).map((frame) => ({
+      id: frame.id,
+      type: frame.type,
+      name: frame.name ?? '',
+      sections: (getFrameworkDefinition(frame.type, frame.customFramework)?.sections ?? []).map(
+        (section) => ({
+          id: section.id,
+          label: section.label,
+          text: getFrameworkSectionNotes(frame, section.id) ?? '',
+        }),
+      ),
     })),
     intent: context.intent,
     goal: context.goal,
@@ -325,20 +365,46 @@ export function validateAssistantBoardCommandPlan(
         if (!MARKER_COLORS.includes(operation.color as AssistantMarkerColor))
           throw new Error('The assistant chose an unsupported highlight color.')
         const mode: 'add' | 'remove' = operation.mode === 'remove' ? 'remove' : 'add'
-        if (operation.mode !== undefined && operation.mode !== 'add' && operation.mode !== 'remove') throw new Error('The assistant returned an unsupported highlight action.')
-        return { type, cardId, exactQuote, color: operation.color as AssistantMarkerColor, ...(operation.mode === undefined ? {} : { mode }) } as const
+        if (operation.mode !== undefined && operation.mode !== 'add' && operation.mode !== 'remove')
+          throw new Error('The assistant returned an unsupported highlight action.')
+        return {
+          type,
+          cardId,
+          exactQuote,
+          color: operation.color as AssistantMarkerColor,
+          ...(operation.mode === undefined ? {} : { mode }),
+        } as const
       }
       case 'highlight_section': {
-        const frameId = string(operation.frameId, 100), sectionId = string(operation.sectionId, 100)
-        const frame = context.frames?.find(item => item.id === frameId)
-        const section = frame && getFrameworkDefinition(frame.type, frame.customFramework)?.sections.find(item => item.id === sectionId)
-        if (!frame || !section) throw new Error('Select a current framework section before highlighting its writing.')
-        const exactQuote = string(operation.exactQuote, 600), writing = getFrameworkSectionNotes(frame, sectionId) ?? ''
-        if (countOccurrences(writing, exactQuote) !== 1) throw new Error('The highlight needs one exact phrase in the selected framework section. Nothing changed.')
-        if (!MARKER_COLORS.includes(operation.color as AssistantMarkerColor)) throw new Error('The assistant chose an unsupported highlight color.')
+        const frameId = string(operation.frameId, 100),
+          sectionId = string(operation.sectionId, 100)
+        const frame = context.frames?.find((item) => item.id === frameId)
+        const section =
+          frame &&
+          getFrameworkDefinition(frame.type, frame.customFramework)?.sections.find(
+            (item) => item.id === sectionId,
+          )
+        if (!frame || !section)
+          throw new Error('Select a current framework section before highlighting its writing.')
+        const exactQuote = string(operation.exactQuote, 600),
+          writing = getFrameworkSectionNotes(frame, sectionId) ?? ''
+        if (countOccurrences(writing, exactQuote) !== 1)
+          throw new Error(
+            'The highlight needs one exact phrase in the selected framework section. Nothing changed.',
+          )
+        if (!MARKER_COLORS.includes(operation.color as AssistantMarkerColor))
+          throw new Error('The assistant chose an unsupported highlight color.')
         const mode: 'add' | 'remove' = operation.mode === 'remove' ? 'remove' : 'add'
-        if (operation.mode !== undefined && operation.mode !== 'add' && operation.mode !== 'remove') throw new Error('The assistant returned an unsupported highlight action.')
-        return { type, frameId, sectionId, exactQuote, color: operation.color as AssistantMarkerColor, mode } as const
+        if (operation.mode !== undefined && operation.mode !== 'add' && operation.mode !== 'remove')
+          throw new Error('The assistant returned an unsupported highlight action.')
+        return {
+          type,
+          frameId,
+          sectionId,
+          exactQuote,
+          color: operation.color as AssistantMarkerColor,
+          mode,
+        } as const
       }
       case 'create_note':
         if (typeof operation.kind !== 'string' || !['note', 'action'].includes(operation.kind))
@@ -473,13 +539,32 @@ export function validateAssistantBoardCommandPlan(
     throw new Error('Deletion must be confirmed separately. Ask for one board change at a time.')
   const permitted: Record<AssistantCommandIntent, readonly string[]> = {
     emphasis: ['answer', 'highlight_text', 'highlight_section', 'update_note'],
-    find: ['answer'], create: ['answer', 'create_note'], revise: ['answer', 'revise_note', 'update_note'],
-    framework: ['answer'], analyze: ['answer'], actions: ['answer', 'create_note', 'update_note'],
-    organize: ['answer', 'move_note', 'arrange_notes', 'group_notes'], sources: ['answer'],
+    find: ['answer'],
+    create: ['answer', 'create_note'],
+    revise: ['answer', 'revise_note', 'update_note'],
+    framework: ['answer'],
+    analyze: ['answer'],
+    actions: ['answer', 'create_note', 'update_note'],
+    organize: ['answer', 'move_note', 'arrange_notes', 'group_notes'],
+    sources: ['answer'],
     canvas: ['answer', 'create_note', 'update_note', 'lock_notes', 'delete_notes'],
+    conversation: ['answer'],
   }
-  if (operations.some(operation => !permitted[context.intent].includes(operation.type))) throw new Error('The assistant proposed a different action than requested. Nothing was applied.')
-  if (context.intent === 'emphasis' && operations.some(operation => operation.type === 'update_note' && Object.keys(operation.changes).some(key => key !== 'color' && key !== 'tag'))) throw new Error('Highlighting must preserve your writing. The assistant proposed a different change; nothing was applied.')
+  if (operations.some((operation) => !permitted[context.intent].includes(operation.type)))
+    throw new Error(
+      'The assistant proposed a different action than requested. Nothing was applied.',
+    )
+  if (
+    context.intent === 'emphasis' &&
+    operations.some(
+      (operation) =>
+        operation.type === 'update_note' &&
+        Object.keys(operation.changes).some((key) => key !== 'color' && key !== 'tag'),
+    )
+  )
+    throw new Error(
+      'Highlighting must preserve your writing. The assistant proposed a different change; nothing was applied.',
+    )
   return { response: string(raw.response, 1600, true), operations }
 }
 
@@ -490,8 +575,11 @@ export function assertAssistantCommandContextCurrent(
   if (context.boardId !== current.boardId)
     throw new Error('The board changed while the assistant was working. Send the request again.')
   for (const saved of context.frames ?? []) {
-    const live = current.frames?.find(frame => frame.id === saved.id)
-    if (!live || JSON.stringify(live) !== JSON.stringify(saved)) throw new Error('The selected framework changed while the assistant was working. Send the request again.')
+    const live = current.frames?.find((frame) => frame.id === saved.id)
+    if (!live || JSON.stringify(live) !== JSON.stringify(saved))
+      throw new Error(
+        'The selected framework changed while the assistant was working. Send the request again.',
+      )
   }
   for (const saved of context.cards) {
     const live = current.cards.find((card) => card.id === saved.id)

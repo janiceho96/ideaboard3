@@ -56,6 +56,42 @@ describe('assistant board command planning', () => {
     expect(classifyAssistantCommand('Design a framework for choosing a launch channel')).toBe(
       'framework',
     )
+    expect(classifyAssistantCommand('Any ideas for a better opening?')).toBe('conversation')
+  })
+
+  it('limits conversational advice to answer-only operations', () => {
+    const conversation = { ...context, intent: 'conversation' as const }
+    expect(
+      validateAssistantBoardCommandPlan(
+        {
+          response: 'Here are two options.',
+          operations: [
+            { type: 'answer', text: 'Start with the moment your career changed.', sourceIds: [] },
+          ],
+        },
+        conversation,
+      ).operations,
+    ).toHaveLength(1)
+    expect(() =>
+      validateAssistantBoardCommandPlan(
+        {
+          response: 'I added a note.',
+          operations: [
+            {
+              type: 'create_note',
+              title: 'Opening',
+              body: 'A new note.',
+              kind: 'note',
+              tag: 'idea',
+              color: 'paper',
+              dueDate: null,
+              sourceIds: [],
+            },
+          ],
+        },
+        conversation,
+      ),
+    ).toThrow('different action')
   })
 
   it('sends a small number of relevant examples and no canvas coordinates from the model request', () => {

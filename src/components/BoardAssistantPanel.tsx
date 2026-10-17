@@ -1,27 +1,108 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronDown, FileUp, Paperclip, Search, Send, Settings2, Sparkles, Square, Trash2, Undo2, X } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  FileUp,
+  Paperclip,
+  Search,
+  Send,
+  Settings2,
+  Sparkles,
+  Square,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react'
 import type { Card, CustomFrameworkTemplate, FrameInstance } from '../types'
 import { FRAMEWORK_REGISTRY, getFrameworkLabel } from '../hooks/useFrames'
-import { buildFrameworkDesignerRequest, frameworkTypeFor, validateFrameworkDesign } from '../lib/customFrameworks'
+import {
+  buildFrameworkDesignerRequest,
+  frameworkTypeFor,
+  validateFrameworkDesignReply,
+} from '../lib/customFrameworks'
 import FrameworkLayoutPreview from './FrameworkLayoutPreview'
-import { assertFrameworkDesignSourcesCurrent, discardAssistantFrameworkDesign, FRAMEWORK_DESIGN_CHANGED, readAssistantFrameworkDesign, saveAssistantFrameworkDesign, type AssistantFrameworkDesign } from '../lib/assistantFrameworkDesign'
+import {
+  assertFrameworkDesignSourcesCurrent,
+  discardAssistantFrameworkDesign,
+  FRAMEWORK_DESIGN_CHANGED,
+  readAssistantFrameworkDesign,
+  saveAssistantFrameworkDesign,
+  type AssistantFrameworkDesign,
+} from '../lib/assistantFrameworkDesign'
 import { colors, fonts } from '../lib/designTokens'
 import { AssistantExplanationStream } from '../lib/assistantStream'
-import { ASSISTANT_LIMITS, assertAssistantContextCurrent, assistantRequest, assistantSectionText, buildAssistantEffects, validateAssistantPlan, type AssistantCommand, type AssistantContext, type AssistantFramework, type AssistantImageAttachment, type AssistantPlan, type AssistantSource } from '../lib/assistantPlan'
-import { applyAssistantTask, keepAssistantTask, readAssistantTask, undoAssistantTask, type AssistantOperations, type AssistantTask } from '../lib/assistantTask'
-import { appendAssistantConversationTurn, mergeAssistantConversationResult, readAssistantConversation, removeAssistantConversationResultReferences, replaceAssistantConversationTurns, updateAssistantConversationLastResult, type AssistantConversation, type AssistantConversationTurn } from '../lib/assistantConversation'
-import { routeAssistantRequest, type AssistantBoardCardRef, type AssistantMoveDirection, type AssistantRouteResult } from '../lib/assistantRoute'
-import { generateNativeAssistant, nativeAIRequest, nativeAIStatus, type NativeAIStatus } from '../lib/nativeAssistant'
+import {
+  ASSISTANT_LIMITS,
+  assertAssistantContextCurrent,
+  assistantRequest,
+  assistantSectionText,
+  buildAssistantEffects,
+  validateAssistantPlan,
+  type AssistantCommand,
+  type AssistantContext,
+  type AssistantFramework,
+  type AssistantImageAttachment,
+  type AssistantPlan,
+  type AssistantSource,
+} from '../lib/assistantPlan'
+import {
+  applyAssistantTask,
+  keepAssistantTask,
+  readAssistantTask,
+  undoAssistantTask,
+  type AssistantOperations,
+  type AssistantTask,
+} from '../lib/assistantTask'
+import {
+  appendAssistantConversationTurn,
+  mergeAssistantConversationResult,
+  readAssistantConversation,
+  removeAssistantConversationResultReferences,
+  replaceAssistantConversationTurns,
+  updateAssistantConversationLastResult,
+  type AssistantConversation,
+  type AssistantConversationTurn,
+} from '../lib/assistantConversation'
+import {
+  routeAssistantRequest,
+  type AssistantBoardCardRef,
+  type AssistantMoveDirection,
+  type AssistantRouteResult,
+} from '../lib/assistantRoute'
+import {
+  generateValidatedAssistantDraft,
+  nativeAIRequest,
+  nativeAIStatus,
+  type NativeAIStatus,
+} from '../lib/nativeAssistant'
 import { prepareImageAttachment } from '../lib/imageAttachment'
-import { assistantCommandRequest, assertAssistantCommandContextCurrent, classifyAssistantCommand, validateAssistantBoardCommandPlan, type AssistantBoardCommandContext, type AssistantBoardCommandPlan, type AssistantBoardOperation } from '../lib/assistantCommandPlan'
+import {
+  assistantCommandRequest,
+  assertAssistantCommandContextCurrent,
+  classifyAssistantCommand,
+  validateAssistantBoardCommandPlan,
+  type AssistantBoardCommandContext,
+  type AssistantBoardCommandPlan,
+  type AssistantBoardOperation,
+} from '../lib/assistantCommandPlan'
 import { buildAssistantCommandEffects } from '../lib/assistantCommandEffects'
 import { NOTE_HIGHLIGHT_SWATCHES } from '../lib/noteHighlight'
 
-const builtinAssistantFrameworks: AssistantFramework[] = Object.values(FRAMEWORK_REGISTRY).filter(d => d.selectable).map(d => ({
-  type: d.type, label: d.label, guidance: `${d.selectionGuidance} ${d.sourceRequirements}`,
-  width: d.defaultSize.width, height: d.defaultSize.height,
-  sections: d.sections.map(s => ({ id: s.id, storageKey: s.storageKey, label: s.label, guidance: s.writingGuidance })),
-}))
+const builtinAssistantFrameworks: AssistantFramework[] = Object.values(FRAMEWORK_REGISTRY)
+  .filter((d) => d.selectable)
+  .map((d) => ({
+    type: d.type,
+    label: d.label,
+    guidance: `${d.selectionGuidance} ${d.sourceRequirements}`,
+    width: d.defaultSize.width,
+    height: d.defaultSize.height,
+    sections: d.sections.map((s) => ({
+      id: s.id,
+      storageKey: s.storageKey,
+      label: s.label,
+      guidance: s.writingGuidance,
+    })),
+  }))
 
 interface Props {
   open: boolean
@@ -52,16 +133,44 @@ interface Props {
   dark: boolean
 }
 
-const commands: { id: AssistantCommand | 'auto'; label: string; help: string }[] = [
-  { id: 'auto', label: 'Automatic', help: 'Describe what you want. The assistant chooses a safe action from this chat and its recent results.' },
-  { id: 'build', label: 'Build board', help: 'Create frameworks and related draft notes on this board.' },
-  { id: 'fill', label: 'Fill framework', help: 'Write empty sections and add related draft notes.' },
-  { id: 'expand', label: 'Expand section', help: 'Add detail to one section. Existing writing stays.' },
-  { id: 'revise', label: 'Revise note', help: 'Compare a revised draft before replacing your writing.' },
+type AssistantTaskMode = AssistantCommand | 'auto' | 'answer'
+
+const commands: { id: AssistantTaskMode; label: string; help: string }[] = [
+  {
+    id: 'auto',
+    label: 'Automatic',
+    help: 'Describe what you want. The assistant chooses a safe action from this chat and its recent results.',
+  },
+  {
+    id: 'answer',
+    label: 'Answer only',
+    help: 'Ask for advice or an explanation. The assistant replies in chat without changing the board.',
+  },
+  {
+    id: 'build',
+    label: 'Build board',
+    help: 'Create frameworks and related draft notes on this board.',
+  },
+  {
+    id: 'fill',
+    label: 'Fill framework',
+    help: 'Write empty sections and add related draft notes.',
+  },
+  {
+    id: 'expand',
+    label: 'Expand section',
+    help: 'Add detail to one section. Existing writing stays.',
+  },
+  {
+    id: 'revise',
+    label: 'Revise note',
+    help: 'Compare a revised draft before replacing your writing.',
+  },
 ]
 
 export function PanelStyle({ dark }: { dark: boolean }) {
-  return <style>{`
+  return (
+    <style>{`
     .ib-writing-panel { width: 386px; max-width: calc(100vw - 68px); min-width:0; flex-shrink: 0; display:flex; flex-direction:column; z-index:110; border-left:2px solid #172038; font-family:${fonts.ui}; height:100%; overflow:hidden; position:relative; }
     .ib-writing-panel button,.ib-writing-panel input,.ib-writing-panel select,.ib-writing-panel textarea { font:inherit; color:inherit; }
     .ib-writing-panel button { cursor:pointer; }
@@ -124,13 +233,16 @@ export function PanelStyle({ dark }: { dark: boolean }) {
     @keyframes ib-assistant-pulse { to { transform:scale(.72); opacity:.55; } }
     @media(max-width:800px) { .ib-writing-panel { position:absolute; right:0; top:0; bottom:0; width:min(440px,calc(100vw - 54px)); max-width:calc(100vw - 54px); box-shadow:-6px 0 0 rgba(23,32,56,.15); } .ib-chat-input { font-size:16px!important; } .ib-chat-tools .ib-icon-button,.ib-send-button { width:44px; height:44px; } .ib-writing-panel .ib-panel-small { min-height:40px; } }
   `}</style>
+  )
 }
 
 export default function BoardAssistantPanel(props: Props) {
   const { open, boardId, cards, frames, selectedNoteIds, selectedFrameId, dark } = props
   const assistantFrameworks = useMemo(() => {
     const templates = new Map<string, CustomFrameworkTemplate>()
-    for (const frame of frames) if (frame.customFramework) templates.set(frameworkTypeFor(frame.customFramework), frame.customFramework)
+    for (const frame of frames)
+      if (frame.customFramework)
+        templates.set(frameworkTypeFor(frame.customFramework), frame.customFramework)
     for (const template of props.customFrameworks) {
       const type = frameworkTypeFor(template)
       if (!templates.has(type)) templates.set(type, template)
@@ -142,17 +254,34 @@ export default function BoardAssistantPanel(props: Props) {
       width: template.defaultSize.width,
       height: template.defaultSize.height,
       customDefinition: template,
-      sections: template.sections.map(section => ({ id: section.id, storageKey: section.storageKey, label: section.label, guidance: section.writingGuidance })),
+      sections: template.sections.map((section) => ({
+        id: section.id,
+        storageKey: section.storageKey,
+        label: section.label,
+        guidance: section.writingGuidance,
+      })),
     }))
     return [...builtinAssistantFrameworks, ...custom]
   }, [frames, props.customFrameworks])
-  const [command, setCommand] = useState<AssistantCommand | 'auto'>('auto')
+  const [command, setCommand] = useState<AssistantTaskMode>('auto')
   const [goal, setGoal] = useState('')
   const [contextOpen, setContextOpen] = useState(false)
-  const [conversation, setConversation] = useState<AssistantConversation>(() => readAssistantConversation(boardId, localStorage))
+  const [conversation, setConversation] = useState<AssistantConversation>(() =>
+    readAssistantConversation(boardId, localStorage),
+  )
   const conversationRef = useRef(conversation)
   conversationRef.current = conversation
-  const messages = useMemo(() => conversation.turns.flatMap(turn => turn.messages.map((entry, index) => ({ id: `${turn.id}:${index}`, role: entry.role, text: entry.content }))), [conversation])
+  const messages = useMemo(
+    () =>
+      conversation.turns.flatMap((turn) =>
+        turn.messages.map((entry, index) => ({
+          id: `${turn.id}:${index}`,
+          role: entry.role,
+          text: entry.content,
+        })),
+      ),
+    [conversation],
+  )
   const [scope, setScope] = useState<'selected' | 'board' | 'goal'>('selected')
   const [sourceSelection, setSourceSelection] = useState<string[]>(props.selectedSourceIds)
   const [previewSourceId, setPreviewSourceId] = useState<string | null>(null)
@@ -166,14 +295,27 @@ export default function BoardAssistantPanel(props: Props) {
   const [progress, setProgress] = useState('')
   const [streamSummary, setStreamSummary] = useState('')
   const [error, setError] = useState('')
-  const [frameworkReview, setFrameworkReview] = useState(() => readAssistantFrameworkDesign(boardId))
+  const [frameworkReview, setFrameworkReview] = useState(() =>
+    readAssistantFrameworkDesign(boardId),
+  )
   const chatThreadRef = useRef<HTMLDivElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const sourceFileInputRef = useRef<HTMLInputElement>(null)
   const shouldFollowChatRef = useRef(true)
-  const [review, setReview] = useState<{ plan: AssistantPlan; context: AssistantContext; turnId: string } | null>(null)
-  const [commandReview, setCommandReview] = useState<{ plan: AssistantBoardCommandPlan; context: AssistantBoardCommandContext; turnId: string } | null>(null)
-  const [pendingDelete, setPendingDelete] = useState<{ refs: AssistantBoardCardRef[]; turnId: string } | null>(null)
+  const [review, setReview] = useState<{
+    plan: AssistantPlan
+    context: AssistantContext
+    turnId: string
+  } | null>(null)
+  const [commandReview, setCommandReview] = useState<{
+    plan: AssistantBoardCommandPlan
+    context: AssistantBoardCommandContext
+    turnId: string
+  } | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<{
+    refs: AssistantBoardCardRef[]
+    turnId: string
+  } | null>(null)
   const reviewRef = useRef(review)
   reviewRef.current = review
   const [summary, setSummary] = useState<AssistantPlan | null>(null)
@@ -191,16 +333,23 @@ export default function BoardAssistantPanel(props: Props) {
     setConversation(next)
     return next
   }
-  const updateLastResult = (result: Parameters<typeof updateAssistantConversationLastResult>[1]) => {
+  const updateLastResult = (
+    result: Parameters<typeof updateAssistantConversationLastResult>[1],
+  ) => {
     const next = updateAssistantConversationLastResult(boardId, result, localStorage)
     conversationRef.current = next
     setConversation(next)
     return next
   }
   const finishTurn = (turnId: string, response: string) => {
-    const turns = conversationRef.current.turns.map(turn => turn.id === turnId
-      ? { ...turn, messages: [turn.messages[0], { role: 'assistant' as const, content: response }] }
-      : turn)
+    const turns = conversationRef.current.turns.map((turn) =>
+      turn.id === turnId
+        ? {
+            ...turn,
+            messages: [turn.messages[0], { role: 'assistant' as const, content: response }],
+          }
+        : turn,
+    )
     return saveTurns(turns)
   }
   const beginTurn = (prompt: string) => {
@@ -215,20 +364,38 @@ export default function BoardAssistantPanel(props: Props) {
     return turn.id
   }
 
-  const routeMessage = (prompt: string, sourceConversation: AssistantConversation): AssistantRouteResult => {
-    const priorFrameRefs = (sourceConversation.lastResult?.frameIds ?? []).flatMap(id => {
-      const item = frames.find(candidate => candidate.id === id)
-      return item ? [{ id: item.id, name: item.name || getFrameworkLabel(item.type, item.customFramework), type: item.type }] : []
+  const routeMessage = (
+    prompt: string,
+    sourceConversation: AssistantConversation,
+  ): AssistantRouteResult => {
+    const priorFrameRefs = (sourceConversation.lastResult?.frameIds ?? []).flatMap((id) => {
+      const item = frames.find((candidate) => candidate.id === id)
+      return item
+        ? [
+            {
+              id: item.id,
+              name: item.name || getFrameworkLabel(item.type, item.customFramework),
+              type: item.type,
+            },
+          ]
+        : []
     })
-    const priorCardRefs = (sourceConversation.lastResult?.cardIds ?? []).flatMap(id => {
-      const item = cards.find(candidate => candidate.id === id)
+    const priorCardRefs = (sourceConversation.lastResult?.cardIds ?? []).flatMap((id) => {
+      const item = cards.find((candidate) => candidate.id === id)
       return item ? [{ id: item.id, title: item.title, locked: item.locked }] : []
     })
-    const availableFrameworkSections = [...new Map(priorFrameRefs.flatMap(item =>
-      (assistantFrameworks.find(def => def.type === item.type)?.sections ?? []).map(section => [
-        `${item.type}:${section.id}`, { frameworkType: item.type, id: section.id, label: section.label },
-      ]),
-    )).values()]
+    const availableFrameworkSections = [
+      ...new Map(
+        priorFrameRefs.flatMap((item) =>
+          (assistantFrameworks.find((def) => def.type === item.type)?.sections ?? []).map(
+            (section) => [
+              `${item.type}:${section.id}`,
+              { frameworkType: item.type, id: section.id, label: section.label },
+            ],
+          ),
+        ),
+      ).values(),
+    ]
     return routeAssistantRequest({
       message: prompt,
       isFirstRequest: sourceConversation.lastResult === null,
@@ -239,9 +406,8 @@ export default function BoardAssistantPanel(props: Props) {
     })
   }
 
-  const promptRoute = command === 'auto' && goal.trim()
-    ? routeMessage(goal.trim(), conversationRef.current)
-    : null
+  const promptRoute =
+    command === 'auto' && goal.trim() ? routeMessage(goal.trim(), conversationRef.current) : null
 
   useEffect(() => {
     const changed = (event: Event) => {
@@ -256,72 +422,159 @@ export default function BoardAssistantPanel(props: Props) {
   }, [boardId])
 
   const refreshStatus = async () => {
-    try { setStatus(await nativeAIStatus()) } catch (e) { setError(message(e)) }
+    try {
+      setStatus(await nativeAIStatus())
+    } catch (e) {
+      setError(message(e))
+    }
   }
   useEffect(() => {
-    const refresh = () => { try { setTask(readAssistantTask(boardId, localStorage)) } catch (e) { setError(message(e)) } }
+    const refresh = () => {
+      try {
+        setTask(readAssistantTask(boardId, localStorage))
+      } catch (e) {
+        setError(message(e))
+      }
+    }
     const changed = (event: Event) => {
-      if ((event as CustomEvent).detail === boardId) { refresh(); setSummary(null); setProgress('Task undone and saved.') }
+      if ((event as CustomEvent).detail === boardId) {
+        refresh()
+        setSummary(null)
+        setProgress('Task undone and saved.')
+      }
     }
     try {
       const restored = readAssistantConversation(boardId, localStorage)
       conversationRef.current = restored
       setConversation(restored)
-    } catch (e) { setError(message(e)) }
+    } catch (e) {
+      setError(message(e))
+    }
     setGoal('')
     setError('')
     refresh()
     window.addEventListener('ideaboard:assistant-task-changed', changed)
-    return () => { abort.current?.abort(); window.removeEventListener('ideaboard:assistant-task-changed', changed) }
+    return () => {
+      abort.current?.abort()
+      window.removeEventListener('ideaboard:assistant-task-changed', changed)
+    }
   }, [boardId])
   useEffect(() => {
     if (sourceBoardIdRef.current === boardId) return
     sourceBoardIdRef.current = boardId
     setSourceSelection(props.selectedSourceIds)
   }, [boardId, props.selectedSourceIds])
-  useEffect(() => { if (open) void refreshStatus() }, [open])
   useEffect(() => {
-    if (shouldFollowChatRef.current) chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
-  }, [open, messages, busy, progress, streamSummary, review, commandReview, pendingDelete, summary, task, error])
-  useEffect(() => { if (selectedFrameId && !busyRef.current && !review) setFrameId(selectedFrameId) }, [selectedFrameId, review])
+    if (open) void refreshStatus()
+  }, [open])
   useEffect(() => {
-    if (selectedNoteIds.length === 1 && !busyRef.current && !reviewRef.current) setNoteId(selectedNoteIds[0])
+    if (shouldFollowChatRef.current)
+      chatEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end' })
+  }, [
+    open,
+    messages,
+    busy,
+    progress,
+    streamSummary,
+    review,
+    commandReview,
+    pendingDelete,
+    summary,
+    task,
+    error,
+  ])
+  useEffect(() => {
+    if (selectedFrameId && !busyRef.current && !review) setFrameId(selectedFrameId)
+  }, [selectedFrameId, review])
+  useEffect(() => {
+    if (selectedNoteIds.length === 1 && !busyRef.current && !reviewRef.current)
+      setNoteId(selectedNoteIds[0])
   }, [selectedNoteIds])
 
-  const frame = frames.find(f => f.id === frameId)
-  const definition = assistantFrameworks.find(d => d.type === frame?.type)
-  const currentSectionId = definition?.sections.some(s => s.id === sectionId) ? sectionId : definition?.sections[0]?.id ?? ''
-  const sources = useMemo(() => scope === 'board'
-    ? props.availableSources.filter(source => source.kind !== 'image' && !(source.kind === 'pdf-page' && !source.body.trim()))
-    : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : [], [scope, props.availableSources, sourceSelection])
-  const targetNote = cards.find(c => c.id === noteId)
+  const frame = frames.find((f) => f.id === frameId)
+  const definition = assistantFrameworks.find((d) => d.type === frame?.type)
+  const currentSectionId = definition?.sections.some((s) => s.id === sectionId)
+    ? sectionId
+    : (definition?.sections[0]?.id ?? '')
+  const sources = useMemo(
+    () =>
+      scope === 'board'
+        ? props.availableSources.filter(
+            (source) =>
+              source.kind !== 'image' && !(source.kind === 'pdf-page' && !source.body.trim()),
+          )
+        : scope === 'selected'
+          ? props.availableSources.filter((source) => sourceSelection.includes(source.id))
+          : [],
+    [scope, props.availableSources, sourceSelection],
+  )
+  const targetNote = cards.find((c) => c.id === noteId)
   const needsFrame = command === 'fill' || command === 'expand'
   const promptIntent = command === 'auto' ? classifyAssistantCommand(goal.trim()) : null
-  const canGenerate = status.configured && goal.trim() && !blockedByTask && !review && !commandReview && !pendingDelete && (command === 'auto' || !needsFrame || !!definition) && (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
-  const canRunLocalAction = promptRoute?.status === 'action' || (promptRoute?.status === 'clarify' && !promptIntent)
-  const canSubmit = !!goal.trim() && !blockedByTask && !review && !commandReview && !frameworkReview && !pendingDelete && !busy && (canRunLocalAction || canGenerate)
+  const canGenerate =
+    status.configured &&
+    goal.trim() &&
+    !blockedByTask &&
+    !review &&
+    !commandReview &&
+    !pendingDelete &&
+    (command === 'auto' || !needsFrame || !!definition) &&
+    (command === 'auto' || command !== 'revise' || (targetNote && !targetNote.locked))
+  const canRunLocalAction =
+    promptRoute?.status === 'action' || (promptRoute?.status === 'clarify' && !promptIntent)
+  const canSubmit =
+    !!goal.trim() &&
+    !blockedByTask &&
+    !review &&
+    !commandReview &&
+    !frameworkReview &&
+    !pendingDelete &&
+    !busy &&
+    (canRunLocalAction || canGenerate)
 
   const apply = async (plan: AssistantPlan, context: AssistantContext, signal: AbortSignal) => {
     const current = propsRef.current
-    assertAssistantContextCurrent(context, { ...current.operations.getSnapshot(), sources: current.availableSources })
+    assertAssistantContextCurrent(context, {
+      ...current.operations.getSnapshot(),
+      sources: current.availableSources,
+    })
     if (signal.aborted) throw new Error('Generation stopped. Your request is kept.')
     const id = crypto.randomUUID()
     const free = current.getOrigin()
     const origin = { x: free.x, y: context.targetFrame?.y ?? free.y }
-    const next: AssistantTask = { version: 1, id, boardId, status: 'applying', createdAt: new Date().toISOString(), effects: buildAssistantEffects(plan, context, assistantFrameworks, id, origin) }
+    const next: AssistantTask = {
+      version: 1,
+      id,
+      boardId,
+      status: 'applying',
+      createdAt: new Date().toISOString(),
+      effects: buildAssistantEffects(plan, context, assistantFrameworks, id, origin),
+    }
     setSummary(plan)
     try {
-      const complete = await applyAssistantTask(next, current.operations, localStorage, setProgress, signal)
+      const complete = await applyAssistantTask(
+        next,
+        current.operations,
+        localStorage,
+        setProgress,
+        signal,
+      )
       const saved = current.operations.getSnapshot()
       const previous = conversationRef.current.lastResult
-      const changedFrameIds = [...new Set([
-        ...complete.effects.frames.map(item => item.id),
-        ...complete.effects.sections.map(item => item.frameId),
-      ])]
-      const changedCardIds = [...new Set([
-        ...complete.effects.revisions.map(item => item.cardId),
-        ...saved.cards.filter(card => (card as Card & { ai_task_id?: string }).ai_task_id === complete.id).map(card => card.id),
-      ])]
+      const changedFrameIds = [
+        ...new Set([
+          ...complete.effects.frames.map((item) => item.id),
+          ...complete.effects.sections.map((item) => item.frameId),
+        ]),
+      ]
+      const changedCardIds = [
+        ...new Set([
+          ...complete.effects.revisions.map((item) => item.cardId),
+          ...saved.cards
+            .filter((card) => (card as Card & { ai_task_id?: string }).ai_task_id === complete.id)
+            .map((card) => card.id),
+        ]),
+      ]
       const nextResult = mergeAssistantConversationResult(previous, {
         taskId: complete.id,
         frameIds: changedFrameIds,
@@ -350,52 +603,105 @@ export default function BoardAssistantPanel(props: Props) {
     let turnId: string | null = null
     try {
       turnId = beginTurn(prompt)
-      const customRoute = routeMessage(prompt, priorConversation)
-      if (customRoute.status === 'design') {
-        const selected = scope === 'board'
-          ? props.availableSources.filter(source => source.body.trim() && source.kind !== 'image')
-          : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : []
+      const customRoute = command === 'auto' ? routeMessage(prompt, priorConversation) : null
+      if (customRoute?.status === 'design') {
+        const selected =
+          scope === 'board'
+            ? props.availableSources.filter(
+                (source) => source.body.trim() && source.kind !== 'image',
+              )
+            : scope === 'selected'
+              ? props.availableSources.filter((source) => sourceSelection.includes(source.id))
+              : []
         assertFrameworkDesignSourcesCurrent(boardId, selected, propsRef.current.availableSources)
-        const request = buildFrameworkDesignerRequest(boardId, prompt, selected.map(source => ({ id: source.id, title: source.source_label ?? source.title, body: source.body })), customRoute.layout)
+        const request = buildFrameworkDesignerRequest(
+          boardId,
+          prompt,
+          selected.map((source) => ({
+            id: source.id,
+            title: source.source_label ?? source.title,
+            body: source.body,
+          })),
+          customRoute.layout,
+        )
         busyRef.current = true
         setBusy(true)
         setStreamSummary('')
         setProgress('Designing your custom framework…')
         const controller = new AbortController()
         abort.current = controller
-        const output = await generateNativeAssistant(request, controller.signal, chunk => {
-          if (chunk && !controller.signal.aborted) setProgress('AI response arriving · designing your sections…')
-        })
-        if (controller.signal.aborted) { finishTurn(turnId, 'Design stopped. Your request and notes are kept.'); return }
+        const { template, response: extraResponse } = await generateValidatedAssistantDraft(
+          request,
+          controller.signal,
+          (output) => validateFrameworkDesignReply(output, undefined, customRoute.layout),
+          (chunk) => {
+            if (chunk && !controller.signal.aborted)
+              setProgress('AI response arriving · designing your sections…')
+          },
+          () => setProgress('The first draft did not fit your brief. Correcting it once…'),
+        )
+        if (controller.signal.aborted) {
+          finishTurn(turnId, 'Design stopped. Your request and notes are kept.')
+          return
+        }
         assertFrameworkDesignSourcesCurrent(boardId, selected, propsRef.current.availableSources)
-        const template = validateFrameworkDesign(output, undefined, customRoute.layout)
-        const draft = { template, goal: prompt, sourceIds: selected.map(source => source.id) }
+        const draft = { template, goal: prompt, sourceIds: selected.map((source) => source.id) }
         setFrameworkReview(draft)
-        try { saveAssistantFrameworkDesign(boardId, draft) } catch (cause) { setError(message(cause)) }
-        finishTurn(turnId, `Designed “${template.label}” with ${template.sections.length} sections. The writing areas are empty. Open Edit & save framework to review the questions and add it to your library or board.`)
+        try {
+          saveAssistantFrameworkDesign(boardId, draft)
+        } catch (cause) {
+          setError(message(cause))
+        }
+        finishTurn(
+          turnId,
+          [
+            extraResponse,
+            `Designed “${template.label}” with ${template.sections.length} sections. The writing areas are empty. Open Edit & save framework to review the questions and add it to your library or board.`,
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        )
         setProgress('Framework draft ready for review. Your board is unchanged.')
         return
       }
-      let routedCommand: AssistantCommand = command === 'auto' ? 'build' : command
-      let routedFrame = command !== 'auto' && (command === 'fill' || command === 'expand') ? frame : undefined
+      let routedCommand: AssistantCommand =
+        command === 'auto' || command === 'answer' ? 'build' : command
+      let routedFrame =
+        command !== 'auto' && (command === 'fill' || command === 'expand') ? frame : undefined
       let routedCard = command === 'revise' ? targetNote : undefined
       let routedSection = command === 'expand' ? currentSectionId : undefined
       let routedReplace = replace
 
-      if (command === 'auto') {
-        const route = routeMessage(prompt, priorConversation)
+      if (command === 'auto' || command === 'answer') {
+        const route =
+          command === 'auto'
+            ? routeMessage(prompt, priorConversation)
+            : { status: 'answer' as const }
         if (route.status === 'action') {
           if (route.action === 'delete') {
             setPendingDelete({ refs: route.targetCardRefs, turnId })
-            finishTurn(turnId, `Confirm deleting ${route.targetCardRefs.length === 1 ? `“${route.targetCardRefs[0].title}”` : `${route.targetCardRefs.length} notes`}.`)
+            finishTurn(
+              turnId,
+              `Confirm deleting ${route.targetCardRefs.length === 1 ? `“${route.targetCardRefs[0].title}”` : `${route.targetCardRefs.length} notes`}.`,
+            )
             setProgress('Review the selected note(s) before deleting.')
             return
           }
 
-          const target = cards.find(item => item.id === route.targetCardRef.id)
-          const destination = cards.find(item => item.id === route.destinationCardRef.id)
-          if (!target || !destination || target.title !== route.targetCardRef.title || destination.title !== route.destinationCardRef.title || target.locked || destination.locked) {
-            finishTurn(turnId, 'I stopped because one of those notes changed or became locked. Please send the move again using the current note titles.')
+          const target = cards.find((item) => item.id === route.targetCardRef.id)
+          const destination = cards.find((item) => item.id === route.destinationCardRef.id)
+          if (
+            !target ||
+            !destination ||
+            target.title !== route.targetCardRef.title ||
+            destination.title !== route.destinationCardRef.title ||
+            target.locked ||
+            destination.locked
+          ) {
+            finishTurn(
+              turnId,
+              'I stopped because one of those notes changed or became locked. Please send the move again using the current note titles.',
+            )
             setProgress('')
             return
           }
@@ -403,63 +709,103 @@ export default function BoardAssistantPanel(props: Props) {
           setBusy(true)
           setProgress('Moving the note on this board…')
           const savedTask = readAssistantTask(boardId, localStorage)
-          if (savedTask && savedTask.status !== 'complete') throw new Error('Recover the interrupted assistant task before moving notes.')
+          if (savedTask && savedTask.status !== 'complete')
+            throw new Error('Recover the interrupted assistant task before moving notes.')
           if (savedTask) keepAssistantTask(boardId, localStorage)
           setTask(null)
           setSummary(null)
           const position = relativeNotePosition(target, destination, route.direction)
           await props.onMoveNote(target.id, position.x, position.y)
           props.onLocateNote(target.id)
-          finishTurn(turnId, `Moved “${target.title}” ${route.direction} of “${destination.title}”. Use Undo on the board to move it back.`)
+          finishTurn(
+            turnId,
+            `Moved “${target.title}” ${route.direction} of “${destination.title}”. Use Undo on the board to move it back.`,
+          )
           setProgress('Note moved. Undo is available on the board.')
           return
         }
-        const intent = classifyAssistantCommand(prompt)
+        const intent =
+          route.status === 'answer'
+            ? 'conversation'
+            : route.status === 'route' && route.command === 'build'
+              ? null
+              : classifyAssistantCommand(prompt)
         if (intent && intent !== 'framework') {
           const requestSources = sources
-          const sourceNoteIds = new Set(requestSources.filter(source => source.kind === 'note').map(source => source.id))
-          const commandContext: AssistantBoardCommandContext = JSON.parse(JSON.stringify({
-            boardId,
-            intent,
-            goal: prompt,
-            today: localDate(),
-            history: priorConversation.turns.flatMap(turn => turn.messages.map(entry => ({ role: entry.role, text: entry.content }))),
-            sources: requestSources,
-            cards: cards.filter(card => sourceNoteIds.has(card.id)),
-            frames: frames.filter(frame => selectedFrameId ? frame.id === selectedFrameId : priorConversation.lastResult?.frameIds.includes(frame.id)),
-          }))
-          const assertCurrent = () => assertAssistantCommandContextCurrent(commandContext, {
-            boardId,
-            cards: propsRef.current.cards,
-            frames: propsRef.current.frames,
-            sources: propsRef.current.availableSources,
-          })
+          const sourceNoteIds = new Set(
+            requestSources.filter((source) => source.kind === 'note').map((source) => source.id),
+          )
+          const commandContext: AssistantBoardCommandContext = JSON.parse(
+            JSON.stringify({
+              boardId,
+              intent,
+              goal: prompt,
+              today: localDate(),
+              history: priorConversation.turns.flatMap((turn) =>
+                turn.messages.map((entry) => ({ role: entry.role, text: entry.content })),
+              ),
+              sources: requestSources,
+              cards: cards.filter((card) => sourceNoteIds.has(card.id)),
+              frames: frames.filter((frame) =>
+                selectedFrameId
+                  ? frame.id === selectedFrameId
+                  : priorConversation.lastResult?.frameIds.includes(frame.id),
+              ),
+            }),
+          )
+          const assertCurrent = () =>
+            assertAssistantCommandContextCurrent(commandContext, {
+              boardId,
+              cards: propsRef.current.cards,
+              frames: propsRef.current.frames,
+              sources: propsRef.current.availableSources,
+            })
           assertCurrent()
           busyRef.current = true
           setBusy(true)
           setProgress('Working through your request…')
           const controller = new AbortController()
           abort.current = controller
-          const output = await generateNativeAssistant(assistantCommandRequest(commandContext), controller.signal)
+          const plan = await generateValidatedAssistantDraft(
+            assistantCommandRequest(commandContext),
+            controller.signal,
+            (output) => validateAssistantBoardCommandPlan(output, commandContext),
+            undefined,
+            () => setProgress('The first draft did not fit your request. Correcting it once…'),
+          )
           if (controller.signal.aborted) {
             finishTurn(turnId, 'I stopped before changing the board. Your notes are unchanged.')
             setProgress('')
             return
           }
-          const plan = validateAssistantBoardCommandPlan(output, commandContext)
           assertCurrent()
-          const deletion = plan.operations.find(operation => operation.type === 'delete_notes')
+          const deletion = plan.operations.find((operation) => operation.type === 'delete_notes')
           if (deletion?.type === 'delete_notes') {
-            const refs = deletion.cardIds.map(id => commandContext.cards.find(card => card.id === id)!).map(card => ({ id: card.id, title: card.title, locked: card.locked }))
+            const refs = deletion.cardIds
+              .map((id) => commandContext.cards.find((card) => card.id === id)!)
+              .map((card) => ({ id: card.id, title: card.title, locked: card.locked }))
             setPendingDelete({ refs, turnId })
-            finishTurn(turnId, `${plan.response ? `${plan.response}\n\n` : ''}Review and confirm the ${refs.length === 1 ? 'note' : `${refs.length} notes`} to delete.`)
+            finishTurn(
+              turnId,
+              `${plan.response ? `${plan.response}\n\n` : ''}Review and confirm the ${refs.length === 1 ? 'note' : `${refs.length} notes`} to delete.`,
+            )
             setProgress('Review the selected note(s) before deleting.')
             return
           }
-          const hasBoardChange = plan.operations.some(operation => operation.type !== 'answer')
+          const hasBoardChange = plan.operations.some((operation) => operation.type !== 'answer')
           if (!hasBoardChange) {
-            const answer = plan.operations.filter(operation => operation.type === 'answer').map(operation => `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandContext.sources.find(source => source.id === id)?.source_label ?? commandContext.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}`).join('\n\n')
-            finishTurn(turnId, [plan.response, answer].filter(Boolean).join('\n\n') || 'I could not find enough information to answer that from the selected material.')
+            const answer = plan.operations
+              .filter((operation) => operation.type === 'answer')
+              .map(
+                (operation) =>
+                  `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map((id) => commandContext.sources.find((source) => source.id === id)?.source_label ?? commandContext.sources.find((source) => source.id === id)?.title ?? id).join('; ')}` : ''}`,
+              )
+              .join('\n\n')
+            finishTurn(
+              turnId,
+              [plan.response, answer].filter(Boolean).join('\n\n') ||
+                'I could not find enough information to answer that from the selected material.',
+            )
             setProgress('Answer ready.')
             return
           }
@@ -476,99 +822,179 @@ export default function BoardAssistantPanel(props: Props) {
         routedCommand = route.command
         routedReplace = route.replace
         routedSection = route.targetSectionId
-        routedFrame = route.targetFrameRef ? frames.find(item => item.id === route.targetFrameRef!.id) : undefined
-        routedCard = route.targetCardRef ? cards.find(item => item.id === route.targetCardRef!.id) : undefined
+        routedFrame = route.targetFrameRef
+          ? frames.find((item) => item.id === route.targetFrameRef!.id)
+          : undefined
+        routedCard = route.targetCardRef
+          ? cards.find((item) => item.id === route.targetCardRef!.id)
+          : undefined
         if ((route.command === 'fill' || route.command === 'expand') && !routedFrame) {
-          finishTurn(turnId, 'That assistant-created framework is no longer on this board. Ask me to create a fresh plan, or choose a current framework in Task & context.')
+          finishTurn(
+            turnId,
+            'That assistant-created framework is no longer on this board. Ask me to create a fresh plan, or choose a current framework in Task & context.',
+          )
           setProgress('')
           return
         }
         if (route.command === 'revise' && (!routedCard || routedCard.locked)) {
-          finishTurn(turnId, 'That assistant-created note is no longer available or is locked. Name another unlocked note from this chat.')
+          finishTurn(
+            turnId,
+            'That assistant-created note is no longer available or is locked. Name another unlocked note from this chat.',
+          )
           setProgress('')
           return
         }
       }
 
-      const targetDefinition = assistantFrameworks.find(def => def.type === routedFrame?.type)
-      const requestSources = scope === 'board'
-        ? props.availableSources.filter(source => source.kind !== 'image' && !(source.kind === 'pdf-page' && !source.body.trim()))
-        : scope === 'selected' ? props.availableSources.filter(source => sourceSelection.includes(source.id)) : []
-      const history = priorConversation.turns.flatMap(turn => turn.messages.map(entry => ({ role: entry.role, text: entry.content })))
-      const context: AssistantContext = JSON.parse(JSON.stringify({
-        boardId,
-        command: routedCommand,
-        goal: prompt,
-        history,
-        sources: requestSources,
-        targetFrame: routedCommand === 'fill' || routedCommand === 'expand' ? routedFrame : undefined,
-        targetSection: routedCommand === 'expand' ? routedSection : undefined,
-        targetCard: routedCommand === 'revise' ? routedCard : undefined,
-        replace: routedReplace,
-      }))
+      const targetDefinition = assistantFrameworks.find((def) => def.type === routedFrame?.type)
+      const requestSources =
+        scope === 'board'
+          ? props.availableSources.filter(
+              (source) =>
+                source.kind !== 'image' && !(source.kind === 'pdf-page' && !source.body.trim()),
+            )
+          : scope === 'selected'
+            ? props.availableSources.filter((source) => sourceSelection.includes(source.id))
+            : []
+      const history = priorConversation.turns.flatMap((turn) =>
+        turn.messages.map((entry) => ({ role: entry.role, text: entry.content })),
+      )
+      const context: AssistantContext = JSON.parse(
+        JSON.stringify({
+          boardId,
+          command: routedCommand,
+          goal: prompt,
+          history,
+          sources: requestSources,
+          targetFrame:
+            routedCommand === 'fill' || routedCommand === 'expand' ? routedFrame : undefined,
+          targetSection: routedCommand === 'expand' ? routedSection : undefined,
+          targetCard: routedCommand === 'revise' ? routedCard : undefined,
+          replace: routedReplace,
+        }),
+      )
 
       busyRef.current = true
       setBusy(true)
       setSummary(null)
       const controller = new AbortController()
       abort.current = controller
-      assertAssistantContextCurrent(context, { ...propsRef.current.operations.getSnapshot(), sources: propsRef.current.availableSources })
+      assertAssistantContextCurrent(context, {
+        ...propsRef.current.operations.getSnapshot(),
+        sources: propsRef.current.availableSources,
+      })
       const images: AssistantImageAttachment[] = []
       for (const source of requestSources) {
-        if (source.kind !== 'image' && !(source.kind === 'pdf-page' && (!source.body.trim() || includePageImages))) continue
+        if (
+          source.kind !== 'image' &&
+          !(source.kind === 'pdf-page' && (!source.body.trim() || includePageImages))
+        )
+          continue
         const raw = await propsRef.current.loadSourceImage(source)
-        if (!raw) throw new Error(`Could not load the selected image: ${source.source_label ?? source.title}`)
-        images.push({ sourceId: source.id, title: source.source_label ?? source.title, dataUrl: await prepareImageAttachment(raw) })
+        if (!raw)
+          throw new Error(
+            `Could not load the selected image: ${source.source_label ?? source.title}`,
+          )
+        images.push({
+          sourceId: source.id,
+          title: source.source_label ?? source.title,
+          dataUrl: await prepareImageAttachment(raw),
+        })
       }
       context.images = images
       setProgress('Drafting from the selected sources…')
       setStreamSummary('')
-      const stream = new AssistantExplanationStream()
-      const output = await generateNativeAssistant(assistantRequest(context, assistantFrameworks), controller.signal, chunk => {
-        const next = stream.push(chunk)
-        if (next) setStreamSummary(next)
-      })
+      let stream = new AssistantExplanationStream()
+      const plan = await generateValidatedAssistantDraft(
+        assistantRequest(context, assistantFrameworks),
+        controller.signal,
+        (output) => validateAssistantPlan(output, context, assistantFrameworks),
+        (chunk) => {
+          const next = stream.push(chunk)
+          if (next) setStreamSummary(next)
+        },
+        () => {
+          stream = new AssistantExplanationStream()
+          setStreamSummary('')
+          setProgress('The first draft did not pass the board checks. Correcting it once…')
+        },
+      )
       if (controller.signal.aborted) {
         finishTurn(turnId, 'Generation stopped. Your request is kept.')
         return
       }
       setProgress('Checking sections, source links and current writing…')
-      const plan = validateAssistantPlan(output, context, assistantFrameworks)
-      assertAssistantContextCurrent(context, { ...propsRef.current.operations.getSnapshot(), sources: propsRef.current.availableSources })
-      const needsReview = context.command === 'revise' || (context.replace && plan.sections.some(w => assistantSectionText(context.targetFrame!, targetDefinition!.sections.find(s => s.id === w.sectionId)!).trim()))
+      assertAssistantContextCurrent(context, {
+        ...propsRef.current.operations.getSnapshot(),
+        sources: propsRef.current.availableSources,
+      })
+      const needsReview =
+        context.command === 'revise' ||
+        (context.replace &&
+          plan.sections.some((w) =>
+            assistantSectionText(
+              context.targetFrame!,
+              targetDefinition!.sections.find((s) => s.id === w.sectionId)!,
+            ).trim(),
+          ))
       if (needsReview) {
-        finishTurn(turnId, 'I drafted a replacement. Compare it below before anything changes.')
-        setReview({ plan, context, turnId }); setProgress('Compare the writing before replacing it.')
+        finishTurn(
+          turnId,
+          [plan.response, 'I drafted a replacement. Compare it below before anything changes.']
+            .filter(Boolean)
+            .join('\n\n'),
+        )
+        setReview({ plan, context, turnId })
+        setProgress('Compare the writing before replacing it.')
       } else {
         await apply(plan, context, controller.signal)
         const recommended = plan.frameworkRecommendation
-        const recommendedLabel = recommended ? assistantFrameworks.find(item => item.type === recommended.type)?.label : undefined
-        const response = recommended && recommendedLabel
-          ? `Best fit: ${recommendedLabel}\n${recommended.rationale}\n\n${plan.explanation}`
-          : plan.explanation
-        finishTurn(turnId, response)
+        const recommendedLabel = recommended
+          ? assistantFrameworks.find((item) => item.type === recommended.type)?.label
+          : undefined
+        const response =
+          recommended && recommendedLabel
+            ? `Best fit: ${recommendedLabel}\n${recommended.rationale}\n\n${plan.explanation}`
+            : plan.explanation
+        finishTurn(turnId, [plan.response, response].filter(Boolean).join('\n\n'))
       }
     } catch (e) {
       const detail = message(e)
       setProgress('')
       if (turnId) finishTurn(turnId, `I couldn't finish that request. ${detail}`)
-      else { setGoal(prompt); setError(detail) }
+      else {
+        setGoal(prompt)
+        setError(detail)
+      }
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+      abort.current = null
     }
-    finally { busyRef.current = false; setBusy(false); abort.current = null }
   }
 
   const applyReview = async () => {
     if (!review || busyRef.current) return
-    busyRef.current = true; setBusy(true); setError('')
+    busyRef.current = true
+    setBusy(true)
+    setError('')
     setProgress('Saving the reviewed draft…')
     setStreamSummary('')
-    const controller = new AbortController(); abort.current = controller
+    const controller = new AbortController()
+    abort.current = controller
     try {
       await apply(review.plan, review.context, controller.signal)
-      finishTurn(review.turnId, review.plan.explanation)
+      finishTurn(
+        review.turnId,
+        [review.plan.response, review.plan.explanation].filter(Boolean).join('\n\n'),
+      )
+    } catch (e) {
+      setError(message(e))
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+      abort.current = null
     }
-    catch (e) { setError(message(e)) }
-    finally { busyRef.current = false; setBusy(false); abort.current = null }
   }
 
   const applyCommandReview = async () => {
@@ -586,33 +1012,60 @@ export default function BoardAssistantPanel(props: Props) {
         sources: current.availableSources,
       })
       const id = crypto.randomUUID()
-      const effects = buildAssistantCommandEffects(commandReview.plan, commandReview.context, id, current.getOrigin())
+      const effects = buildAssistantCommandEffects(
+        commandReview.plan,
+        commandReview.context,
+        id,
+        current.getOrigin(),
+      )
       const next: AssistantTask = {
         version: 1,
         id,
         boardId,
         status: 'applying',
         createdAt: new Date().toISOString(),
-        effects: { frames: [], cards: effects.cards, sections: effects.sections, revisions: effects.revisions, cardWrites: effects.cardWrites },
+        effects: {
+          frames: [],
+          cards: effects.cards,
+          sections: effects.sections,
+          revisions: effects.revisions,
+          cardWrites: effects.cardWrites,
+        },
       }
       const complete = await applyAssistantTask(next, current.operations, localStorage, setProgress)
       const saved = current.operations.getSnapshot()
-      const changedCardIds = [...new Set([
-        ...complete.effects.revisions.map(write => write.cardId),
-        ...(complete.effects.cardWrites ?? []).map(write => write.cardId),
-        ...saved.cards.filter(card => (card as Card & { ai_task_id?: string }).ai_task_id === complete.id).map(card => card.id),
-      ])]
-      updateLastResult(mergeAssistantConversationResult(conversationRef.current.lastResult, {
-        taskId: complete.id,
-        frameIds: [...new Set(complete.effects.sections.map(write => write.frameId))],
-        cardIds: changedCardIds,
-        createdAt: complete.createdAt,
-      }))
+      const changedCardIds = [
+        ...new Set([
+          ...complete.effects.revisions.map((write) => write.cardId),
+          ...(complete.effects.cardWrites ?? []).map((write) => write.cardId),
+          ...saved.cards
+            .filter((card) => (card as Card & { ai_task_id?: string }).ai_task_id === complete.id)
+            .map((card) => card.id),
+        ]),
+      ]
+      updateLastResult(
+        mergeAssistantConversationResult(conversationRef.current.lastResult, {
+          taskId: complete.id,
+          frameIds: [...new Set(complete.effects.sections.map((write) => write.frameId))],
+          cardIds: changedCardIds,
+          createdAt: complete.createdAt,
+        }),
+      )
       setTask(complete)
       setCommandReview(null)
       current.locate(complete)
-      const answer = commandReview.plan.operations.filter(operation => operation.type === 'answer').map(operation => `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandReview.context.sources.find(source => source.id === id)?.source_label ?? commandReview.context.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}`).join('\n\n')
-      finishTurn(commandReview.turnId, [commandReview.plan.response, answer].filter(Boolean).join('\n\n') || 'Done. The requested board changes are saved as an AI-assisted task; Undo is available.')
+      const answer = commandReview.plan.operations
+        .filter((operation) => operation.type === 'answer')
+        .map(
+          (operation) =>
+            `${operation.text}${operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map((id) => commandReview.context.sources.find((source) => source.id === id)?.source_label ?? commandReview.context.sources.find((source) => source.id === id)?.title ?? id).join('; ')}` : ''}`,
+        )
+        .join('\n\n')
+      finishTurn(
+        commandReview.turnId,
+        [commandReview.plan.response, answer].filter(Boolean).join('\n\n') ||
+          'Done. The requested board changes are saved as an AI-assisted task; Undo is available.',
+      )
       setProgress('Changes saved. Undo is available.')
     } catch (cause) {
       setError(message(cause))
@@ -634,7 +1087,9 @@ export default function BoardAssistantPanel(props: Props) {
 
   const undoTask = async () => {
     if (!task || busyRef.current) return
-    busyRef.current = true; setBusy(true); setError('')
+    busyRef.current = true
+    setBusy(true)
+    setError('')
     setProgress('Restoring the writing from before this task…')
     setStreamSummary('')
     try {
@@ -642,8 +1097,12 @@ export default function BoardAssistantPanel(props: Props) {
       await undoAssistantTask(task, propsRef.current.operations, localStorage)
       const previous = conversationRef.current.lastResult
       if (previous) {
-        const generatedCards = new Set(before.cards.filter(card => (card as Card & { ai_task_id?: string }).ai_task_id === task.id).map(card => card.id))
-        const createdFrames = new Set(task.effects.frames.map(frame => frame.id))
+        const generatedCards = new Set(
+          before.cards
+            .filter((card) => (card as Card & { ai_task_id?: string }).ai_task_id === task.id)
+            .map((card) => card.id),
+        )
+        const createdFrames = new Set(task.effects.frames.map((frame) => frame.id))
         const afterUndo = removeAssistantConversationResultReferences(
           previous,
           { frameIds: [...createdFrames], cardIds: [...generatedCards] },
@@ -652,10 +1111,16 @@ export default function BoardAssistantPanel(props: Props) {
         )
         updateLastResult(afterUndo)
       }
-      propsRef.current.onTaskBoundary(); setTask(null); setProgress('Task undone and saved.'); setSummary(null)
+      propsRef.current.onTaskBoundary()
+      setTask(null)
+      setProgress('Task undone and saved.')
+      setSummary(null)
+    } catch (e) {
+      setError(message(e))
+    } finally {
+      busyRef.current = false
+      setBusy(false)
     }
-    catch (e) { setError(message(e)) }
-    finally { busyRef.current = false; setBusy(false) }
   }
 
   const confirmDelete = async () => {
@@ -665,12 +1130,18 @@ export default function BoardAssistantPanel(props: Props) {
     setError('')
     setProgress('Deleting the confirmed note(s)…')
     try {
-      const currentCards = pendingDelete.refs.map(ref => ({ ref, card: propsRef.current.cards.find(item => item.id === ref.id) }))
+      const currentCards = pendingDelete.refs.map((ref) => ({
+        ref,
+        card: propsRef.current.cards.find((item) => item.id === ref.id),
+      }))
       if (currentCards.some(({ ref, card }) => !card || card.title !== ref.title || card.locked)) {
-        throw new Error('A selected note changed or became locked. Nothing was deleted; send the request again.')
+        throw new Error(
+          'A selected note changed or became locked. Nothing was deleted; send the request again.',
+        )
       }
       const savedTask = readAssistantTask(boardId, localStorage)
-      if (savedTask && savedTask.status !== 'complete') throw new Error('Recover the interrupted assistant task before deleting notes.')
+      if (savedTask && savedTask.status !== 'complete')
+        throw new Error('Recover the interrupted assistant task before deleting notes.')
       if (savedTask) keepAssistantTask(boardId, localStorage)
       setTask(null)
       setSummary(null)
@@ -690,21 +1161,33 @@ export default function BoardAssistantPanel(props: Props) {
       const previous = conversationRef.current.lastResult
       if (previous && deleted.length) {
         try {
-          updateLastResult(removeAssistantConversationResultReferences(
-            previous,
-            { frameIds: [], cardIds: deleted.map(card => card.id) },
-            `delete:${pendingDelete.turnId}`,
-            new Date().toISOString(),
-          ))
-        } catch { /* A stale reference is ignored when routing against current board cards. */ }
+          updateLastResult(
+            removeAssistantConversationResultReferences(
+              previous,
+              { frameIds: [], cardIds: deleted.map((card) => card.id) },
+              `delete:${pendingDelete.turnId}`,
+              new Date().toISOString(),
+            ),
+          )
+        } catch {
+          /* A stale reference is ignored when routing against current board cards. */
+        }
       }
       if (failure) {
-        finishTurn(pendingDelete.turnId, deleted.length
-          ? `Deleted ${deleted.map(card => `“${card.title}”`).join(', ')}. ${message(failure)} Use Undo on the board to restore the deleted note(s).`
-          : `Nothing was deleted. ${message(failure)}`)
-        setProgress(deleted.length ? 'Some notes were deleted. Undo is available on the board.' : '')
+        finishTurn(
+          pendingDelete.turnId,
+          deleted.length
+            ? `Deleted ${deleted.map((card) => `“${card.title}”`).join(', ')}. ${message(failure)} Use Undo on the board to restore the deleted note(s).`
+            : `Nothing was deleted. ${message(failure)}`,
+        )
+        setProgress(
+          deleted.length ? 'Some notes were deleted. Undo is available on the board.' : '',
+        )
       } else {
-        finishTurn(pendingDelete.turnId, `Deleted ${deleted.map(card => `“${card.title}”`).join(', ')}. Use Undo on the board to restore them.`)
+        finishTurn(
+          pendingDelete.turnId,
+          `Deleted ${deleted.map((card) => `“${card.title}”`).join(', ')}. Use Undo on the board to restore them.`,
+        )
         setProgress('Note deletion saved. Undo is available on the board.')
       }
       setPendingDelete(null)
@@ -726,220 +1209,894 @@ export default function BoardAssistantPanel(props: Props) {
     setProgress('')
   }
 
-  return <aside className={`ib-writing-panel ${dark ? 'is-dark' : ''}`} aria-label="Board Assistant" hidden={!open} style={{ display: open ? 'flex' : 'none', background: dark ? colors.surfaceDark : colors.surfaceLight, color: dark ? '#F7F7F2' : colors.ink }}>
-    <PanelStyle dark={dark} />
-    <header className="ib-chat-header">
-      <div className="ib-chat-heading">
-        <Sparkles size={19} color={dark ? colors.markerYellow : colors.markerPurple} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h2 style={{ fontFamily: fonts.display, fontSize: 17, margin: 0 }}>Board Assistant</h2>
-          <div className="ib-chat-board-name" title={props.boardName}>{props.boardName}</div>
-        </div>
-        <button className="ib-panel-small ib-icon-button" onClick={props.onClose} aria-label="Close assistant" title="Close assistant"><X size={16} /></button>
-      </div>
-      <div className="ib-chat-tools">
-        <span className="ib-chat-connection" title={status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'AI provider status'}>
-          <span className={`ib-connection-dot ${status.configured ? 'is-ready' : ''}`} />
-          {!status.available ? 'Open Mac app for AI' : status.configured ? `${status.provider ?? 'AI'} ready` : 'AI not connected'}
-        </span>
-        <button className="ib-panel-small ib-icon-button" onClick={props.onSearch} aria-label="Find source notes" title="Find source notes"><Search size={15} /></button>
-        <button className="ib-panel-small ib-icon-button" disabled={!status.available} onClick={async () => { try { await nativeAIRequest('settings'); await refreshStatus() } catch (e) { setError(message(e)) } }} aria-label="AI settings" title={status.available ? 'AI settings' : 'Open the Mac app for AI settings'}><Settings2 size={15} /></button>
-      </div>
-    </header>
-
-    <div ref={chatThreadRef} className="ib-chat-thread" role="log" aria-label="Assistant conversation" aria-live="polite" onScroll={e => {
-      const thread = e.currentTarget
-      shouldFollowChatRef.current = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 40
-    }}>
-      {!messages.length && <div className="ib-chat-welcome">
-        <span className="ib-chat-welcome-mark"><Sparkles size={18} /></span>
-        <strong>What are we figuring out?</strong>
-        <p>Tell me what you are working on. I can draft the framework, then refine it from your follow-up notes.</p>
-        {!status.available && <div className="ib-chat-notice">Open the installed Mac app to connect an AI provider. Your notes and frameworks still work here.</div>}
-      </div>}
-      {messages.map(item => item.text ? <div key={item.id} className={`ib-chat-row ${item.role === 'user' ? 'is-user' : 'is-assistant'}`}>
-        {item.role === 'assistant' && <span className="ib-chat-avatar"><Sparkles size={12} /></span>}
-        <div className={`ib-chat-bubble ${item.role === 'user' ? 'ib-chat-user-bubble' : 'ib-chat-assistant-bubble'}`}>{item.text}</div>
-      </div> : null)}
-      {busy && <div className="ib-chat-row is-assistant">
-        <span className="ib-chat-avatar"><Sparkles size={12} /></span>
-        <div className="ib-chat-bubble ib-chat-assistant-bubble ib-chat-live" role="status">
-          <span className="ib-chat-live-title"><span className="ib-assistant-activity-dot" aria-hidden="true" />{progress || 'Working…'}</span>
-          {streamSummary && <span className="ib-chat-stream"><strong>Drafting:</strong> {streamSummary}</span>}
-        </div>
-      </div>}
-      {error && !busy && !messages.some(item => item.role === 'assistant' && item.text.includes(error)) && <div role="alert" className="ib-chat-error">{error}</div>}
-      {!busy && progress && <div className="ib-chat-status" role="status">{progress}</div>}
-
-      {review && <section className="ib-chat-result">
-        <h3 style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>Review before replacing</h3>
-        <p style={{ fontSize: 13, margin: 0, lineHeight: 1.55 }}>{review.plan.explanation}</p>
-        {review.plan.sections.map(w => {
-          const def = assistantFrameworks.find(d => d.type === review.context.targetFrame!.type)!
-          const area = def.sections.find(s => s.id === w.sectionId)!
-          return <Comparison key={w.sectionId} label={area.label} before={assistantSectionText(review.context.targetFrame!, area)} after={w.text} />
-        })}
-        {review.plan.revisions.map(w => <Comparison key={w.cardId} label={w.title} before={`${review.context.targetCard!.title}\n\n${review.context.targetCard!.body}`} after={`${w.title}\n\n${w.body}`} />)}
-        <div style={{ fontSize: 12 }}>Applying also creates {review.plan.cards.length} related draft notes.</div>
-        <button className="ib-panel-button" disabled={busy} onClick={applyReview}><Check size={15} /> Apply reviewed task</button>
-        <button className="ib-panel-small" disabled={busy} onClick={() => { finishTurn(review.turnId, 'Draft discarded. Your writing is unchanged.'); setReview(null); setProgress('Draft discarded. Your writing is unchanged.') }}>Discard draft</button>
-      </section>}
-      {commandReview && <section className="ib-chat-result" aria-labelledby="ib-command-review-title">
-        <h3 id="ib-command-review-title" style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>Review board changes</h3>
-        {commandReview.plan.response && <p style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>{commandReview.plan.response}</p>}
-        {commandReview.plan.operations.map((operation, index) => {
-          const note = 'cardId' in operation ? commandReview.context.cards.find(card => card.id === operation.cardId) : undefined
-          const noteNames = 'cardIds' in operation
-            ? operation.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note')
-            : operation.type === 'group_notes' ? operation.groups.flatMap(group => group.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note')) : []
-          return <div key={`${operation.type}:${index}`} style={{ display: 'grid', gap: 7, paddingTop: 8, borderTop: '1px solid #A5ABBA' }}>
-            <strong style={{ fontSize: 12 }}>{assistantCommandOperationTitle(operation, note?.title, noteNames)}</strong>
-            {operation.type === 'answer' && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.text}{operation.sourceIds.length ? `\n\nSources: ${operation.sourceIds.map(id => commandReview.context.sources.find(source => source.id === id)?.source_label ?? commandReview.context.sources.find(source => source.id === id)?.title ?? id).join('; ')}` : ''}</p>}
-            {operation.type === 'create_note' && <pre style={{ margin: 0 }}>{operation.body || '(Empty note)'}</pre>}
-            {operation.type === 'revise_note' && note && <Comparison label="Note writing" before={`${note.title}\n\n${note.body}`} after={`${operation.title}\n\n${operation.body}`} />}
-            {operation.type === 'highlight_text' && note && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.mode === 'remove' ? 'Remove the highlight from' : 'Highlight'} <mark style={{ background: operation.mode === 'remove' ? 'transparent' : NOTE_HIGHLIGHT_SWATCHES[operation.color], color: operation.mode === 'remove' ? 'inherit' : '#172038' }}>{operation.exactQuote}</mark> in {note.title}.</p>}
-            {operation.type === 'highlight_section' && <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.mode === 'remove' ? 'Remove the mark from' : 'Highlight'} <mark style={{ background: operation.mode === 'remove' ? 'transparent' : NOTE_HIGHLIGHT_SWATCHES[operation.color], color: operation.mode === 'remove' ? 'inherit' : '#172038' }}>{operation.exactQuote}</mark> in the {operation.sectionId} section.</p>}
-            {operation.type === 'group_notes' && <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{operation.groups.map(group => <li key={group.label}>{group.label}: {group.cardIds.map(id => commandReview.context.cards.find(card => card.id === id)?.title ?? 'Note').join(', ')}</li>)}</ul>}
-            {operation.type === 'update_note' && note && <>
-              {(operation.changes.title !== undefined || operation.changes.body !== undefined) && <Comparison label="Note writing" before={`${note.title}\n\n${note.body}`} after={`${operation.changes.title ?? note.title}\n\n${operation.changes.body ?? note.body}`} />}
-              <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>{Object.entries(operation.changes).filter(([key]) => key !== 'title' && key !== 'body').map(([key, value]) => <li key={key}>{assistantCommandChangeLabel(key)}: {assistantCommandChangeValue(key, value)}</li>)}</ul>
-            </>}
+  return (
+    <aside
+      className={`ib-writing-panel ${dark ? 'is-dark' : ''}`}
+      aria-label="Board Assistant"
+      hidden={!open}
+      style={{
+        display: open ? 'flex' : 'none',
+        background: dark ? colors.surfaceDark : colors.surfaceLight,
+        color: dark ? '#F7F7F2' : colors.ink,
+      }}
+    >
+      <PanelStyle dark={dark} />
+      <header className="ib-chat-header">
+        <div className="ib-chat-heading">
+          <Sparkles size={19} color={dark ? colors.markerYellow : colors.markerPurple} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h2 style={{ fontFamily: fonts.display, fontSize: 17, margin: 0 }}>Board Assistant</h2>
+            <div className="ib-chat-board-name" title={props.boardName}>
+              {props.boardName}
+            </div>
           </div>
-        })}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="ib-panel-small" disabled={busy} onClick={discardCommandReview}><X size={14} /> Discard</button>
-          <button type="button" className="ib-panel-button" disabled={busy} onClick={() => void applyCommandReview()}><Check size={14} /> Apply changes</button>
+          <button
+            className="ib-panel-small ib-icon-button"
+            onClick={props.onClose}
+            aria-label="Close assistant"
+            title="Close assistant"
+          >
+            <X size={16} />
+          </button>
         </div>
-      </section>}
-      {pendingDelete && <section className="ib-chat-result" aria-labelledby="ib-delete-confirm-title">
-        <h3 id="ib-delete-confirm-title" style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>Delete these notes?</h3>
-        <ul>{pendingDelete.refs.map(ref => <li key={ref.id}>{ref.title}</li>)}</ul>
-        <p style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>This removes the selected notes from the board. You can restore them with Undo on the board.</p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="ib-panel-small" disabled={busy} onClick={cancelDelete}><X size={14} /> Keep notes</button>
-          <button type="button" className="ib-panel-button" style={{ background: colors.markerCoral }} disabled={busy} onClick={() => void confirmDelete()}><Trash2 size={14} /> Delete {pendingDelete.refs.length === 1 ? 'note' : `${pendingDelete.refs.length} notes`}</button>
+        <div className="ib-chat-tools">
+          <span
+            className="ib-chat-connection"
+            title={
+              status.configured
+                ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}`
+                : 'AI provider status'
+            }
+          >
+            <span className={`ib-connection-dot ${status.configured ? 'is-ready' : ''}`} />
+            {!status.available
+              ? 'Open Mac app for AI'
+              : status.configured
+                ? `${status.provider ?? 'AI'} ready`
+                : 'AI not connected'}
+          </span>
+          <button
+            className="ib-panel-small ib-icon-button"
+            onClick={props.onSearch}
+            aria-label="Find source notes"
+            title="Find source notes"
+          >
+            <Search size={15} />
+          </button>
+          <button
+            className="ib-panel-small ib-icon-button"
+            disabled={!status.available}
+            onClick={async () => {
+              try {
+                await nativeAIRequest('settings')
+                await refreshStatus()
+              } catch (e) {
+                setError(message(e))
+              }
+            }}
+            aria-label="AI settings"
+            title={status.available ? 'AI settings' : 'Open the Mac app for AI settings'}
+          >
+            <Settings2 size={15} />
+          </button>
         </div>
-      </section>}
-      {summary && summary.assumptions.length > 0 && <section className="ib-chat-result">
-        <strong>Assumptions / open questions</strong>
-        <ul>{summary.assumptions.map((a, i) => <li key={i}>{a}</li>)}</ul>
-      </section>}
-      {frameworkReview && <section className="ib-chat-result" aria-labelledby="ib-custom-framework-title">
-        <h3 id="ib-custom-framework-title" style={{ margin: 0, fontSize: 15 }}>Custom framework draft</h3>
-        <strong>{frameworkReview.template.label}</strong>
-        <FrameworkLayoutPreview template={frameworkReview.template} dark={dark} />
-        <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>Review the structure and writing questions. Your board stays unchanged until you save and add it.</p>
-        <button type="button" className="ib-panel-button" disabled={busy} onClick={() => props.onReviewFrameworkDesign(frameworkReview)}>Edit &amp; save framework</button>
-        <button type="button" className="ib-panel-small" disabled={busy} onClick={() => {
-          try { discardAssistantFrameworkDesign(boardId, frameworkReview.template.id); setFrameworkReview(null); setProgress('Framework draft discarded. Your board is unchanged.') }
-          catch (cause) { setError(message(cause)) }
-        }}>Discard framework draft</button>
-      </section>}
-      {task && <section className="ib-chat-result">
-        <strong style={{ fontSize: 14 }}>{task.status === 'complete' ? 'Latest board change' : 'Interrupted task'}</strong>
-        <span style={{ fontSize: 12, lineHeight: 1.5 }}>{task.status === 'complete' ? 'Your chat can continue. Undo reverses this change if its writing has not been edited since.' : 'Some drafts may have been saved. Undo restores the previous writing, or keep the partial result.'}</span>
-        <button className="ib-panel-small" onClick={() => props.locate(task)}>Show on board</button>
-        <button className="ib-panel-small" disabled={busy} onClick={undoTask}><Undo2 size={14} /> Undo latest change</button>
-        {task.status !== 'complete' && <button className="ib-panel-button" disabled={busy} onClick={() => { try { keepAssistantTask(boardId, localStorage); setTask(null); setProgress('Partial drafts kept. You can continue chatting.') } catch (e) { setError(message(e)) } }}>Keep partial work</button>}
-      </section>}
-      <div ref={chatEndRef} />
-    </div>
+      </header>
 
-    <form className="ib-chat-composer" onSubmit={e => { e.preventDefault(); if (!busy) void generate() }}>
-      {contextOpen && <div className="ib-chat-context" role="group" aria-label="Task and context settings">
-        <div className="ib-chat-context-head"><strong>Context</strong><span>Choose a task mode or select source material</span></div>
-        <label>Task
-          <select className="ib-panel-control" value={command} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => { setCommand(e.target.value as AssistantCommand | 'auto'); setReplace(false) }}>
-            {commands.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-          </select>
-          <span className="ib-context-help">{commands.find(c => c.id === command)!.help}</span>
-        </label>
-        <label>Source material
-          <select className="ib-panel-control" value={scope} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => setScope(e.target.value as typeof scope)}>
-            <option value="selected">Selected sources ({sourceSelection.length})</option>
-            <option value="board">All board sources ({props.availableSources.length})</option>
-            <option value="goal">Goal only</option>
-          </select>
-        </label>
-        <div className="ib-context-sources">
-          {props.availableSources.length > 0 && <div className="ib-source-list" style={{ maxHeight: 170 }}>
-            {props.availableSources.map(source => <div key={source.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <input type="checkbox" aria-label={`Include ${source.source_label ?? source.title}`} checked={sources.some(selected => selected.id === source.id)} disabled={scope === 'board' || busy || !!review || !!commandReview} onChange={event => setSourceSelection(current => event.target.checked ? [...new Set([...current, source.id])] : current.filter(id => id !== source.id))} />
-              <button type="button" className="ib-panel-small" style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${sourceTypeName(source.kind)} · ${source.source_label ?? source.title}`} onClick={() => {
-                if (source.kind === 'markdown' || source.kind === 'text') setPreviewSourceId(current => current === source.id ? null : source.id)
-                else props.onLocateSource(source)
-              }}>{source.source_label ?? source.title}</button>
-              {status.available && (source.kind === 'image' || source.kind === 'pdf-page') && !source.body.trim() && <button type="button" className="ib-panel-small" title="Extract text on this Mac" aria-label={`Extract text from ${source.title}`} disabled={busy || !!commandReview} onClick={() => void props.onExtractSourceText(source)}><Search size={13} /></button>}
-              {(source.kind === 'markdown' || source.kind === 'text') && <button type="button" className="ib-panel-small" title="Remove imported source" aria-label={`Remove ${source.title}`} disabled={busy || !!commandReview} onClick={() => void props.onRemoveSource(source).then(() => setSourceSelection(current => current.filter(id => id !== source.id))).catch(error => setError(message(error)))}><X size={13} /></button>}
-            </div>)}
-          </div>}
-          {previewSourceId && props.availableSources.find(source => source.id === previewSourceId) && <div style={{ maxHeight: 110, overflow: 'auto', padding: 8, border: '1px solid #8891A4', borderRadius: 6, fontSize: 10, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{props.availableSources.find(source => source.id === previewSourceId)!.body.slice(0, 3000)}</div>}
-          <button type="button" className="ib-panel-small" onClick={() => sourceFileInputRef.current?.click()} disabled={busy || !!commandReview}><FileUp size={13} /> Add PDF, image, Markdown, or text</button>
-          <input ref={sourceFileInputRef} hidden type="file" multiple accept=".pdf,.md,.markdown,.txt,image/png,image/jpeg,image/webp" onChange={event => {
-            const files = Array.from(event.currentTarget.files ?? [])
-            event.currentTarget.value = ''
-            if (files.length) void props.onImportFiles(files).then(imported => setSourceSelection(current => [...new Set([...current, ...imported.map(source => source.id)])])).catch(error => setError(message(error)))
-          }} />
-          {sources.length ? <strong>{sources.length} source{sources.length === 1 ? '' : 's'} selected</strong> : <span>Only your prompt will be used. Unknown facts stay assumptions or questions.</span>}
-          <span className="ib-context-help">Text and searchable PDF pages can be sent as text. Images are sent only when selected. Scanned pages can be read with on-device OCR.</span>
+      <div
+        ref={chatThreadRef}
+        className="ib-chat-thread"
+        role="log"
+        aria-label="Assistant conversation"
+        aria-live="polite"
+        onScroll={(e) => {
+          const thread = e.currentTarget
+          shouldFollowChatRef.current =
+            thread.scrollHeight - thread.scrollTop - thread.clientHeight < 40
+        }}
+      >
+        {!messages.length && (
+          <div className="ib-chat-welcome">
+            <span className="ib-chat-welcome-mark">
+              <Sparkles size={18} />
+            </span>
+            <strong>What are we figuring out?</strong>
+            <p>
+              Tell me what you are working on. I can draft the framework, then refine it from your
+              follow-up notes.
+            </p>
+            {!status.available && (
+              <div className="ib-chat-notice">
+                Open the installed Mac app to connect an AI provider. Your notes and frameworks
+                still work here.
+              </div>
+            )}
+          </div>
+        )}
+        {messages.map((item) =>
+          item.text ? (
+            <div
+              key={item.id}
+              className={`ib-chat-row ${item.role === 'user' ? 'is-user' : 'is-assistant'}`}
+            >
+              {item.role === 'assistant' && (
+                <span className="ib-chat-avatar">
+                  <Sparkles size={12} />
+                </span>
+              )}
+              <div
+                className={`ib-chat-bubble ${item.role === 'user' ? 'ib-chat-user-bubble' : 'ib-chat-assistant-bubble'}`}
+              >
+                {item.text}
+              </div>
+            </div>
+          ) : null,
+        )}
+        {busy && (
+          <div className="ib-chat-row is-assistant">
+            <span className="ib-chat-avatar">
+              <Sparkles size={12} />
+            </span>
+            <div className="ib-chat-bubble ib-chat-assistant-bubble ib-chat-live" role="status">
+              <span className="ib-chat-live-title">
+                <span className="ib-assistant-activity-dot" aria-hidden="true" />
+                {progress || 'Working…'}
+              </span>
+              {streamSummary && (
+                <span className="ib-chat-stream">
+                  <strong>Drafting:</strong> {streamSummary}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {error &&
+          !busy &&
+          !messages.some((item) => item.role === 'assistant' && item.text.includes(error)) && (
+            <div role="alert" className="ib-chat-error">
+              {error}
+            </div>
+          )}
+        {!busy && progress && (
+          <div className="ib-chat-status" role="status">
+            {progress}
+          </div>
+        )}
+
+        {review && (
+          <section className="ib-chat-result">
+            <h3 style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}>
+              Review before replacing
+            </h3>
+            <p style={{ fontSize: 13, margin: 0, lineHeight: 1.55 }}>{review.plan.explanation}</p>
+            {review.plan.sections.map((w) => {
+              const def = assistantFrameworks.find(
+                (d) => d.type === review.context.targetFrame!.type,
+              )!
+              const area = def.sections.find((s) => s.id === w.sectionId)!
+              return (
+                <Comparison
+                  key={w.sectionId}
+                  label={area.label}
+                  before={assistantSectionText(review.context.targetFrame!, area)}
+                  after={w.text}
+                />
+              )
+            })}
+            {review.plan.revisions.map((w) => (
+              <Comparison
+                key={w.cardId}
+                label={w.title}
+                before={`${review.context.targetCard!.title}\n\n${review.context.targetCard!.body}`}
+                after={`${w.title}\n\n${w.body}`}
+              />
+            ))}
+            <div style={{ fontSize: 12 }}>
+              Applying also creates {review.plan.cards.length} related draft notes.
+            </div>
+            <button className="ib-panel-button" disabled={busy} onClick={applyReview}>
+              <Check size={15} /> Apply reviewed task
+            </button>
+            <button
+              className="ib-panel-small"
+              disabled={busy}
+              onClick={() => {
+                finishTurn(review.turnId, 'Draft discarded. Your writing is unchanged.')
+                setReview(null)
+                setProgress('Draft discarded. Your writing is unchanged.')
+              }}
+            >
+              Discard draft
+            </button>
+          </section>
+        )}
+        {commandReview && (
+          <section className="ib-chat-result" aria-labelledby="ib-command-review-title">
+            <h3
+              id="ib-command-review-title"
+              style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}
+            >
+              Review board changes
+            </h3>
+            {commandReview.plan.response && (
+              <p style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+                {commandReview.plan.response}
+              </p>
+            )}
+            {commandReview.plan.operations.map((operation, index) => {
+              const note =
+                'cardId' in operation
+                  ? commandReview.context.cards.find((card) => card.id === operation.cardId)
+                  : undefined
+              const noteNames =
+                'cardIds' in operation
+                  ? operation.cardIds.map(
+                      (id) =>
+                        commandReview.context.cards.find((card) => card.id === id)?.title ?? 'Note',
+                    )
+                  : operation.type === 'group_notes'
+                    ? operation.groups.flatMap((group) =>
+                        group.cardIds.map(
+                          (id) =>
+                            commandReview.context.cards.find((card) => card.id === id)?.title ??
+                            'Note',
+                        ),
+                      )
+                    : []
+              return (
+                <div
+                  key={`${operation.type}:${index}`}
+                  style={{ display: 'grid', gap: 7, paddingTop: 8, borderTop: '1px solid #A5ABBA' }}
+                >
+                  <strong style={{ fontSize: 12 }}>
+                    {assistantCommandOperationTitle(operation, note?.title, noteNames)}
+                  </strong>
+                  {operation.type === 'answer' && (
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                      {operation.text}
+                      {operation.sourceIds.length
+                        ? `\n\nSources: ${operation.sourceIds.map((id) => commandReview.context.sources.find((source) => source.id === id)?.source_label ?? commandReview.context.sources.find((source) => source.id === id)?.title ?? id).join('; ')}`
+                        : ''}
+                    </p>
+                  )}
+                  {operation.type === 'create_note' && (
+                    <pre style={{ margin: 0 }}>{operation.body || '(Empty note)'}</pre>
+                  )}
+                  {operation.type === 'revise_note' && note && (
+                    <Comparison
+                      label="Note writing"
+                      before={`${note.title}\n\n${note.body}`}
+                      after={`${operation.title}\n\n${operation.body}`}
+                    />
+                  )}
+                  {operation.type === 'highlight_text' && note && (
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                      {operation.mode === 'remove' ? 'Remove the highlight from' : 'Highlight'}{' '}
+                      <mark
+                        style={{
+                          background:
+                            operation.mode === 'remove'
+                              ? 'transparent'
+                              : NOTE_HIGHLIGHT_SWATCHES[operation.color],
+                          color: operation.mode === 'remove' ? 'inherit' : '#172038',
+                        }}
+                      >
+                        {operation.exactQuote}
+                      </mark>{' '}
+                      in {note.title}.
+                    </p>
+                  )}
+                  {operation.type === 'highlight_section' && (
+                    <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                      {operation.mode === 'remove' ? 'Remove the mark from' : 'Highlight'}{' '}
+                      <mark
+                        style={{
+                          background:
+                            operation.mode === 'remove'
+                              ? 'transparent'
+                              : NOTE_HIGHLIGHT_SWATCHES[operation.color],
+                          color: operation.mode === 'remove' ? 'inherit' : '#172038',
+                        }}
+                      >
+                        {operation.exactQuote}
+                      </mark>{' '}
+                      in the {operation.sectionId} section.
+                    </p>
+                  )}
+                  {operation.type === 'group_notes' && (
+                    <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                      {operation.groups.map((group) => (
+                        <li key={group.label}>
+                          {group.label}:{' '}
+                          {group.cardIds
+                            .map(
+                              (id) =>
+                                commandReview.context.cards.find((card) => card.id === id)?.title ??
+                                'Note',
+                            )
+                            .join(', ')}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {operation.type === 'update_note' && note && (
+                    <>
+                      {(operation.changes.title !== undefined ||
+                        operation.changes.body !== undefined) && (
+                        <Comparison
+                          label="Note writing"
+                          before={`${note.title}\n\n${note.body}`}
+                          after={`${operation.changes.title ?? note.title}\n\n${operation.changes.body ?? note.body}`}
+                        />
+                      )}
+                      <ul style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                        {Object.entries(operation.changes)
+                          .filter(([key]) => key !== 'title' && key !== 'body')
+                          .map(([key, value]) => (
+                            <li key={key}>
+                              {assistantCommandChangeLabel(key)}:{' '}
+                              {assistantCommandChangeValue(key, value)}
+                            </li>
+                          ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                className="ib-panel-small"
+                disabled={busy}
+                onClick={discardCommandReview}
+              >
+                <X size={14} /> Discard
+              </button>
+              <button
+                type="button"
+                className="ib-panel-button"
+                disabled={busy}
+                onClick={() => void applyCommandReview()}
+              >
+                <Check size={14} /> Apply changes
+              </button>
+            </div>
+          </section>
+        )}
+        {pendingDelete && (
+          <section className="ib-chat-result" aria-labelledby="ib-delete-confirm-title">
+            <h3
+              id="ib-delete-confirm-title"
+              style={{ fontFamily: fonts.display, margin: 0, fontSize: 15 }}
+            >
+              Delete these notes?
+            </h3>
+            <ul>
+              {pendingDelete.refs.map((ref) => (
+                <li key={ref.id}>{ref.title}</li>
+              ))}
+            </ul>
+            <p style={{ fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+              This removes the selected notes from the board. You can restore them with Undo on the
+              board.
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                className="ib-panel-small"
+                disabled={busy}
+                onClick={cancelDelete}
+              >
+                <X size={14} /> Keep notes
+              </button>
+              <button
+                type="button"
+                className="ib-panel-button"
+                style={{ background: colors.markerCoral }}
+                disabled={busy}
+                onClick={() => void confirmDelete()}
+              >
+                <Trash2 size={14} /> Delete{' '}
+                {pendingDelete.refs.length === 1 ? 'note' : `${pendingDelete.refs.length} notes`}
+              </button>
+            </div>
+          </section>
+        )}
+        {summary && summary.assumptions.length > 0 && (
+          <section className="ib-chat-result">
+            <strong>Assumptions / open questions</strong>
+            <ul>
+              {summary.assumptions.map((a, i) => (
+                <li key={i}>{a}</li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {frameworkReview && (
+          <section className="ib-chat-result" aria-labelledby="ib-custom-framework-title">
+            <h3 id="ib-custom-framework-title" style={{ margin: 0, fontSize: 15 }}>
+              Custom framework draft
+            </h3>
+            <strong>{frameworkReview.template.label}</strong>
+            <FrameworkLayoutPreview template={frameworkReview.template} dark={dark} />
+            <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+              Review the structure and writing questions. Your board stays unchanged until you save
+              and add it.
+            </p>
+            <button
+              type="button"
+              className="ib-panel-button"
+              disabled={busy}
+              onClick={() => props.onReviewFrameworkDesign(frameworkReview)}
+            >
+              Edit &amp; save framework
+            </button>
+            <button
+              type="button"
+              className="ib-panel-small"
+              disabled={busy}
+              onClick={() => {
+                try {
+                  discardAssistantFrameworkDesign(boardId, frameworkReview.template.id)
+                  setFrameworkReview(null)
+                  setProgress('Framework draft discarded. Your board is unchanged.')
+                } catch (cause) {
+                  setError(message(cause))
+                }
+              }}
+            >
+              Discard framework draft
+            </button>
+          </section>
+        )}
+        {task && (
+          <section className="ib-chat-result">
+            <strong style={{ fontSize: 14 }}>
+              {task.status === 'complete' ? 'Latest board change' : 'Interrupted task'}
+            </strong>
+            <span style={{ fontSize: 12, lineHeight: 1.5 }}>
+              {task.status === 'complete'
+                ? 'Your chat can continue. Undo reverses this change if its writing has not been edited since.'
+                : 'Some drafts may have been saved. Undo restores the previous writing, or keep the partial result.'}
+            </span>
+            <button className="ib-panel-small" onClick={() => props.locate(task)}>
+              Show on board
+            </button>
+            <button className="ib-panel-small" disabled={busy} onClick={undoTask}>
+              <Undo2 size={14} /> Undo latest change
+            </button>
+            {task.status !== 'complete' && (
+              <button
+                className="ib-panel-button"
+                disabled={busy}
+                onClick={() => {
+                  try {
+                    keepAssistantTask(boardId, localStorage)
+                    setTask(null)
+                    setProgress('Partial drafts kept. You can continue chatting.')
+                  } catch (e) {
+                    setError(message(e))
+                  }
+                }}
+              >
+                Keep partial work
+              </button>
+            )}
+          </section>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      <form
+        className="ib-chat-composer"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (!busy) void generate()
+        }}
+      >
+        {contextOpen && (
+          <div className="ib-chat-context" role="group" aria-label="Task and context settings">
+            <div className="ib-chat-context-head">
+              <strong>Context</strong>
+              <span>Choose a task mode or select source material</span>
+            </div>
+            <label>
+              Task
+              <select
+                className="ib-panel-control"
+                value={command}
+                disabled={busy || !!review || !!commandReview || blockedByTask}
+                onChange={(e) => {
+                  setCommand(e.target.value as AssistantTaskMode)
+                  setReplace(false)
+                }}
+              >
+                {commands.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <span className="ib-context-help">
+                {commands.find((c) => c.id === command)!.help}
+              </span>
+            </label>
+            <label>
+              Source material
+              <select
+                className="ib-panel-control"
+                value={scope}
+                disabled={busy || !!review || !!commandReview || blockedByTask}
+                onChange={(e) => setScope(e.target.value as typeof scope)}
+              >
+                <option value="selected">Selected sources ({sourceSelection.length})</option>
+                <option value="board">All board sources ({props.availableSources.length})</option>
+                <option value="goal">Goal only</option>
+              </select>
+            </label>
+            <div className="ib-context-sources">
+              {props.availableSources.length > 0 && (
+                <div className="ib-source-list" style={{ maxHeight: 170 }}>
+                  {props.availableSources.map((source) => (
+                    <div key={source.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Include ${source.source_label ?? source.title}`}
+                        checked={sources.some((selected) => selected.id === source.id)}
+                        disabled={scope === 'board' || busy || !!review || !!commandReview}
+                        onChange={(event) =>
+                          setSourceSelection((current) =>
+                            event.target.checked
+                              ? [...new Set([...current, source.id])]
+                              : current.filter((id) => id !== source.id),
+                          )
+                        }
+                      />
+                      <button
+                        type="button"
+                        className="ib-panel-small"
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={`${sourceTypeName(source.kind)} · ${source.source_label ?? source.title}`}
+                        onClick={() => {
+                          if (source.kind === 'markdown' || source.kind === 'text')
+                            setPreviewSourceId((current) =>
+                              current === source.id ? null : source.id,
+                            )
+                          else props.onLocateSource(source)
+                        }}
+                      >
+                        {source.source_label ?? source.title}
+                      </button>
+                      {status.available &&
+                        (source.kind === 'image' || source.kind === 'pdf-page') &&
+                        !source.body.trim() && (
+                          <button
+                            type="button"
+                            className="ib-panel-small"
+                            title="Extract text on this Mac"
+                            aria-label={`Extract text from ${source.title}`}
+                            disabled={busy || !!commandReview}
+                            onClick={() => void props.onExtractSourceText(source)}
+                          >
+                            <Search size={13} />
+                          </button>
+                        )}
+                      {(source.kind === 'markdown' || source.kind === 'text') && (
+                        <button
+                          type="button"
+                          className="ib-panel-small"
+                          title="Remove imported source"
+                          aria-label={`Remove ${source.title}`}
+                          disabled={busy || !!commandReview}
+                          onClick={() =>
+                            void props
+                              .onRemoveSource(source)
+                              .then(() =>
+                                setSourceSelection((current) =>
+                                  current.filter((id) => id !== source.id),
+                                ),
+                              )
+                              .catch((error) => setError(message(error)))
+                          }
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {previewSourceId &&
+                props.availableSources.find((source) => source.id === previewSourceId) && (
+                  <div
+                    style={{
+                      maxHeight: 110,
+                      overflow: 'auto',
+                      padding: 8,
+                      border: '1px solid #8891A4',
+                      borderRadius: 6,
+                      fontSize: 10,
+                      lineHeight: 1.5,
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {props.availableSources
+                      .find((source) => source.id === previewSourceId)!
+                      .body.slice(0, 3000)}
+                  </div>
+                )}
+              <button
+                type="button"
+                className="ib-panel-small"
+                onClick={() => sourceFileInputRef.current?.click()}
+                disabled={busy || !!commandReview}
+              >
+                <FileUp size={13} /> Add PDF, image, Markdown, or text
+              </button>
+              <input
+                ref={sourceFileInputRef}
+                hidden
+                type="file"
+                multiple
+                accept=".pdf,.md,.markdown,.txt,image/png,image/jpeg,image/webp"
+                onChange={(event) => {
+                  const files = Array.from(event.currentTarget.files ?? [])
+                  event.currentTarget.value = ''
+                  if (files.length)
+                    void props
+                      .onImportFiles(files)
+                      .then((imported) =>
+                        setSourceSelection((current) => [
+                          ...new Set([...current, ...imported.map((source) => source.id)]),
+                        ]),
+                      )
+                      .catch((error) => setError(message(error)))
+                }}
+              />
+              {sources.length ? (
+                <strong>
+                  {sources.length} source{sources.length === 1 ? '' : 's'} selected
+                </strong>
+              ) : (
+                <span>
+                  Only your prompt will be used. Unknown facts stay assumptions or questions.
+                </span>
+              )}
+              <span className="ib-context-help">
+                Text and searchable PDF pages can be sent as text. Images are sent only when
+                selected. Scanned pages can be read with on-device OCR.
+              </span>
+            </div>
+            {sources.some((source) => source.kind === 'pdf-page' && source.body.trim()) && (
+              <label className="ib-context-check">
+                <input
+                  type="checkbox"
+                  checked={includePageImages}
+                  disabled={busy || !!review || !!commandReview}
+                  onChange={(event) => setIncludePageImages(event.target.checked)}
+                />{' '}
+                Also send selected PDF page images for visual details
+              </label>
+            )}
+            {needsFrame && (
+              <label>
+                Framework
+                <select
+                  className="ib-panel-control"
+                  value={frameId}
+                  disabled={busy || !!review || !!commandReview}
+                  onChange={(e) => setFrameId(e.target.value)}
+                >
+                  <option value="">Select a framework</option>
+                  {frames
+                    .filter((f) => assistantFrameworks.some((d) => d.type === f.type))
+                    .map((f) => (
+                      <option key={f.id} value={f.id}>
+                        {f.name || getFrameworkLabel(f.type, f.customFramework)}
+                      </option>
+                    ))}
+                </select>
+                <span className="ib-context-help">Its current writing is included as context.</span>
+              </label>
+            )}
+            {command === 'expand' && definition && (
+              <label>
+                Section
+                <select
+                  className="ib-panel-control"
+                  value={currentSectionId}
+                  disabled={busy || !!review || !!commandReview}
+                  onChange={(e) => setSectionId(e.target.value)}
+                >
+                  {definition.sections.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {command === 'revise' && (
+              <label>
+                Note to revise
+                <select
+                  className="ib-panel-control"
+                  value={noteId}
+                  disabled={busy || !!review || !!commandReview}
+                  onChange={(e) => setNoteId(e.target.value)}
+                >
+                  <option value="">Select a note</option>
+                  {cards.map((c) => (
+                    <option key={c.id} value={c.id} disabled={c.locked}>
+                      {c.title}
+                      {c.locked ? ' (locked)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <span className="ib-context-help">Locked notes cannot be revised.</span>
+              </label>
+            )}
+            {needsFrame && (
+              <label className="ib-context-check">
+                <input
+                  type="checkbox"
+                  checked={replace}
+                  disabled={busy || !!review || !!commandReview || blockedByTask}
+                  onChange={(e) => setReplace(e.target.checked)}
+                />{' '}
+                Suggest replacements with a comparison
+              </label>
+            )}
+            {status.available && (
+              <button type="button" className="ib-panel-small" onClick={refreshStatus}>
+                Check AI connection
+              </button>
+            )}
+          </div>
+        )}
+        <div className="ib-chat-composer-tools">
+          <button
+            type="button"
+            className="ib-panel-small ib-context-toggle"
+            aria-expanded={contextOpen}
+            onClick={() => setContextOpen((value) => !value)}
+            disabled={busy || !!review || !!commandReview || blockedByTask}
+          >
+            <Paperclip size={14} />{' '}
+            {sources.length
+              ? `${sources.length} source${sources.length === 1 ? '' : 's'}`
+              : 'Add context'}{' '}
+            <ChevronDown size={13} />
+          </button>
+          {!status.available && <span className="ib-composer-hint">Mac app required for AI</span>}
         </div>
-        {sources.some(source => source.kind === 'pdf-page' && source.body.trim()) && <label className="ib-context-check"><input type="checkbox" checked={includePageImages} disabled={busy || !!review || !!commandReview} onChange={event => setIncludePageImages(event.target.checked)} /> Also send selected PDF page images for visual details</label>}
-        {needsFrame && <label>Framework
-          <select className="ib-panel-control" value={frameId} disabled={busy || !!review || !!commandReview} onChange={e => setFrameId(e.target.value)}>
-            <option value="">Select a framework</option>
-            {frames.filter(f => assistantFrameworks.some(d => d.type === f.type)).map(f => <option key={f.id} value={f.id}>{f.name || getFrameworkLabel(f.type, f.customFramework)}</option>)}
-          </select>
-          <span className="ib-context-help">Its current writing is included as context.</span>
-        </label>}
-        {command === 'expand' && definition && <label>Section
-          <select className="ib-panel-control" value={currentSectionId} disabled={busy || !!review || !!commandReview} onChange={e => setSectionId(e.target.value)}>{definition.sections.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}</select>
-        </label>}
-        {command === 'revise' && <label>Note to revise
-          <select className="ib-panel-control" value={noteId} disabled={busy || !!review || !!commandReview} onChange={e => setNoteId(e.target.value)}>
-            <option value="">Select a note</option>
-            {cards.map(c => <option key={c.id} value={c.id} disabled={c.locked}>{c.title}{c.locked ? ' (locked)' : ''}</option>)}
-          </select>
-          <span className="ib-context-help">Locked notes cannot be revised.</span>
-        </label>}
-        {needsFrame && <label className="ib-context-check"><input type="checkbox" checked={replace} disabled={busy || !!review || !!commandReview || blockedByTask} onChange={e => setReplace(e.target.checked)} /> Suggest replacements with a comparison</label>}
-        {status.available && <button type="button" className="ib-panel-small" onClick={refreshStatus}>Check AI connection</button>}
-      </div>}
-      <div className="ib-chat-composer-tools">
-          <button type="button" className="ib-panel-small ib-context-toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(value => !value)} disabled={busy || !!review || !!commandReview || blockedByTask}>
-          <Paperclip size={14} /> {sources.length ? `${sources.length} source${sources.length === 1 ? '' : 's'}` : 'Add context'} <ChevronDown size={13} />
-        </button>
-        {!status.available && <span className="ib-composer-hint">Mac app required for AI</span>}
-      </div>
-      <textarea className="ib-chat-input" aria-label="Message Board Assistant" rows={2} value={goal} maxLength={ASSISTANT_LIMITS.goal} disabled={busy || !!review || !!commandReview || !!frameworkReview || !!pendingDelete || blockedByTask} onChange={e => setGoal(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!busy) void generate() } }} placeholder={frameworkReview ? 'Review, save, or discard the framework draft to continue…' : status.available ? 'Describe what you want to create or change…' : 'Connect AI in Mac settings for AI writing'} />
-      {status.configured && <span className="ib-context-help">AI requests share your message, recent chat, selected sources, and target writing with your configured provider.</span>}
-      <div className="ib-chat-composer-bottom">
-        <span className="ib-composer-hint">{status.configured ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}` : 'Your notes stay editable'}</span>
-        {busy ? <button type="button" className="ib-panel-small ib-stop-button" onClick={() => abort.current?.abort()}><Square size={13} /> Stop</button> : <button type="submit" className="ib-send-button" aria-label="Send message" title="Send message" disabled={!canSubmit}><Send size={16} /></button>}
-      </div>
-    </form>
-  </aside>
+        <textarea
+          className="ib-chat-input"
+          aria-label="Message Board Assistant"
+          rows={2}
+          value={goal}
+          maxLength={ASSISTANT_LIMITS.goal}
+          disabled={
+            busy ||
+            !!review ||
+            !!commandReview ||
+            !!frameworkReview ||
+            !!pendingDelete ||
+            blockedByTask
+          }
+          onChange={(e) => setGoal(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (!busy) void generate()
+            }
+          }}
+          placeholder={
+            frameworkReview
+              ? 'Review, save, or discard the framework draft to continue…'
+              : status.available
+                ? 'Ask a question or describe what you want to build or change…'
+                : 'Connect AI in Mac settings for AI writing'
+          }
+        />
+        {status.configured && (
+          <span className="ib-context-help">
+            AI requests share your message, recent chat, selected sources, and target writing with
+            your configured provider.
+          </span>
+        )}
+        <div className="ib-chat-composer-bottom">
+          <span className="ib-composer-hint">
+            {status.configured
+              ? `${status.provider ?? 'AI'}${status.model ? ` · ${status.model}` : ''}`
+              : 'Your notes stay editable'}
+          </span>
+          {busy ? (
+            <button
+              type="button"
+              className="ib-panel-small ib-stop-button"
+              onClick={() => abort.current?.abort()}
+            >
+              <Square size={13} /> Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              className="ib-send-button"
+              aria-label="Send message"
+              title="Send message"
+              disabled={!canSubmit}
+            >
+              <Send size={16} />
+            </button>
+          )}
+        </div>
+      </form>
+    </aside>
+  )
 }
 
 function Comparison({ label, before, after }: { label: string; before: string; after: string }) {
-  return <div style={{ border: '1px solid #8891A4', borderRadius: 7, padding: 12 }}><strong style={{ fontSize: 13 }}>{label}</strong><div style={{ fontSize: 11, marginTop: 12, opacity: .75 }}>Current writing</div><pre>{before || '(Empty)'}</pre><div style={{ fontSize: 11, opacity: .75 }}>Suggested replacement</div><pre>{after}</pre></div>
+  return (
+    <div style={{ border: '1px solid #8891A4', borderRadius: 7, padding: 12 }}>
+      <strong style={{ fontSize: 13 }}>{label}</strong>
+      <div style={{ fontSize: 11, marginTop: 12, opacity: 0.75 }}>Current writing</div>
+      <pre>{before || '(Empty)'}</pre>
+      <div style={{ fontSize: 11, opacity: 0.75 }}>Suggested replacement</div>
+      <pre>{after}</pre>
+    </div>
+  )
 }
-function assistantCommandOperationTitle(operation: AssistantBoardOperation, noteTitle?: string, noteNames: string[] = []) {
+function assistantCommandOperationTitle(
+  operation: AssistantBoardOperation,
+  noteTitle?: string,
+  noteNames: string[] = [],
+) {
   switch (operation.type) {
-    case 'answer': return 'Answer from the selected material'
-    case 'highlight_text': return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in ${noteTitle ?? 'a note'}`
-    case 'highlight_section': return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in a framework section`
-    case 'create_note': return `Create ${operation.kind === 'action' ? 'an action' : 'a note'}: ${operation.title}`
-    case 'revise_note': return `Revise ${noteTitle ?? 'a note'}`
-    case 'update_note': return `Update ${noteTitle ?? 'a note'}`
-    case 'move_note': return `Move ${noteTitle ?? 'a note'} ${operation.direction} of another note`
-    case 'arrange_notes': return `Arrange ${operation.cardIds.length} notes as a ${operation.layout.replace('_', ' ')}`
-    case 'group_notes': return `Group ${operation.groups.reduce((total, group) => total + group.cardIds.length, 0)} notes into ${operation.groups.length} groups`
-    case 'lock_notes': return `${operation.locked ? 'Lock' : 'Unlock'} ${noteNames.join(', ')}`
-    case 'delete_notes': return `Delete ${noteNames.join(', ')}`
+    case 'answer':
+      return 'Answer from the selected material'
+    case 'highlight_text':
+      return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in ${noteTitle ?? 'a note'}`
+    case 'highlight_section':
+      return `${operation.mode === 'remove' ? 'Remove a highlight' : 'Highlight a point'} in a framework section`
+    case 'create_note':
+      return `Create ${operation.kind === 'action' ? 'an action' : 'a note'}: ${operation.title}`
+    case 'revise_note':
+      return `Revise ${noteTitle ?? 'a note'}`
+    case 'update_note':
+      return `Update ${noteTitle ?? 'a note'}`
+    case 'move_note':
+      return `Move ${noteTitle ?? 'a note'} ${operation.direction} of another note`
+    case 'arrange_notes':
+      return `Arrange ${operation.cardIds.length} notes as a ${operation.layout.replace('_', ' ')}`
+    case 'group_notes':
+      return `Group ${operation.groups.reduce((total, group) => total + group.cardIds.length, 0)} notes into ${operation.groups.length} groups`
+    case 'lock_notes':
+      return `${operation.locked ? 'Lock' : 'Unlock'} ${noteNames.join(', ')}`
+    case 'delete_notes':
+      return `Delete ${noteNames.join(', ')}`
   }
 }
 function assistantCommandChangeLabel(key: string) {
-  return ({ title: 'Title', body: 'Writing', tag: 'Status', color: 'Color', dueDate: 'Due date', dateLabel: 'Date label', collapsed: 'Visibility' } as Record<string, string>)[key] ?? key
+  return (
+    (
+      {
+        title: 'Title',
+        body: 'Writing',
+        tag: 'Status',
+        color: 'Color',
+        dueDate: 'Due date',
+        dateLabel: 'Date label',
+        collapsed: 'Visibility',
+      } as Record<string, string>
+    )[key] ?? key
+  )
 }
 function assistantCommandChangeValue(key: string, value: unknown) {
   if (key === 'dueDate' && value === null) return 'No due date'
@@ -951,7 +2108,10 @@ function estimatedCardHeight(card: Card) {
   if (card.collapsed) return 52
   if (card.card_height) return card.card_height
   const charsPerLine = Math.max(18, Math.floor(card.card_width / 7))
-  const countLines = (text: string) => text.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0)
+  const countLines = (text: string) =>
+    text
+      .split('\n')
+      .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)), 0)
   return Math.max(150, 86 + (countLines(card.title) + countLines(card.body)) * 21)
 }
 function relativeNotePosition(note: Card, destination: Card, direction: AssistantMoveDirection) {
@@ -961,26 +2121,40 @@ function relativeNotePosition(note: Card, destination: Card, direction: Assistan
   const noteHeight = estimatedCardHeight(note)
   const destinationHeight = estimatedCardHeight(destination)
   switch (direction) {
-    case 'left': return { x: destination.x - noteWidth - gap, y: destination.y }
-    case 'right': return { x: destination.x + destinationWidth + gap, y: destination.y }
-    case 'above': return { x: destination.x, y: destination.y - noteHeight - gap }
-    case 'below': return { x: destination.x, y: destination.y + destinationHeight + gap }
+    case 'left':
+      return { x: destination.x - noteWidth - gap, y: destination.y }
+    case 'right':
+      return { x: destination.x + destinationWidth + gap, y: destination.y }
+    case 'above':
+      return { x: destination.x, y: destination.y - noteHeight - gap }
+    case 'below':
+      return { x: destination.x, y: destination.y + destinationHeight + gap }
   }
 }
-function message(e: unknown) { return e instanceof Error ? e.message : 'The task could not be completed. Your request is kept.' }
+function message(e: unknown) {
+  return e instanceof Error ? e.message : 'The task could not be completed. Your request is kept.'
+}
 function localDate() {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 }
 function sourceTypeName(kind: AssistantSource['kind']) {
   switch (kind) {
-    case 'pdf-page': return 'PDF page'
-    case 'image': return 'Image'
-    case 'text-block': return 'Canvas text'
-    case 'framework': return 'Framework'
-    case 'goal-tag': return 'Board goal'
-    case 'markdown': return 'Markdown'
-    case 'text': return 'Text file'
-    default: return 'Note'
+    case 'pdf-page':
+      return 'PDF page'
+    case 'image':
+      return 'Image'
+    case 'text-block':
+      return 'Canvas text'
+    case 'framework':
+      return 'Framework'
+    case 'goal-tag':
+      return 'Board goal'
+    case 'markdown':
+      return 'Markdown'
+    case 'text':
+      return 'Text file'
+    default:
+      return 'Note'
   }
 }

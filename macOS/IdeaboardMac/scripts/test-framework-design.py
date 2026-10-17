@@ -32,7 +32,7 @@ func provider(_ draft: Any, status: String = "completed", type: String = "output
 func section() -> [String: Any] { ["label": "Evidence", "guidance": "What do we know and what remains uncertain?"] }
 func design(_ count: Int = 2) -> [String: Any] {
     ["label": "Decision Compass", "purpose": "Compare alternatives using evidence.",
-     "layout": "grid", "sections": (0..<count).map { _ in section() }]
+     "layout": "grid", "sections": (0..<count).map { _ in section() }, "response": ""]
 }
 let context: [String: Any] = [
     "command": "design-framework", "goal": "Design a decision framework", "boardId": "board-1",
@@ -70,7 +70,7 @@ check(IdeaboardAIService.validGenerationContext(payload(unicode)) == nil, "UTF-1
 let schema = IdeaboardAIService.outputSchema(operation: "design-framework")
 let properties = schema["properties"] as! [String: Any]
 let sectionsSchema = properties["sections"] as! [String: Any]
-check(Set(properties.keys) == ["label", "purpose", "layout", "sections"], "Wrong design schema")
+check(Set(properties.keys) == ["label", "purpose", "layout", "sections", "response"], "Wrong design schema")
 check(sectionsSchema["minItems"] as? Int == 2 && sectionsSchema["maxItems"] as? Int == 8, "Missing schema section bounds")
 check(schema["additionalProperties"] as? Bool == false, "Non-strict design schema")
 check(Set((properties["layout"] as! [String: Any])["enum"] as! [String]) == ["grid", "flow", "matrix", "cycle"], "Missing chosen layout schema values")
@@ -98,12 +98,14 @@ for count in [2, 3, 5, 8] {
 var boundary = design()
 boundary["label"] = String(repeating: "名", count: 80)
 boundary["purpose"] = String(repeating: "a", count: 600)
+boundary["response"] = String(repeating: "a", count: 1200)
 boundary["sections"] = (0..<2).map { _ in ["label": String(repeating: "a", count: 70), "guidance": String(repeating: "a", count: 300)] }
 check(IdeaboardAIService.decodeProvider(provider(boundary), id: "test", model: "mock", operation: "design-framework").ok, "Valid field boundaries rejected")
 var malformed: [[String: Any]] = [design(0), design(1), design(9)]
 for change: [String: Any] in [
     ["layout": "canvas"], ["label": " "], ["label": String(repeating: "a", count: 81)],
     ["purpose": String(repeating: "a", count: 601)], ["extra": "unexpected"],
+    ["response": String(repeating: "a", count: 1201)],
     ["sections": [["label": "a", "guidance": "b"], ["label": "c"]]],
     ["sections": [["label": "a", "guidance": "b", "id": "model-id"], section()]],
     ["sections": [["label": String(repeating: "a", count: 71), "guidance": "b"], section()]],
@@ -120,7 +122,7 @@ for value in malformed {
 check(!IdeaboardAIService.decodeProvider(provider(design(), status: "incomplete"), id: "test", model: "mock", operation: "design-framework").ok, "Incomplete response accepted")
 check(!IdeaboardAIService.decodeProvider(provider(design(), type: "refusal"), id: "test", model: "mock", operation: "design-framework").ok, "Refusal accepted")
 let boardDraft: [String: Any] = [
-    "explanation": "SWOT separates internal factors from external opportunities and threats.", "assumptions": [],
+    "response": "", "explanation": "SWOT separates internal factors from external opportunities and threats.", "assumptions": [],
     "frameworkRecommendation": ["type": "swot", "rationale": "SWOT helps compare what is known with open questions before choosing an action."],
     "frames": [["type": "swot", "name": "Decision context", "sections":
         ["strengths", "weaknesses", "opportunities", "threats"].map {
@@ -139,8 +141,17 @@ if case .object(let result)? = canonicalBoard.result,
         check(rationale == (boardDraft["frameworkRecommendation"] as! [String: String])["rationale"], "Recommendation rationale changed during encoding")
     } else { fatalError("Canonical recommendation rationale missing") }
 } else { fatalError("Native decoder stripped the framework recommendation") }
+if case .object(let result)? = canonicalBoard.result, case .string(let response)? = result["response"] {
+    check(response == "", "Separate response changed during native canonical encoding")
+} else { fatalError("Native decoder stripped the separate response") }
+var oversizedBoardResponse = boardDraft
+oversizedBoardResponse["response"] = String(repeating: "a", count: 1201)
+check(!IdeaboardAIService.decodeProvider(provider(oversizedBoardResponse), id: "oversized-response", model: "mock").ok, "Oversized separate response accepted")
 let boardSchema = IdeaboardAIService.outputSchema(operation: "build")
 check((boardSchema["required"] as! [String]).contains("frameworkRecommendation"), "Recommendation missing from required board schema")
+check((boardSchema["required"] as! [String]).contains("response"), "Conversational response missing from required board schema")
+let responseSchema = (boardSchema["properties"] as! [String: Any])["response"] as! [String: Any]
+check(responseSchema["maxLength"] as? Int == 1200, "Conversational response bound differs from frontend")
 let recommendationSchema = (boardSchema["properties"] as! [String: Any])["frameworkRecommendation"] as! [String: Any]
 let recommendationOptions = recommendationSchema["anyOf"] as! [[String: Any]]
 check(recommendationOptions.count == 2 && recommendationOptions.contains { $0["type"] as? String == "null" }, "Recommendation schema must allow explicit null")
@@ -150,6 +161,36 @@ let recommendationFields = recommendationObject["properties"] as! [String: Any]
 check((recommendationFields["rationale"] as! [String: Any])["maxLength"] as? Int == 1000, "Recommendation rationale bound differs from frontend")
 check(IdeaboardAIService.providerInstructions(operation: "build").contains("frameworkRecommendation"), "Provider not told to include recommendation")
 check(IdeaboardAIService.providerInstructions(operation: "fill").contains("frameworkRecommendation as null"), "Editing instructions omit null recommendation")
+let swotDefinition: [String: Any] = ["type": "swot", "sections": ["strengths", "weaknesses", "opportunities", "threats"].map { ["id": $0] as [String: Any] }]
+let scopedBuildContext: [String: Any] = ["command": "build", "boardId": "board-1", "goal": "Build a SWOT", "sources": [], "frameworks": [swotDefinition]]
+let scopedBuildSchema = IdeaboardAIService.outputSchema(operation: "build", context: scopedBuildContext)
+let scopedBuildProperties = scopedBuildSchema["properties"] as! [String: Any]
+check((scopedBuildProperties["sections"] as! [String: Any])["maxItems"] as? Int == 0, "Build schema allowed writes to an existing framework")
+check((scopedBuildProperties["frames"] as! [String: Any])["minItems"] as? Int == 1, "Build schema did not require a new frame")
+check(IdeaboardAIService.decodeProvider(provider(boardDraft), id: "scoped-build", model: "mock", operation: "build", context: scopedBuildContext).ok, "Scoped build rejected its supplied framework")
+var reorderedBoardDraft = boardDraft
+var reorderedFrames = boardDraft["frames"] as! [[String: Any]]
+reorderedFrames[0]["sections"] = Array((reorderedFrames[0]["sections"] as! [[String: Any]]).reversed())
+reorderedBoardDraft["frames"] = reorderedFrames
+check(IdeaboardAIService.decodeProvider(provider(reorderedBoardDraft), id: "reordered-build", model: "mock", operation: "build", context: scopedBuildContext).ok, "Valid framework sections were rejected when returned in a different order")
+var duplicateBoardDraft = boardDraft
+var duplicateFrames = boardDraft["frames"] as! [[String: Any]]
+var duplicateSections = duplicateFrames[0]["sections"] as! [[String: Any]]
+duplicateSections[0] = duplicateSections[1]
+duplicateFrames[0]["sections"] = duplicateSections
+duplicateBoardDraft["frames"] = duplicateFrames
+check(!IdeaboardAIService.decodeProvider(provider(duplicateBoardDraft), id: "duplicate-build", model: "mock", operation: "build", context: scopedBuildContext).ok, "Build accepted duplicate framework sections")
+var unauthorizedBuild = boardDraft
+unauthorizedBuild["sections"] = [["frameId": "existing-frame", "sectionId": "strengths", "text": "Overwrite", "sourceIds": []]]
+check(!IdeaboardAIService.decodeProvider(provider(unauthorizedBuild), id: "scoped-write", model: "mock", operation: "build", context: scopedBuildContext).ok, "Build accepted an existing-framework write")
+let fillContext: [String: Any] = ["command": "fill", "boardId": "board-1", "goal": "Fill empty sections", "sources": [], "frameworks": [swotDefinition], "targetFrame": ["id": "frame-1", "type": "swot"]]
+let fillSchema = IdeaboardAIService.outputSchema(operation: "fill", context: fillContext)["properties"] as! [String: Any]
+check((fillSchema["frames"] as! [String: Any])["maxItems"] as? Int == 0, "Fill schema allowed new framework creation")
+let fillDraft: [String: Any] = ["response": "", "explanation": "Filled.", "assumptions": [], "frameworkRecommendation": NSNull(), "frames": [], "sections": [["frameId": "frame-1", "sectionId": "strengths", "text": "What evidence supports this strength?", "sourceIds": []]], "cards": [], "revisions": []]
+check(IdeaboardAIService.decodeProvider(provider(fillDraft), id: "scoped-fill", model: "mock", operation: "fill", context: fillContext).ok, "Valid target fill rejected")
+var wrongFill = fillDraft
+wrongFill["sections"] = [["frameId": "other-frame", "sectionId": "strengths", "text": "Write elsewhere", "sourceIds": []]]
+check(!IdeaboardAIService.decodeProvider(provider(wrongFill), id: "wrong-fill", model: "mock", operation: "fill", context: fillContext).ok, "Fill wrote outside its authorized frame")
 var missingRecommendation = boardDraft; missingRecommendation.removeValue(forKey: "frameworkRecommendation")
 private let missingReply = IdeaboardAIService.decodeProvider(provider(missingRecommendation), id: "test", model: "mock")
 check(!missingReply.ok && missingReply.error?.message.contains("Try again") == true, "Missing recommendation did not give an actionable error")
@@ -215,6 +256,14 @@ let lockDraft: [String: Any] = ["response": "Locking proposed.", "operations": [
 check(IdeaboardAIService.decodeProvider(provider(lockDraft), id: "lock", model: "test", operation: "board-command", context: noteContext).ok, "A valid lock request was rejected")
 let wrongLock: [String: Any] = ["response": "Locked.", "operations": [["type": "lock_notes", "cardIds": ["qa-note-a", "qa-note-b"], "locked": false]]]
 check(!IdeaboardAIService.decodeProvider(provider(wrongLock), id: "wrong-lock", model: "test", operation: "board-command", context: noteContext).ok, "A lock request accepted unlocking")
+
+var conversationContext = commandContext; conversationContext["intent"] = "conversation"; conversationContext["goal"] = "Suggest an opening"
+let answerDraft: [String: Any] = ["response": "Here is one option.", "operations": [["type": "answer", "text": "Start with the transition moment.", "sourceIds": []]]]
+check(IdeaboardAIService.validGenerationContext(payload(conversationContext)) != nil, "Conversation intent was rejected")
+check(IdeaboardAIService.decodeProvider(provider(answerDraft), id: "conversation", model: "test", operation: "board-command", context: conversationContext).ok, "Answer-only conversation rejected")
+var mutateDuringConversation = answerDraft
+mutateDuringConversation["operations"] = [["type": "delete_notes", "cardIds": ["qa-note"]]]
+check(!IdeaboardAIService.decodeProvider(provider(mutateDuringConversation), id: "conversation-mutation", model: "test", operation: "board-command", context: conversationContext).ok, "Conversation intent allowed a board mutation")
 
 if let path = ProcessInfo.processInfo.environment["IDEABOARD_NATIVE_COMMAND_FIXTURE"] {
     try JSONEncoder().encode(IdeaboardAIService.decodeProvider(provider(commandDraft), id: "command", model: "test", operation: "board-command")).write(to: URL(fileURLWithPath: path))

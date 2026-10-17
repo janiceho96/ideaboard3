@@ -43,6 +43,7 @@ interface AssistantCommandRoute {
 export type AssistantRouteResult =
   | AssistantCommandRoute
   | { status: 'design'; layout: FrameworkLayout }
+  | { status: 'answer' }
   | {
       status: 'action'
       action: 'move'
@@ -68,7 +69,12 @@ const LIMITS = {
 const clarify = (message: string): AssistantRouteResult => ({ status: 'clarify', message })
 
 function normalize(value: string): string {
-  return value.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  return value
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\b(?:frmaework|framwork|fremwork|framewrok)\b/g, 'framework')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
 }
 
 function containsPhrase(haystack: string, phrase: string): boolean {
@@ -78,26 +84,60 @@ function containsPhrase(haystack: string, phrase: string): boolean {
 }
 
 function validInput(input: AssistantRouteInput): boolean {
-  if (typeof input.message !== 'string' || input.message.length > LIMITS.message || !input.message.trim()) return false
+  if (
+    typeof input.message !== 'string' ||
+    input.message.length > LIMITS.message ||
+    !input.message.trim()
+  )
+    return false
   if (typeof input.isFirstRequest !== 'boolean') return false
-  if (!Array.isArray(input.priorCreatedFrames) || !Array.isArray(input.priorCreatedCards) || !Array.isArray(input.availableFrameworkSections)) return false
-  if (input.priorCreatedFrames.length > LIMITS.references || input.priorCreatedCards.length > LIMITS.references) return false
+  if (
+    !Array.isArray(input.priorCreatedFrames) ||
+    !Array.isArray(input.priorCreatedCards) ||
+    !Array.isArray(input.availableFrameworkSections)
+  )
+    return false
+  if (
+    input.priorCreatedFrames.length > LIMITS.references ||
+    input.priorCreatedCards.length > LIMITS.references
+  )
+    return false
   if (input.availableFrameworkSections.length > LIMITS.sections) return false
-  if (input.availableCards !== undefined && (!Array.isArray(input.availableCards) || input.availableCards.length > LIMITS.availableCards)) return false
+  if (
+    input.availableCards !== undefined &&
+    (!Array.isArray(input.availableCards) || input.availableCards.length > LIMITS.availableCards)
+  )
+    return false
 
   const frameIds = new Set<string>()
   for (const frame of input.priorCreatedFrames) {
-    if (!frame || typeof frame.id !== 'string' || !frame.id || frame.id.length > LIMITS.referenceText
-      || typeof frame.name !== 'string' || !frame.name || frame.name.length > LIMITS.referenceText) return false
+    if (
+      !frame ||
+      typeof frame.id !== 'string' ||
+      !frame.id ||
+      frame.id.length > LIMITS.referenceText ||
+      typeof frame.name !== 'string' ||
+      !frame.name ||
+      frame.name.length > LIMITS.referenceText
+    )
+      return false
     if (frameIds.has(frame.id)) return false
     frameIds.add(frame.id)
   }
 
   const cardIds = new Set<string>()
   for (const card of input.priorCreatedCards) {
-    if (!card || typeof card.id !== 'string' || !card.id || card.id.length > LIMITS.referenceText
-      || typeof card.title !== 'string' || !card.title || card.title.length > LIMITS.referenceText
-      || !normalize(card.title)) return false
+    if (
+      !card ||
+      typeof card.id !== 'string' ||
+      !card.id ||
+      card.id.length > LIMITS.referenceText ||
+      typeof card.title !== 'string' ||
+      !card.title ||
+      card.title.length > LIMITS.referenceText ||
+      !normalize(card.title)
+    )
+      return false
     if (typeof card.locked !== 'boolean') return false
     if (cardIds.has(card.id)) return false
     cardIds.add(card.id)
@@ -105,37 +145,194 @@ function validInput(input: AssistantRouteInput): boolean {
 
   const availableCardIds = new Set<string>()
   for (const card of input.availableCards ?? []) {
-    if (!card || typeof card.id !== 'string' || !card.id || card.id.length > LIMITS.referenceText
-      || typeof card.title !== 'string' || !card.title || card.title.length > LIMITS.referenceText
-      || !normalize(card.title) || typeof card.locked !== 'boolean') return false
+    if (
+      !card ||
+      typeof card.id !== 'string' ||
+      !card.id ||
+      card.id.length > LIMITS.referenceText ||
+      typeof card.title !== 'string' ||
+      !card.title ||
+      card.title.length > LIMITS.referenceText ||
+      !normalize(card.title) ||
+      typeof card.locked !== 'boolean'
+    )
+      return false
     if (availableCardIds.has(card.id)) return false
     availableCardIds.add(card.id)
   }
 
-  return input.availableFrameworkSections.every(section => Boolean(
-    section && typeof section.id === 'string' && section.id && section.id.length <= LIMITS.referenceText
-      && typeof section.label === 'string' && section.label && section.label.length <= LIMITS.referenceText,
-  ))
+  return input.availableFrameworkSections.every((section) =>
+    Boolean(
+      section &&
+      typeof section.id === 'string' &&
+      section.id &&
+      section.id.length <= LIMITS.referenceText &&
+      typeof section.label === 'string' &&
+      section.label &&
+      section.label.length <= LIMITS.referenceText,
+    ),
+  )
 }
 
 function isNewBoardIntent(message: string): boolean {
-  const newTarget = String.raw`(?:another|new|(?:a|an)\s+)?(?:framework|board|plan)`
-  return new RegExp(String.raw`\b(?:new\s+)?(?:framework|board|plan)\b`).test(message)
-    && new RegExp(String.raw`\b(?:create|make|build|draft|start|generate|add)\b.{0,80}\b${newTarget}\b`).test(message)
-    || /\bnew(?:\s+\w+){0,3}\s+(?:framework|board|plan)\b/.test(message)
-    || new RegExp(String.raw`\badd\s+another\s+(?:framework|board|plan)\b`).test(message)
+  const action = String.raw`(?:create|make|build|draft|start|generate|add|design|sketch|shape|outline|structure|map\s+out|plan\s+out|put\s+together|come\s+up\s+with|develop|prepare|write|do|set\s+up|give\s+me|show\s+me|work\s+on)`
+  const artifact = String.raw`(?:framework|board|plan|outline|structure|roadmap|blueprint|workflow|process|template|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|canvas|log|tracker|rubric|scorecard|checklist|swot|pestle|ooda|customer\s+journey|decision\s+tree|matrix|cycle|flow)`
+  return (
+    new RegExp(
+      String.raw`\b${action}\b.{0,120}\b(?:a|an|my|our|new|another|custom|reusable|own)?\s*${artifact}\b`,
+    ).test(message) ||
+    new RegExp(
+      String.raw`\b(?:new|another|my\s+own|custom|reusable|personalized|personalised|tailored)\s+(?:\w+\s+){0,4}${artifact}\b`,
+    ).test(message) ||
+    new RegExp(
+      String.raw`\b(?:i\s+)?(?:want|need|would\s+like)\s+to\s+(?:work\s+on|start|make|create|build|draft|outline|structure|map\s+out)\b.{0,100}\b${artifact}\b`,
+    ).test(message) ||
+    new RegExp(
+      String.raw`\b(?:i|we)\s+(?:want|need|would\s+like)\s+(?:(?:to\s+)?(?:make|create|design|build|draft|have)\s+)?(?:(?:a|an|my|our|own|custom|reusable|new)\s+){0,2}(?:[\w]+\s+){0,4}${artifact}\b`,
+    ).test(message)
+  )
 }
 
 function isNegatedNewBoardIntent(message: string): boolean {
-  return /\b(?:do not|don t|dont|never|avoid|not)\b.{0,24}\b(?:create|make|build|draft|start|generate|add)\b.{0,80}\b(?:framework|board|plan)\b/.test(message)
+  return /\b(?:do not|don t|dont|never|avoid|not)\b.{0,40}\b(?:create|make|build|draft|start|generate|add|design|sketch|shape|outline|structure|map out|plan out|develop|prepare|write|do|set up|give me|show me|work on)\b.{0,120}\b(?:framework|board|plan|outline|structure|roadmap|blueprint|workflow|process|template|worksheet|grid|map|canvas|log|tracker|rubric|scorecard|checklist|swot|pestle|ooda|customer journey|decision tree|matrix)\b/.test(
+    message,
+  )
+}
+
+function isCustomDesignIntent(message: string, rawMessage = message): boolean {
+  const artifact =
+    /\b(?:framework|board|template|outline|structure|canvas|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|log|tracker|rubric|scorecard|checklist|cycle|flow|matrix|circle)\b/.test(
+      message,
+    )
+  const adviceLead =
+    /^(?:i|we)\s+(?:want|need|would like)\s+(?:some\s+)?(?:advice|ideas|suggestions|recommendations)\b/.test(
+      message,
+    )
+  const action =
+    /\b(?:design|create|make|build|draft|generate|invent|shape|sketch|develop|put together|come up with|map out|give|gimme|give me|show me|do|set up|propose|help me|use)\b/.test(
+      message,
+    ) ||
+    (artifact &&
+      /^(?:can|could|would)\s+i\s+(?:have|get|make|create|design|build|draft)\b/.test(message)) ||
+    (artifact &&
+      !adviceLead &&
+      (/^(?:i|we)\s+(?:want|need|would like)\b.{0,100}\b(?:framework|board|template|outline|structure|canvas|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|log|tracker|rubric|scorecard|checklist|cycle|flow|matrix|circle)\b/.test(
+        message,
+      ) ||
+        /\b(?:i|we)\s+(?:now\s+)?(?:want|need|would like)\b.{0,100}\b(?:framework|board|template|outline|structure|canvas|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|log|tracker|rubric|scorecard|checklist|cycle|flow|matrix|circle)\b/.test(
+          message,
+        ) ||
+        /\b(?:i want it|keep it|leave it|make it)\s+(?:blank|empty)\b/.test(message)))
+  const customCue =
+    /\b(?:custom|another|bespoke|tailored|personalized|personalised|reusable|my own|our own|from scratch|blank|empty|saveable|save it|visual layout)\b/.test(
+      message,
+    ) ||
+    /\bfrom\s+(?:the\s+)?(?:selected|attached|this|the)\s+(?:markdown|document|file|source|note)\b/.test(
+      message,
+    )
+  const adaptsKnownFramework =
+    /\b(?:another|custom|own|reusable)\b.{0,50}\b(?:framework|template)\b.{0,80}\b(?:same|structure|adapt)\b/.test(
+      message,
+    )
+  const knownFramework =
+    /\b(?:swot|pestle|ooda|stp|lean canvas|business model canvas|customer journey|decision tree)\b/.test(
+      message,
+    ) && !adaptsKnownFramework
+  const namedStructure =
+    /\b(?:[2-8]|two|three|four|five|six|seven|eight)(?:\s*(?:to|-|–|\s)\s*(?:[2-8]|two|three|four|five|six|seven|eight))?[- ](?:part|section|paragraph|stage|step)s?\b|\b(?:[2-8]|two|three|four|five|six|seven|eight)\s+sections?\b|\bfirst paragraph|second paragraph|third paragraph|paragraphs?\s+(?:one|two|three)|section\s+(?:one|two|three|1|2|3)|step\s+(?:one|two|three|1|2|3)|(?:with|including)\b.{0,80}\b(?:sections?|paragraphs?|stages?|parts?)\b/.test(
+      message,
+    ) && !knownFramework
+  const namedParts =
+    /(?:\b(?:with|around|including|covering|made up of|consisting of|places? for|sections? for|i care about|i want|i need|focus on|parts?\s+(?:should\s+)?(?:cover|include))\b|[:,?]\s*)[^.?!]{0,160}(?:,\s*[^.?!]{2,}){2,}/i.test(
+      rawMessage,
+    ) && !knownFramework
+  const chosenLayout = /\b(?:grid|flow|matrix|quadrant|cycle|loop|2\s*(?:x|by)\s*2)\b/.test(message)
+  const explicitCustom =
+    /\b(?:custom|own|reusable|original|bespoke|tailored|personalized|personalised)\b/.test(message)
+  return (
+    action &&
+    artifact &&
+    !knownFramework &&
+    ((customCue && (explicitCustom || !/\bnew\b/.test(message))) ||
+      namedStructure ||
+      namedParts ||
+      chosenLayout)
+  )
+}
+
+function isConversationalRequest(message: string): boolean {
+  if (/^(?:do not|don t|dont|never)\b/.test(message)) return false
+  if (
+    /^(?:give me|show me|make me|write me|draft me)\b/.test(message) &&
+    /\b(?:framework|board|plan|outline|roadmap|blueprint|workflow|process|template|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|canvas|log|tracker|rubric|scorecard|checklist|swot|pestle|ooda|matrix|cycle|flow|circle)\b/.test(
+      message,
+    ) &&
+    !/\b(?:advice|suggestions?|recommendations?|how to|ideas for)\b/.test(message)
+  )
+    return false
+  return (
+    /^(?:what|why|how|which|who|when|where|should|does|is|are)\b/.test(message) ||
+    /^do\s+(?:i|you|we|they|this|that|these|those|the)\b/.test(message) ||
+    /^(?:can|could|would)\s+(?:i|we)\b/.test(message) ||
+    /^(?:can|could|would)\s+you\s+(?:explain|suggest|recommend|tell|show|compare|summari[sz]e|help me understand)\b/.test(
+      message,
+    ) ||
+    /^(?:tell me|suggest|recommend|give me|any ideas|help me understand|explain)\b/.test(message) ||
+    /\b(?:what do you think|any suggestions|some suggestions|ways to|ideas for|recommendations for)\b/.test(
+      message,
+    ) ||
+    /\b(?:i need advice|i want to know|help me choose|suggestions for|what would you recommend)\b/.test(
+      message,
+    )
+  )
 }
 
 function isExpandIntent(message: string): boolean {
-  return /\b(?:expand|elaborate|detail|flesh out|go deeper|add detail|add more detail)\b/.test(message)
+  return /\b(?:expand|elaborate|detail|flesh out|go deeper|add detail|add more detail)\b/.test(
+    message,
+  )
 }
 
 function isReviseIntent(message: string): boolean {
   return /\b(?:revise|rewrite|update|edit|improve|rework)\b/.test(message)
+}
+
+function isExplicitCreationRequest(message: string, rawMessage: string): boolean {
+  const artifact =
+    /\b(?:framework|board|plan|outline|roadmap|blueprint|workflow|process|template|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|canvas|log|tracker|rubric|scorecard|checklist|swot|pestle|ooda|matrix|cycle|flow|circle)\b/.test(
+      message,
+    )
+  if (
+    !artifact ||
+    /^(?:i|we)\s+(?:want|need|would like)\s+(?:some\s+)?(?:advice|ideas|suggestions|recommendations)\b/.test(
+      message,
+    )
+  )
+    return false
+
+  const directRequest =
+    /^(?:(?:new topic|also|and now)\s*[:, -]?\s*)?(?:help me|please|create|make|build|draft|design|generate|invent|shape|sketch|outline|structure|map out|plan out|put together|come up with|develop|prepare|write|do|set up|give me|gimme|show me|propose)\b/.test(
+      message,
+    ) ||
+    /^(?:i|we)\s+(?:want|need|would like)\s+to\s+(?:work on|make|create|build|draft|design|develop|prepare|write)\b/.test(
+      message,
+    ) ||
+    /^(?:can|could|would)\s+we\s+switch\s+to\s+(?:designing|making|creating)\b/.test(message)
+  const wishRequest =
+    /^(?:i|we)\s+(?:want|need|would like)\b.{0,100}\b(?:framework|board|plan|outline|roadmap|blueprint|workflow|process|template|worksheet|sheet|planner|pattern|postmortem|guide|skeleton|retro|grid|map|layout|brief|canvas|log|tracker|rubric|scorecard|checklist|swot|pestle|ooda|matrix|cycle|flow|circle)\b/.test(
+      message,
+    )
+  const hasStructureDetails =
+    /\b(?:custom|own|reusable|blank|empty|grid|matrix|cycle|flow|sections?|parts?|stages?|steps?|columns?|rows?)\b/.test(
+      message,
+    ) || /(?:[:,?]\s*)[^.?!]{0,160}(?:,\s*[^.?!]{2,}){2,}/i.test(rawMessage)
+  const politeRequest =
+    /^(?:can|could|would)\s+i\s+(?:have|get|make|create|design|build|draft|use|generate)\b/.test(
+      message,
+    ) && hasStructureDetails
+  const blankRequest = /\b(?:i want it|keep it|leave it|make it)\s+(?:blank|empty)\b/.test(message)
+
+  return directRequest || wishRequest || politeRequest || blankRequest
 }
 
 function isMoveIntent(message: string): boolean {
@@ -147,7 +344,9 @@ function isDeleteIntent(message: string): boolean {
 }
 
 function isNegatedActionIntent(message: string): boolean {
-  return /\b(?:do not|don t|dont|never|avoid|not)\b.{0,40}\b(?:move|put|place|position|reposition|delete|remove|trash|erase)\b/.test(message)
+  return /\b(?:do not|don t|dont|never|avoid|not)\b.{0,40}\b(?:move|put|place|position|reposition|delete|remove|trash|erase)\b/.test(
+    message,
+  )
 }
 
 interface CardMention {
@@ -156,7 +355,10 @@ interface CardMention {
   end: number
 }
 
-function findNamedBoardCardMentions(message: string, cards: AssistantBoardCardRef[]): CardMention[] {
+function findNamedBoardCardMentions(
+  message: string,
+  cards: AssistantBoardCardRef[],
+): CardMention[] {
   const paddedMessage = ` ${message} `
   const candidates: CardMention[] = []
 
@@ -175,68 +377,103 @@ function findNamedBoardCardMentions(message: string, cards: AssistantBoardCardRe
   candidates.sort((left, right) => left.start - right.start || right.end - left.end)
   const mentions: CardMention[] = []
   for (const candidate of candidates) {
-    const overlapping = mentions.some(mention => candidate.start < mention.end && mention.start < candidate.end)
-    const exactDuplicateTitle = mentions.some(mention => candidate.start === mention.start && candidate.end === mention.end)
+    const overlapping = mentions.some(
+      (mention) => candidate.start < mention.end && mention.start < candidate.end,
+    )
+    const exactDuplicateTitle = mentions.some(
+      (mention) => candidate.start === mention.start && candidate.end === mention.end,
+    )
     if (!overlapping || exactDuplicateTitle) mentions.push(candidate)
   }
   return mentions
 }
 
-function routeBoardAction(message: string, input: AssistantRouteInput): AssistantRouteResult | null {
+function routeBoardAction(
+  message: string,
+  input: AssistantRouteInput,
+): AssistantRouteResult | null {
   const wantsMove = isMoveIntent(message)
   const wantsDelete = isDeleteIntent(message)
   if (!wantsMove && !wantsDelete) return null
   if (isNegatedActionIntent(message)) {
-    return clarify('I will not move or delete a note from a negated request. Tell me directly what action you want.')
+    return clarify(
+      'I will not move or delete a note from a negated request. Tell me directly what action you want.',
+    )
   }
-  if (wantsMove && wantsDelete || isNewBoardIntent(message) || isExpandIntent(message) || isReviseIntent(message)) {
-    return clarify('I found more than one kind of action in that request. Ask for one move or delete action at a time.')
+  if (
+    (wantsMove && wantsDelete) ||
+    isNewBoardIntent(message) ||
+    isExpandIntent(message) ||
+    isReviseIntent(message)
+  ) {
+    return clarify(
+      'I found more than one kind of action in that request. Ask for one move or delete action at a time.',
+    )
   }
 
   const cards = input.availableCards ?? []
   const mentions = findNamedBoardCardMentions(message, cards)
   if (wantsDelete) {
-    if (!mentions.length) return clarify('Name each board note by its title so I can identify what to delete.')
-    if (mentions.some(mention => mention.card.locked)) {
-      return clarify('At least one named note is locked. Unlock it or name only unlocked notes to delete.')
+    if (!mentions.length)
+      return clarify('Name each board note by its title so I can identify what to delete.')
+    if (mentions.some((mention) => mention.card.locked)) {
+      return clarify(
+        'At least one named note is locked. Unlock it or name only unlocked notes to delete.',
+      )
     }
 
     const targets = new Map<string, AssistantBoardCardRef>()
     const mentionedSpans = new Set<string>()
     for (const mention of mentions) {
-      if (targets.has(mention.card.id)) return clarify('A note title matches more than one board note. Please identify the exact note before deleting.')
+      if (targets.has(mention.card.id))
+        return clarify(
+          'A note title matches more than one board note. Please identify the exact note before deleting.',
+        )
       const span = `${mention.start}:${mention.end}`
-      if (mentionedSpans.has(span)) return clarify('A note title matches more than one board note. Please identify the exact note before deleting.')
+      if (mentionedSpans.has(span))
+        return clarify(
+          'A note title matches more than one board note. Please identify the exact note before deleting.',
+        )
       mentionedSpans.add(span)
       targets.set(mention.card.id, mention.card)
     }
     return { status: 'action', action: 'delete', targetCardRefs: [...targets.values()] }
   }
 
-  const directions = [...message.matchAll(/\b(?:to\s+the\s+)?(left|right|above|below)(?:\s+of\b)?/g)]
-    .filter(match => {
-      const directionStart = (match.index ?? 0) + match[0].indexOf(match[1])
-      const directionEnd = directionStart + match[1].length
-      return !mentions.some(mention => directionStart < mention.end - 1 && mention.start - 1 < directionEnd)
-    })
+  const directions = [
+    ...message.matchAll(/\b(?:to\s+the\s+)?(left|right|above|below)(?:\s+of\b)?/g),
+  ].filter((match) => {
+    const directionStart = (match.index ?? 0) + match[0].indexOf(match[1])
+    const directionEnd = directionStart + match[1].length
+    return !mentions.some(
+      (mention) => directionStart < mention.end - 1 && mention.start - 1 < directionEnd,
+    )
+  })
   if (directions.length !== 1) {
-    return clarify('For a move, name one note, a direction (left, right, above, or below), and one destination note.')
+    return clarify(
+      'For a move, name one note, a direction (left, right, above, or below), and one destination note.',
+    )
   }
 
   const directionMatch = directions[0]
   const directionStart = (directionMatch.index ?? 0) + directionMatch[0].indexOf(directionMatch[1])
   const directionEnd = (directionMatch.index ?? 0) + directionMatch[0].length
-  const before = mentions.filter(mention => mention.end - 1 <= directionStart)
-  const after = mentions.filter(mention => mention.start - 1 >= directionEnd)
+  const before = mentions.filter((mention) => mention.end - 1 <= directionStart)
+  const after = mentions.filter((mention) => mention.start - 1 >= directionEnd)
   if (before.length !== 1 || after.length !== 1) {
-    return clarify('Name exactly one note before the direction and one destination note after it, for example “move Research to the left of Audience”.')
+    return clarify(
+      'Name exactly one note before the direction and one destination note after it, for example “move Research to the left of Audience”.',
+    )
   }
 
   const targetCardRef = before[0].card
   const destinationCardRef = after[0].card
-  if (targetCardRef.id === destinationCardRef.id) return clarify('Choose two different notes for a move: one to move and one destination.')
+  if (targetCardRef.id === destinationCardRef.id)
+    return clarify('Choose two different notes for a move: one to move and one destination.')
   if (targetCardRef.locked || destinationCardRef.locked) {
-    return clarify('The note to move and its destination must both be unlocked. Unlock the locked note or choose another.')
+    return clarify(
+      'The note to move and its destination must both be unlocked. Unlock the locked note or choose another.',
+    )
   }
 
   return {
@@ -258,19 +495,28 @@ function findNamedSections(message: string, input: AssistantRouteInput) {
     available.set(key, matches)
   }
 
-  const matches = [...available.values()].map(items => items[0])
+  const matches = [...available.values()].map((items) => items[0])
   if (!matches.length) return []
-  const longestLabel = Math.max(...matches.map(section => normalize(section.label).length))
-  return matches.filter(section => normalize(section.label).length === longestLabel)
+  const longestLabel = Math.max(...matches.map((section) => normalize(section.label).length))
+  return matches.filter((section) => normalize(section.label).length === longestLabel)
 }
 
-function findNamedCards(message: string, cards: AssistantCreatedCardRef[]): AssistantCreatedCardRef[] {
-  return cards.filter(card => containsPhrase(message, card.title))
+function findNamedCards(
+  message: string,
+  cards: AssistantCreatedCardRef[],
+): AssistantCreatedCardRef[] {
+  return cards.filter((card) => containsPhrase(message, card.title))
 }
 
-type AssistantRouteDetails = Omit<Extract<AssistantRouteResult, { status: 'route' }>, 'status' | 'command' | 'replace'> & { replace?: boolean }
+type AssistantRouteDetails = Omit<
+  Extract<AssistantRouteResult, { status: 'route' }>,
+  'status' | 'command' | 'replace'
+> & { replace?: boolean }
 
-function route(command: AssistantCommand, details: AssistantRouteDetails = {}): AssistantRouteResult {
+function route(
+  command: AssistantCommand,
+  details: AssistantRouteDetails = {},
+): AssistantRouteResult {
   return { status: 'route', command, ...details, replace: details.replace ?? false }
 }
 
@@ -279,51 +525,96 @@ function route(command: AssistantCommand, details: AssistantRouteDetails = {}): 
  * priorCreated* references must come from applied assistant tasks; availableCards
  * may include any current board note and is used only for explicit board actions.
  */
-export function routeAssistantRequest(input: AssistantRouteInput & { availableCards: AssistantBoardCardRef[] }): AssistantRouteResult
-export function routeAssistantRequest(input: AssistantRouteInput & { availableCards?: undefined }): AssistantGenerationRouteResult
+export function routeAssistantRequest(
+  input: AssistantRouteInput & { availableCards: AssistantBoardCardRef[] },
+): AssistantRouteResult
+export function routeAssistantRequest(
+  input: AssistantRouteInput & { availableCards?: undefined },
+): AssistantGenerationRouteResult
 export function routeAssistantRequest(input: AssistantRouteInput): AssistantRouteResult
 export function routeAssistantRequest(input: AssistantRouteInput): AssistantRouteResult {
-  if (!validInput(input)) return clarify('I could not safely match that request. Please shorten it or start with a clear instruction.')
+  if (!validInput(input))
+    return clarify(
+      'I could not safely match that request. Please shorten it or start with a clear instruction.',
+    )
 
   const message = normalize(input.message)
-  const customDesign = /\b(?:design|create|make|build|draft|generate)\b.{0,100}\b(?:(?:a|an|my|our|new|brand|reusable|original)\s+)*(?:custom|own|new|reusable|original)\s+framework\b/.test(message)
-  const negatedDesign = /\b(?:do not|don t|dont|never|avoid|not)\b.{0,24}\b(?:design|create|make|build|draft|generate)\b.{0,100}\bframework\b/.test(message)
+  // Questions about whether/how to build are advice requests. Explicit imperatives
+  // such as “Can you build me…” continue through the action routes below.
+  if (isConversationalRequest(message) && !isExplicitCreationRequest(message, input.message))
+    return { status: 'answer' }
+  const multilingualCustomDesign =
+    (/(?:我想|我要|请|帮我).{0,30}(?:设计|创建|制作|做|构建).{0,30}(?:框架|模板|大纲)/.test(
+      input.message,
+    ) &&
+      /(?:空白|自定义|自己的|可复用|四部分|4部分)/.test(input.message)) ||
+    (/(?:boleh buat|tolong buat|buat|bina|reka|cipta|hasilkan).{0,60}(?:rangka|kerangka|templat|template)/i.test(
+      input.message,
+    ) &&
+      /(?:sendiri|kosong|guna semula|boleh guna semula|empat bahagian|4 bahagian)/i.test(
+        input.message,
+      ))
+  const customDesign =
+    multilingualCustomDesign ||
+    isCustomDesignIntent(message, input.message) ||
+    (!/\b(?:swot|pestle|ooda|stp|lean canvas|business model canvas|customer journey|decision tree)\b/.test(
+      message,
+    ) &&
+      /\b(?:design|create|make|build|draft|generate|invent|shape|sketch)\b.{0,100}\b(?:(?:a|an|my|our|new|brand|reusable|original|bespoke|tailored|personalized|personalised)\s+)*(?:custom|own|new|reusable|original|bespoke|tailored|personalized|personalised)\b.{0,50}\bframework\b/.test(
+        message,
+      ))
+  const negatedDesign =
+    /\b(?:do not|don t|dont|never|avoid|not)\b.{0,40}\b(?:design|create|make|build|draft|generate|invent|shape|sketch|give me|show me|do|set up)\b.{0,120}\b(?:framework|template|outline|structure|canvas|worksheet|grid|log|tracker|rubric|scorecard|checklist)\b/.test(
+      message,
+    )
   if (customDesign) {
-    if (negatedDesign) return clarify('I will not design a custom framework from that wording. Tell me what you want to organize instead.')
-    const layout: FrameworkLayout = /\bmatrix\b|\b2\s+2\b/.test(message) ? 'matrix'
-      : /\bcycle\b|\bloop\b/.test(message) ? 'cycle'
-      : /\bflow\b|\bstep by step\b/.test(message) ? 'flow' : 'grid'
+    if (negatedDesign)
+      return clarify(
+        'I will not design a custom framework from that wording. Tell me what you want to organize instead.',
+      )
+    const layout: FrameworkLayout = /\bmatrix\b|\b2\s+2\b/.test(message)
+      ? 'matrix'
+      : /\bcycle\b|\bloop\b/.test(message)
+        ? 'cycle'
+        : /\bflow\b|\bstep by step\b/.test(message)
+          ? 'flow'
+          : 'grid'
     return { status: 'design', layout }
   }
   const boardAction = routeBoardAction(message, input)
   if (boardAction) return boardAction
 
   const negatedNewBoardIntent = isNegatedNewBoardIntent(message)
-  if (input.isFirstRequest && !negatedNewBoardIntent) return route('build')
   if (!negatedNewBoardIntent && isNewBoardIntent(message)) return route('build')
 
   if (isExpandIntent(message)) {
     const namedSections = findNamedSections(message, input)
     if (!namedSections.length) {
-      return clarify('Name a section exactly as it appears in an assistant-created framework so I can expand the right place.')
+      return clarify(
+        'Name a section exactly as it appears in an assistant-created framework so I can expand the right place.',
+      )
     }
 
-    const candidates = input.priorCreatedFrames.flatMap(frame => {
+    const candidates = input.priorCreatedFrames.flatMap((frame) => {
       if (frame.type === 'blank') return []
       return namedSections
-        .filter(section => section.frameworkType === frame.type)
-        .map(section => ({ frame, section }))
+        .filter((section) => section.frameworkType === frame.type)
+        .map((section) => ({ frame, section }))
     })
     if (!candidates.length) {
-      return clarify('I found that section label, but not in an assistant-created framework on this board. Which generated framework should I use?')
+      return clarify(
+        'I found that section label, but not in an assistant-created framework on this board. Which generated framework should I use?',
+      )
     }
 
-    const frameMentions = candidates.filter(({ frame }) =>
-      containsPhrase(message, frame.name) || containsPhrase(message, frame.type),
+    const frameMentions = candidates.filter(
+      ({ frame }) => containsPhrase(message, frame.name) || containsPhrase(message, frame.type),
     )
     const selected = frameMentions.length ? frameMentions : candidates
     if (selected.length !== 1) {
-      return clarify('That section appears in more than one assistant-created framework. Name the framework as well as the section.')
+      return clarify(
+        'That section appears in more than one assistant-created framework. Name the framework as well as the section.',
+      )
     }
 
     const { frame, section } = selected[0]
@@ -336,23 +627,25 @@ export function routeAssistantRequest(input: AssistantRouteInput): AssistantRout
       return clarify('Name an assistant-created note by its title so I can revise the right one.')
     }
     if (matches.length !== 1) {
-      return clarify('More than one assistant-created note matches that title. Please name the note more specifically.')
+      return clarify(
+        'More than one assistant-created note matches that title. Please name the note more specifically.',
+      )
     }
     if (matches[0].locked) {
-      return clarify('That assistant-created note is locked. Unlock it or name another unlocked note to revise.')
+      return clarify(
+        'That assistant-created note is locked. Unlock it or name another unlocked note to revise.',
+      )
     }
     return route('revise', { targetCardRef: matches[0] })
   }
 
   if (negatedNewBoardIntent) {
-    return clarify('I will not create a new framework from that wording. Tell me which existing note or section you want to change.')
+    return clarify(
+      'I will not create a new framework from that wording. Tell me which existing note or section you want to change.',
+    )
   }
 
-  const latestFrame = [...input.priorCreatedFrames].reverse().find(frame => frame.type !== 'blank')
-  if (latestFrame) return route('fill', { targetFrameRef: latestFrame, replace: true })
-
-  const latestUnlockedCard = [...input.priorCreatedCards].reverse().find(card => !card.locked)
-  if (latestUnlockedCard) return route('revise', { targetCardRef: latestUnlockedCard })
-
-  return clarify('I do not have an assistant-created framework or unlocked note to update yet. Ask me to create a plan first, or name an existing assistant-created note.')
+  return clarify(
+    'Tell me whether you want a new framework, an answer, or a change to a specific note or section. I did not change anything.',
+  )
 }

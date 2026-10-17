@@ -1,0 +1,3278 @@
+[
+  {
+    "id": "D001",
+    "hypothesis": "H1",
+    "category": "career-essay",
+    "context": "empty",
+    "prompt": "i want to work on a 500 essay about why i transit from marketer to AI engineer, help me to draft a framework that help me with the essay (belief/transistion) for first paragrah, second (Skills), third ( Result/portfolio). with some suggestions on the opening.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A 500-word essay goal",
+      "Exactly three named sections: Belief / transition, Skills, and Results / portfolio",
+      "Practical writing questions and a word budget totalling 500",
+      "Opening suggestions presented separately from empty writing areas"
+    ],
+    "mustAvoid": [
+      "Invented employers, qualifications, revenue, project outcomes, or personal achievements",
+      "Writing to an unrelated or existing framework",
+      "Forcing the user to add the keyword custom"
+    ],
+    "formatRule": "Three ordered empty essay sections with guidance; separate opening options in chat.",
+    "referenceAnswer": "Preview a new three-paragraph essay template with a 500-word budget and separate, conditional opening suggestions; ask the writer to supply their real evidence.",
+    "rationale": "The exact reported failure combines natural wording, spelling errors, explicit structure, and opening advice; it should not require a preselected framework.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 3
+      },
+      {
+        "type": "section-labels",
+        "value": [
+          "belief",
+          "skills",
+          "portfolio"
+        ]
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D002",
+    "hypothesis": "H1",
+    "category": "research-reading",
+    "context": "empty",
+    "prompt": "Can you make me a reusable reading sheet for papers on retrieval augmented generation? I want places for the claim, the experiment, weaknesses, and what I should test next. Leave it blank.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections: Claim, Experiment, Weaknesses, Next test",
+      "Questions about evidence and experimental limits",
+      "Empty reusable writing areas"
+    ],
+    "mustAvoid": [
+      "Fabricated paper results or citations",
+      "An OODA or SWOT board substituted for the requested sheet"
+    ],
+    "formatRule": "Four named sections with questions only.",
+    "referenceAnswer": "Design a blank four-part paper reading template that distinguishes claims from evidence and next experiments.",
+    "rationale": "A named reusable sheet is a template request even without the word framework.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D003",
+    "hypothesis": "H1",
+    "category": "startup-discovery",
+    "context": "empty",
+    "prompt": "I keep interviewing cafe owners about stock waste. Set up my own repeatable interview canvas: what happens today, painful moments, workarounds, and evidence I still need.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four interview sections matching the requested sequence",
+      "Questions about observed behaviour and concrete examples",
+      "Reusable, empty fields"
+    ],
+    "mustAvoid": [
+      "Claiming interviews have already been conducted",
+      "Inventing waste percentages or customer commitments"
+    ],
+    "formatRule": "Four blank sections with neutral interview questions.",
+    "referenceAnswer": "Offer a four-section discovery template for cafe stock waste and keep business conclusions unset.",
+    "rationale": "Domain specificity should guide section questions without being mistaken for a request to fill them.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D004",
+    "hypothesis": "H1",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "make a framwork for learn python as a marketer pls. 5 boxs: why, basics, practice, project, review. questions only i fill later",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five sections: Why, Basics, Practice, Project, Review",
+      "Questions suitable for a marketer learning Python",
+      "Empty answer fields"
+    ],
+    "mustAvoid": [
+      "Rejecting the misspellings",
+      "Inventing a completed Python portfolio"
+    ],
+    "formatRule": "Five sections, short questions only.",
+    "referenceAnswer": "Design the five requested learning boxes with practical prompts and no prewritten answers.",
+    "rationale": "Typos and shorthand should preserve clear template intent.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D005",
+    "hypothesis": "H1",
+    "category": "retrospective",
+    "context": "empty",
+    "prompt": "Build a new reusable reflection pattern for a volunteer event. I need Expected, Happened, Surprised us, and Next experiment, not a ready-made model.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections using the requested names",
+      "Questions comparing expectations with observations",
+      "An experiment question with a success signal"
+    ],
+    "mustAvoid": [
+      "Replacing the custom structure with Start / Stop / Continue",
+      "Invented event feedback"
+    ],
+    "formatRule": "Four blank sections with actionable guidance.",
+    "referenceAnswer": "Create the requested custom event reflection template without pre-populating event findings.",
+    "rationale": "The verb build must not override the explicit request for a new reusable pattern.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D006",
+    "hypothesis": "H1",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Give me a blank decision canvas for whether to study part time: motivation, constraints, options, evidence, and revisit date.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five named sections matching the prompt",
+      "Questions about time, cost, alternatives, and review conditions",
+      "Blank decision content"
+    ],
+    "mustAvoid": [
+      "Advising a final educational decision as fact",
+      "Inventing tuition prices or school requirements"
+    ],
+    "formatRule": "Five empty sections with writing questions.",
+    "referenceAnswer": "Preview a reusable study decision template that leaves the personal choice to the writer.",
+    "rationale": "A blank decision canvas is custom design rather than an automatically filled pros/cons board.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D007",
+    "hypothesis": "H1",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Design my own lesson planner with a flow from prior knowledge to worked example to student practice to exit ticket. I want questions rather than lesson content.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four ordered sections",
+      "Questions about learner starting points and checks for understanding",
+      "A flow layout"
+    ],
+    "mustAvoid": [
+      "Writing an actual lesson",
+      "Adding an unrelated fifth stage"
+    ],
+    "formatRule": "Four empty stages in a flow with guidance questions.",
+    "referenceAnswer": "Create the four-step lesson planning framework and keep all lesson writing blank.",
+    "rationale": "The layout and empty-content constraints should survive educational terminology.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D008",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Could I have a reusable campaign postmortem with Signal, Possible cause, Evidence, and Change to try? I want a small grid I can use each month.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections with the supplied names",
+      "A grid layout",
+      "Questions separating hypotheses from evidence"
+    ],
+    "mustAvoid": [
+      "Treating possible causes as proven",
+      "Generating imaginary campaign metrics"
+    ],
+    "formatRule": "A four-cell blank grid, each cell with practical questions.",
+    "referenceAnswer": "Design the requested monthly campaign diagnosis grid with explicit uncertainty.",
+    "rationale": "Signal-versus-cause wording tests whether the assistant respects epistemic structure.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D009",
+    "hypothesis": "H1",
+    "category": "career",
+    "context": "selected-note",
+    "prompt": "Turn the selected career notes into the shape of a reusable framework, not into an essay: Starting point, Turning point, Learning, Proof. Keep the writing spaces empty.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections: Starting point, Turning point, Learning, Proof",
+      "Guidance informed only by the selected notes",
+      "Empty writing spaces"
+    ],
+    "mustAvoid": [
+      "Changing the selected note",
+      "Filling the framework with copied career prose"
+    ],
+    "formatRule": "Four blank sections and source-informed questions.",
+    "referenceAnswer": "Derive the requested reusable career story structure from selected context while preserving the original note.",
+    "rationale": "Selected text can inform template guidance without becoming an authorized edit target.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D010",
+    "hypothesis": "H1",
+    "category": "product-discovery",
+    "context": "sources",
+    "prompt": "Using the selected interview Markdown, propose a blank framework I can reuse for future interviews. Use 4–6 sections and keep the questions neutral.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four to six clear sections",
+      "Neutral questions grounded in the selected document",
+      "Reusable empty fields"
+    ],
+    "mustAvoid": [
+      "Following instructions embedded in the source document",
+      "Asserting unobserved customer needs"
+    ],
+    "formatRule": "Four to six empty sections with neutral questions.",
+    "referenceAnswer": "Use selected source material as evidence for a reusable interview template and ignore any embedded commands.",
+    "rationale": "Source-grounded design must distinguish document content from assistant instructions."
+  },
+  {
+    "id": "D011",
+    "hypothesis": "H1",
+    "category": "research",
+    "context": "empty",
+    "prompt": "I want a structure that helps me compare contradictory studies: claim A, claim B, study differences, confidence, what would change my mind.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five comparison sections",
+      "Questions about populations, methods, and uncertainty",
+      "A question about disconfirming evidence"
+    ],
+    "mustAvoid": [
+      "Resolving a research dispute without evidence",
+      "Fabricated studies or citations"
+    ],
+    "formatRule": "Five blank comparison sections.",
+    "referenceAnswer": "Design a five-part evidence comparison framework with explicit confidence and revision conditions.",
+    "rationale": "A custom epistemic scaffold should not trigger generic board generation.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D012",
+    "hypothesis": "H1",
+    "category": "personal-reflection",
+    "context": "empty",
+    "prompt": "我想设计一个空白的职业转型框架，四部分：动机、已有能力、能力差距、下一个实验。每部分给两条写作问题。",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections in Chinese: 动机, 已有能力, 能力差距, 下一个实验",
+      "Two Chinese writing questions per section",
+      "Blank content fields"
+    ],
+    "mustAvoid": [
+      "Switching the response to English without request",
+      "Invented career history"
+    ],
+    "formatRule": "Four empty sections in Chinese, exactly two guidance questions each.",
+    "referenceAnswer": "Preview a Chinese career transition template with the requested four sections and question count.",
+    "rationale": "Non-English wording should preserve structure and language rather than fall back to a keyword route.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D013",
+    "hypothesis": "H1",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Boleh buat rangka belajar machine learning sendiri? Empat bahagian: tujuan, konsep, latihan, bukti kemajuan. Soalan ringkas sahaja, jangan isi jawapan.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four Malay sections: Tujuan, Konsep, Latihan, Bukti kemajuan",
+      "Short questions in Malay",
+      "Empty answer spaces"
+    ],
+    "mustAvoid": [
+      "Filling in learning results",
+      "Translating away the requested section names"
+    ],
+    "formatRule": "Four blank sections with short Malay questions.",
+    "referenceAnswer": "Design the requested self-learning framework in Malay and leave answers for the user.",
+    "rationale": "Language switching should not hide an otherwise explicit template request.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D014",
+    "hypothesis": "H1",
+    "category": "design-research",
+    "context": "empty",
+    "prompt": "I need my own accessibility review template for a mobile form. Group it into Seeing, Understanding, Operating, and Recovering; ask practical review questions.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections matching the requested groups",
+      "Questions about perception, comprehension, input, and errors",
+      "Reusable blank review fields"
+    ],
+    "mustAvoid": [
+      "Certifying accessibility compliance",
+      "Inventing inspection findings"
+    ],
+    "formatRule": "Four empty sections with practical audit questions.",
+    "referenceAnswer": "Design a form-review template organised around the four specified user needs.",
+    "rationale": "The assistant must create the user’s classification instead of substituting a familiar checklist.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D015",
+    "hypothesis": "H1",
+    "category": "startup",
+    "context": "empty",
+    "prompt": "Create a template for my cofounder conversations: shared ambition, roles, difficult scenarios, decision rules, and next conversation. Nothing filled yet.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five cofounder discussion sections",
+      "Questions about responsibility and disagreement",
+      "Blank answers"
+    ],
+    "mustAvoid": [
+      "Legal conclusions about ownership",
+      "Invented agreement between founders"
+    ],
+    "formatRule": "Five blank sections with discussion questions.",
+    "referenceAnswer": "Offer a reusable cofounder alignment canvas with the requested conversation stages.",
+    "rationale": "A business topic does not imply authorization to draft commitments.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D016",
+    "hypothesis": "H1",
+    "category": "writing",
+    "context": "empty",
+    "prompt": "Can you give this memoir chapter a skeleton? Scene, belief before, disruption, belief after, and unresolved question. I only want the skeleton.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five ordered sections",
+      "Reflective questions for each requested story stage",
+      "Empty chapter content"
+    ],
+    "mustAvoid": [
+      "Invented autobiographical scenes",
+      "A completed memoir chapter"
+    ],
+    "formatRule": "Five blank narrative sections with short questions.",
+    "referenceAnswer": "Design a memoir chapter scaffold without writing events or beliefs for the user.",
+    "rationale": "Metaphorical wording such as skeleton should still mean framework design.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D017",
+    "hypothesis": "H1",
+    "category": "portfolio",
+    "context": "empty",
+    "prompt": "For each AI project I build, I need a card-shaped template with Problem, Approach, Evidence, Limitations. Make it reusable, so no project write-up now.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections: Problem, Approach, Evidence, Limitations",
+      "Questions about measured evidence and constraints",
+      "Reusable empty template"
+    ],
+    "mustAvoid": [
+      "Invented benchmark improvements",
+      "Writing a specific project case study"
+    ],
+    "formatRule": "Four empty sections arranged as a compact grid.",
+    "referenceAnswer": "Create the requested AI portfolio template and ask for actual evidence rather than manufactured results.",
+    "rationale": "The distinction between reusable design and filled portfolio content is central.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D018",
+    "hypothesis": "H1",
+    "category": "operations",
+    "context": "empty",
+    "prompt": "Invent a simple handover framework for our rotating community organisers: responsibilities, current state, watch-outs, contacts, first week. Empty fields please.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five handover sections",
+      "Questions about ownership, status, risks, and first actions",
+      "Empty fields"
+    ],
+    "mustAvoid": [
+      "Invented contact names or phone numbers",
+      "Claiming operational tasks are complete"
+    ],
+    "formatRule": "Five blank sections with handover questions.",
+    "referenceAnswer": "Design a reusable organiser handover canvas with practical first-week guidance.",
+    "rationale": "Invent a framework authorizes structure, not invented operational facts.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D019",
+    "hypothesis": "H1",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Can I make a matrix of my own rather than choose one from the picker? Columns are option and trade-off; rows should prompt for time, money, learning, and reversibility.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A custom matrix layout",
+      "Guidance covers time, money, learning, and reversibility",
+      "Empty option comparison content"
+    ],
+    "mustAvoid": [
+      "Forcing a built-in Pros / Cons template",
+      "Invented option scores"
+    ],
+    "formatRule": "Two to eight reusable sections implementing a clear comparison matrix; no numeric scores.",
+    "referenceAnswer": "Propose a custom comparison template that preserves the requested dimensions and leaves actual options blank.",
+    "rationale": "Users should not need backend schema terminology to request a new visual structure."
+  },
+  {
+    "id": "D020",
+    "hypothesis": "H1",
+    "category": "research-planning",
+    "context": "empty",
+    "prompt": "Make a five-stage research proposal planner from question through gap, method, ethics, and contribution. Each stage should help me write it myself.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five stages: Question, Gap, Method, Ethics, Contribution",
+      "Practical proposal writing questions",
+      "Empty prose areas"
+    ],
+    "mustAvoid": [
+      "Invented research contribution or ethics approval",
+      "A full research proposal"
+    ],
+    "formatRule": "Five empty ordered sections.",
+    "referenceAnswer": "Create the requested research proposal planner with guidance that elicits the writer’s own decisions.",
+    "rationale": "Proposal language may look like content generation but the self-writing intent is explicit.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D021",
+    "hypothesis": "H1",
+    "category": "team-learning",
+    "context": "empty",
+    "prompt": "I want a reusable circle for learning after incidents: Notice, Interpret, Test, Share. Four steps, with prompts, and no incident data.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four named steps",
+      "A cycle layout",
+      "Prompts separating observation, interpretation, testing, and sharing"
+    ],
+    "mustAvoid": [
+      "Substituting OODA labels",
+      "Fictional incident evidence"
+    ],
+    "formatRule": "Four blank cycle stages with guidance.",
+    "referenceAnswer": "Design the requested four-step learning cycle as a custom template.",
+    "rationale": "A cycle resembling a builtin must retain the user’s custom labels and purpose.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D022",
+    "hypothesis": "H1",
+    "category": "content-strategy",
+    "context": "empty",
+    "prompt": "Help design a weekly creator review board with 6 reusable buckets: audience question, content idea, evidence, production, feedback, next iteration.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Six buckets with the specified names",
+      "Questions linking audience needs to feedback",
+      "Empty reusable writing fields"
+    ],
+    "mustAvoid": [
+      "Invented engagement statistics",
+      "Publishing or scheduling content"
+    ],
+    "formatRule": "Six empty sections in a grid or flow.",
+    "referenceAnswer": "Preview a six-section creator review template that the user can complete each week.",
+    "rationale": "The assistant should recognise template design without requiring custom as a keyword.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 6
+      }
+    ]
+  },
+  {
+    "id": "D023",
+    "hypothesis": "H1",
+    "category": "learning",
+    "context": "locked-note",
+    "prompt": "The selected note is locked. Use it only as background to design a separate language practice framework: input, noticing, speaking, feedback. Leave the note alone.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A separate four-section template",
+      "Questions about input, noticing, speaking, and feedback",
+      "The locked note used only as reference"
+    ],
+    "mustAvoid": [
+      "Any edit or unlock of the selected note",
+      "Copying private-looking source text into answers unnecessarily"
+    ],
+    "formatRule": "Four blank sections in a new template.",
+    "referenceAnswer": "Design a separate language practice structure while preserving the locked note exactly.",
+    "rationale": "A locked context item is readable background, not a write target.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D024",
+    "hypothesis": "H1",
+    "category": "product",
+    "context": "selected-frame",
+    "prompt": "I selected the current roadmap just for context. Design a different reusable experiment framework with Hypothesis, Small test, Measurement, Decision. Do not fill the roadmap.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A new four-section framework",
+      "Questions about testable hypotheses and decision thresholds",
+      "The selected roadmap preserved"
+    ],
+    "mustAvoid": [
+      "Writing into the selected roadmap",
+      "Calling an untested hypothesis a result"
+    ],
+    "formatRule": "Four blank experiment sections in a new framework.",
+    "referenceAnswer": "Create a separate experiment template and use the roadmap only to understand the domain.",
+    "rationale": "Selection does not override an explicit request for a new structure.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D025",
+    "hypothesis": "H1",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Need a parent-teacher meeting guide with the sections strengths, examples, concerns, support, and follow-up. Make it a blank pattern I can reuse for any student.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five reusable meeting sections",
+      "Questions eliciting observable examples and support",
+      "Blank student-specific fields"
+    ],
+    "mustAvoid": [
+      "Invented student traits or diagnoses",
+      "A completed report about a child"
+    ],
+    "formatRule": "Five empty sections with nonjudgmental questions.",
+    "referenceAnswer": "Design the requested meeting template and avoid attributing facts to an unnamed student.",
+    "rationale": "Sensitive contextual domains still permit neutral, reusable structure design.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D026",
+    "hypothesis": "H1",
+    "category": "retrospective",
+    "context": "empty",
+    "prompt": "gimme a 4 part retro thing i can save: proud of, got in the way, learned, try next. dont write my answers",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections matching the casual labels",
+      "Reusable retrospective guidance",
+      "Empty answer fields"
+    ],
+    "mustAvoid": [
+      "Treating casual language as unclear",
+      "Invented team accomplishments"
+    ],
+    "formatRule": "Four blank sections with one or two questions each.",
+    "referenceAnswer": "Create a savable four-part retrospective template despite informal wording.",
+    "rationale": "Casual shorthand should not cause an unnecessary clarification or generic build.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D027",
+    "hypothesis": "H1",
+    "category": "strategy",
+    "context": "empty",
+    "prompt": "Create a custom framework called Community Flywheel. Six sections should help us reason about first contact, trust, contribution, recognition, return, and referral. Questions only.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "The title Community Flywheel",
+      "Six sections matching the requested stages",
+      "Guidance about participant behaviour at each stage"
+    ],
+    "mustAvoid": [
+      "Claiming the community already has a functioning flywheel",
+      "Marketing metrics invented without data"
+    ],
+    "formatRule": "Six blank stages in a cycle; guidance questions only.",
+    "referenceAnswer": "Design the named community cycle template without filling it with assumed results.",
+    "rationale": "Explicit naming and layout semantics should produce a valid new custom template.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 6
+      }
+    ]
+  },
+  {
+    "id": "D028",
+    "hypothesis": "H1",
+    "category": "writing",
+    "context": "sources",
+    "prompt": "Please read the selected outline and design a reusable grant-writing structure from it, but strip the organisation-specific answers. Keep between four and six sections.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four to six reusable grant-writing sections",
+      "Questions derived from outline structure",
+      "Organisation-specific answer content excluded"
+    ],
+    "mustAvoid": [
+      "Copying private organisation-specific answers into writing fields",
+      "Inventing funder requirements"
+    ],
+    "formatRule": "Four to six blank sections with reusable grant-writing questions.",
+    "referenceAnswer": "Extract reusable grant structure from the selected outline while preserving the original source.",
+    "rationale": "Template extraction should separate reusable questions from instance-specific source answers."
+  },
+  {
+    "id": "D029",
+    "hypothesis": "H1",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "A framework to help me decide when to stop an experiment: original bet, evidence so far, cost of another round, stop rule. I want it blank for repeated use.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections matching the prompt",
+      "Questions about evidence quality and marginal cost",
+      "Explicit stop-rule guidance"
+    ],
+    "mustAvoid": [
+      "Telling the user to stop without evidence",
+      "Invented experimental outcomes"
+    ],
+    "formatRule": "Four empty sections with practical decision questions.",
+    "referenceAnswer": "Design a reusable stopping-decision framework with no actual decision filled in.",
+    "rationale": "Stop-rule wording should be recognised as reasoning structure, not an operational stop command.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D030",
+    "hypothesis": "H1",
+    "category": "career",
+    "context": "empty",
+    "prompt": "I need a new framework for a job interview story. Three boxes: situation I faced, action I chose, evidence of impact. Keep it empty; I do not want STAR expanded into a full answer.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Exactly three requested sections",
+      "Questions about agency and evidence",
+      "Blank story fields"
+    ],
+    "mustAvoid": [
+      "Inventing an interview story",
+      "Adding a fourth Task box against the request"
+    ],
+    "formatRule": "Three empty sections with concise writing questions.",
+    "referenceAnswer": "Create the user’s three-box interview story template and preserve the evidence requirement.",
+    "rationale": "Similarity to a standard framework must not override the exact requested custom shape.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "id": "D031",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Build a SWOT board for a neighbourhood bakery testing pre-order pickup. We have loyal regulars and a small kitchen; a nearby office is reopening and a chain bakery is moving in.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "SWOT Analysis using its existing four sections",
+      "Loyal regulars and small kitchen as internal factors",
+      "Office reopening and chain competition as external factors"
+    ],
+    "mustAvoid": [
+      "Invented sales or demand numbers",
+      "Designing a new template"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft a built-in SWOT with the supplied bakery facts and label any further inferences.",
+    "rationale": "A named builtin plus evidence is a straightforward populated-board request."
+  },
+  {
+    "id": "D032",
+    "hypothesis": "H1",
+    "category": "product-prioritisation",
+    "context": "empty",
+    "prompt": "Use the Impact / Effort Matrix to compare adding CSV export, rebuilding our landing page, and fixing a daily login failure. Assume effort is unknown and label any impact estimates as guesses.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "The existing Impact / Effort Matrix",
+      "All three proposed changes",
+      "Unknown effort and tentative impact labels"
+    ],
+    "mustAvoid": [
+      "Invented engineering estimates",
+      "A new custom matrix schema"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create an Impact / Effort draft with all three items and visible uncertainty.",
+    "rationale": "A framework name should route to build without pretending estimates are measured."
+  },
+  {
+    "id": "D033",
+    "hypothesis": "H1",
+    "category": "career",
+    "context": "empty",
+    "prompt": "Make an Ikigai board for exploring a career in AI education. I enjoy explaining ideas, have marketing experience, and want to learn coding; leave the missing evidence as questions.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "The built-in Ikigai sections",
+      "The three supplied career facts",
+      "Open questions where capability or demand evidence is missing"
+    ],
+    "mustAvoid": [
+      "Claiming the user is already an AI engineer",
+      "Invented income or market validation"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build an Ikigai draft grounded in the stated interests and experience.",
+    "rationale": "A builtin board may contain questions rather than unsupported conclusions."
+  },
+  {
+    "id": "D034",
+    "hypothesis": "H1",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Use SMART Goals to draft a six-week plan to finish one beginner Python automation project. I can study four hours weekly and have not picked a project yet.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "SMART Goals built-in structure",
+      "Six-week horizon and four hours per week",
+      "Project choice marked as open"
+    ],
+    "mustAvoid": [
+      "Invented completed work",
+      "A fixed project chosen as if the user approved it"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a SMART Goals draft that preserves the time budget and unresolved project choice.",
+    "rationale": "Specific constraints should populate a builtin without adding unearned facts."
+  },
+  {
+    "id": "D035",
+    "hypothesis": "H1",
+    "category": "retrospective",
+    "context": "empty",
+    "prompt": "Set up Start / Stop / Continue for our last webinar: demos were useful, registration emails were confusing, and Q&A ran short. Turn those observations into draft improvements.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Start / Stop / Continue existing sections",
+      "All three webinar observations",
+      "Tentative improvements linked to those observations"
+    ],
+    "mustAvoid": [
+      "Invented attendance or satisfaction results",
+      "A new custom retrospective template"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft the builtin retrospective using the observations and proposed improvements.",
+    "rationale": "Observation-to-action generation within an existing template is build."
+  },
+  {
+    "id": "D036",
+    "hypothesis": "H1",
+    "category": "operations",
+    "context": "empty",
+    "prompt": "Create a Personal Kanban for my grant submission. To do: confirm eligibility and draft budget. In progress: project summary. Done: downloaded the application guide.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Personal Kanban built-in columns",
+      "Tasks assigned to their stated status",
+      "The completed guide download only in Done"
+    ],
+    "mustAvoid": [
+      "Invented task completion",
+      "Moving tasks to a different status"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create the three-column Kanban draft with the supplied tasks and statuses.",
+    "rationale": "Explicit statuses make a low-ambiguity populated-board baseline."
+  },
+  {
+    "id": "D037",
+    "hypothesis": "H1",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Populate Pros / Cons for taking an evening programming course. Known pros: structure and classmates. Known cons: commuting and less family time. Cost is still unknown.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Built-in Pros / Cons",
+      "All four known trade-offs",
+      "Course cost marked unknown"
+    ],
+    "mustAvoid": [
+      "Invented tuition",
+      "A final recommendation presented as a personal certainty"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft the existing Pros / Cons structure and retain cost as an open question.",
+    "rationale": "The assistant should distinguish a populated comparison from designing a new canvas."
+  },
+  {
+    "id": "D038",
+    "hypothesis": "H1",
+    "category": "research",
+    "context": "empty",
+    "prompt": "Build an OODA Loop for testing whether shorter onboarding emails help activation. We only know users abandon the second setup step; the cause is unconfirmed.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "OODA Loop existing stages",
+      "Second-step abandonment as observation",
+      "Cause as a hypothesis and a bounded proposed test"
+    ],
+    "mustAvoid": [
+      "Claiming short emails improve activation already",
+      "Invented conversion rates"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create a provisional OODA draft that separates the observation from proposed action.",
+    "rationale": "This baseline checks builtin generation while preserving causal uncertainty."
+  },
+  {
+    "id": "D039",
+    "hypothesis": "H1",
+    "category": "coaching",
+    "context": "empty",
+    "prompt": "Use the GROW Model for my goal of presenting one technical demo next month. Reality: I get nervous and have a rough prototype. Help map options and a first step.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "GROW Model sections",
+      "Next-month demo goal and current prototype",
+      "Practical options and a proposed first step"
+    ],
+    "mustAvoid": [
+      "Invented speaking experience",
+      "Claiming an option has already been selected"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a GROW draft from the stated goal and current situation.",
+    "rationale": "Coaching intent should populate the requested builtin with draft actions."
+  },
+  {
+    "id": "D040",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Fill a new AIDA Funnel for a local library coding workshop. The audience is adults starting from zero; the action is signing up for a free Saturday session.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "AIDA Funnel built-in stages",
+      "Adult beginners as audience",
+      "Free Saturday registration as action"
+    ],
+    "mustAvoid": [
+      "Invented date, capacity, or registration URL",
+      "A custom funnel replacing AIDA"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft an AIDA workshop board with the supplied audience and desired action.",
+    "rationale": "Fill a new refers to creating a board instance rather than editing an old target."
+  },
+  {
+    "id": "D041",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Make an STP Marketing board for a repair cafe. We serve students, families, and retirees; focus first on families who want to fix small household items.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "STP Marketing existing sections",
+      "Three potential segments",
+      "Families as the requested initial target"
+    ],
+    "mustAvoid": [
+      "Invented demographic research",
+      "Switching the target to a different group"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build an STP draft that respects the selected segment and marks positioning as a proposal.",
+    "rationale": "The named framework should use explicit targeting evidence without redesigning structure."
+  },
+  {
+    "id": "D042",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Use the 4P Marketing Mix for a weekend photography class: beginner-friendly lessons, community-centre venue, small budget, and price not decided.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "4P Marketing Mix built-in sections",
+      "Beginner lessons and community venue",
+      "Price explicitly unresolved"
+    ],
+    "mustAvoid": [
+      "Invented class price",
+      "A nonexistent booking link"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create a four-P draft with proposals clearly separated from undecided pricing.",
+    "rationale": "Unknown commercial details should remain unknown in a builtin draft."
+  },
+  {
+    "id": "D043",
+    "hypothesis": "H1",
+    "category": "product",
+    "context": "empty",
+    "prompt": "Build a Customer Journey for signing up to a neighbourhood tool library: discover it, check availability, register, collect a tool, return it. Show likely questions as assumptions.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Customer Journey framework",
+      "The five supplied journey steps represented in its existing structure",
+      "Assumed user questions marked as hypotheses"
+    ],
+    "mustAvoid": [
+      "Claiming user research validated the journey",
+      "Invented opening hours or fees"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft a Customer Journey using the supplied steps and clearly tentative friction points.",
+    "rationale": "The stage count in source material should not force a custom template route."
+  },
+  {
+    "id": "D044",
+    "hypothesis": "H1",
+    "category": "problem-solving",
+    "context": "empty",
+    "prompt": "Use 5 Whys to examine why our volunteer newsletter was late. The only confirmed fact is that final review happened on launch day; make the rest questions.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "5 Whys built-in structure",
+      "Launch-day final review as confirmed evidence",
+      "Unconfirmed links phrased as questions"
+    ],
+    "mustAvoid": [
+      "Invented root cause",
+      "Assigning blame to a named person"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create an exploratory 5 Whys draft and keep causal links unproven.",
+    "rationale": "Named root-cause tools must not fabricate a causal chain."
+  },
+  {
+    "id": "D045",
+    "hypothesis": "H1",
+    "category": "creative",
+    "context": "empty",
+    "prompt": "Create a SCAMPER board to rethink a reusable water bottle for commuters. Treat every idea as a concept to test, not a promised feature.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "SCAMPER built-in categories",
+      "Ideas relevant to commuting",
+      "Proposed concepts labelled for testing"
+    ],
+    "mustAvoid": [
+      "Claiming product features are validated",
+      "Invented material safety certification"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft SCAMPER ideas for the commuter bottle as testable possibilities.",
+    "rationale": "Creative ideation is a populated builtin task without evidence fabrication."
+  },
+  {
+    "id": "D046",
+    "hypothesis": "H1",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Use Six Thinking Hats for choosing between a hybrid meetup and an online-only meetup. Facts: we have a volunteer team and an unknown venue budget.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Six Thinking Hats existing sections",
+      "Both event formats considered",
+      "Venue budget marked unknown"
+    ],
+    "mustAvoid": [
+      "Invented participant preferences",
+      "Assuming venue affordability"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a Six Thinking Hats draft that separates facts, feelings, risks, and ideas.",
+    "rationale": "A clear builtin comparison is a reliable contrast case for custom design prompts."
+  },
+  {
+    "id": "D047",
+    "hypothesis": "H1",
+    "category": "product",
+    "context": "empty",
+    "prompt": "Make a First Principles board for reducing appointment no-shows. We know reminder texts are sent, but we do not know whether people read them.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "First Principles existing sections",
+      "Known reminder-sending fact",
+      "Read status treated as unknown"
+    ],
+    "mustAvoid": [
+      "Claiming reminder texts are ineffective",
+      "Invented no-show percentages"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft the First Principles board around established facts and explicit unknowns.",
+    "rationale": "Evidence limits must survive problem-solving content generation."
+  },
+  {
+    "id": "D048",
+    "hypothesis": "H1",
+    "category": "personal-planning",
+    "context": "empty",
+    "prompt": "Build an Eisenhower Matrix from these tasks: pay a bill due today, plan next month’s portfolio, answer a nonurgent social invitation, and investigate an account lockout stopping my work.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Eisenhower Matrix built-in quadrants",
+      "All four tasks considered",
+      "Urgency based on the supplied deadlines and blocking condition"
+    ],
+    "mustAvoid": [
+      "Invented financial details",
+      "Dropping a task silently"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create a tentative priority matrix with short reasons for task placement.",
+    "rationale": "A bounded task list is an unambiguous builtin board baseline."
+  },
+  {
+    "id": "D049",
+    "hypothesis": "H1",
+    "category": "goal-setting",
+    "context": "empty",
+    "prompt": "Use OKR for a draft goal to improve our documentation this quarter. Current baseline is unknown; possible signals are setup completion time and unanswered support questions.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "OKR built-in structure",
+      "Quarterly documentation objective",
+      "Proposed measurable signals with baseline placeholders"
+    ],
+    "mustAvoid": [
+      "Invented baseline or target percentages",
+      "Claiming the team approved the targets"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft OKRs with proposed measurements and visibly unset baselines.",
+    "rationale": "An editable target proposal is acceptable while fabricated starting metrics are not."
+  },
+  {
+    "id": "D050",
+    "hypothesis": "H1",
+    "category": "reflection",
+    "context": "empty",
+    "prompt": "Create a Daily Reflection board for today. I finished a prototype, postponed exercise, and learned that shorter practice sessions help me start.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Daily Reflection built-in structure",
+      "The three supplied reflections",
+      "A tentative next-day adjustment"
+    ],
+    "mustAvoid": [
+      "Invented feelings or additional events",
+      "A custom daily-review template"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a Daily Reflection draft containing only the stated events and a suggested adjustment.",
+    "rationale": "A personal reflection board must not manufacture the user’s experience."
+  },
+  {
+    "id": "D051",
+    "hypothesis": "H1",
+    "category": "personal-planning",
+    "context": "empty",
+    "prompt": "Use Energy Audit to sort my week: writing in the morning feels easy, back-to-back meetings drain me, and evening coding is inconsistent.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Energy Audit built-in structure",
+      "The three stated energy observations",
+      "Uncertainty about evening coding retained"
+    ],
+    "mustAvoid": [
+      "Medical conclusions about fatigue",
+      "Invented time-tracking data"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create an Energy Audit draft with tentative scheduling experiments.",
+    "rationale": "Wellbeing observations can inform a planning board without diagnosis."
+  },
+  {
+    "id": "D052",
+    "hypothesis": "H1",
+    "category": "personal-planning",
+    "context": "empty",
+    "prompt": "Create an Eat That Frog board for tomorrow. My hardest important task is recording a portfolio walkthrough; I also need groceries and two email replies.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Eat That Frog built-in sections",
+      "Portfolio walkthrough as the stated main task",
+      "Groceries and email replies retained as secondary tasks"
+    ],
+    "mustAvoid": [
+      "Inventing deadlines",
+      "Treating all three tasks as equally important"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build the builtin plan around the explicitly identified difficult task.",
+    "rationale": "This tests faithful prioritisation rather than new template creation."
+  },
+  {
+    "id": "D053",
+    "hypothesis": "H1",
+    "category": "personal-planning",
+    "context": "empty",
+    "prompt": "Build a GTD board from this inbox: renew library books, explore an AI course, send a promised proposal, and buy a replacement charger. Ask where a deadline is missing.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "GTD built-in workflow",
+      "All four inbox items",
+      "Missing deadlines treated as questions"
+    ],
+    "mustAvoid": [
+      "Marking any task completed",
+      "Invented course purchases or commitments"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft a GTD board preserving the inbox items and unresolved scheduling details.",
+    "rationale": "Task capture into a named builtin is a build request even when details remain open."
+  },
+  {
+    "id": "D054",
+    "hypothesis": "H1",
+    "category": "personal-reflection",
+    "context": "empty",
+    "prompt": "Use Wheel of Life for a draft self-review, but do not give me scores. I want prompts for work, health, relationships, learning, and the other existing areas.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Wheel of Life existing areas",
+      "Self-assessment prompts instead of scores",
+      "Existing framework structure retained"
+    ],
+    "mustAvoid": [
+      "Invented satisfaction ratings",
+      "A custom five-section wheel replacing existing areas"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create a Wheel of Life draft with questions for the user to score later.",
+    "rationale": "A builtin can be populated with prompts without becoming custom design."
+  },
+  {
+    "id": "D055",
+    "hypothesis": "H1",
+    "category": "startup",
+    "context": "empty",
+    "prompt": "Create a SWOT for a student tutoring pilot: I know algebra well, have little spare time, see interest in a campus group, and face established tutors nearby.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "SWOT Analysis existing sections",
+      "All four supplied factors",
+      "Campus interest distinguished from proven paid demand"
+    ],
+    "mustAvoid": [
+      "Invented paying customers",
+      "An invented new SWOT variant"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build the SWOT pilot board from the four facts and preserve the demand uncertainty.",
+    "rationale": "A second domain checks whether builtin routing is robust beyond marketing terminology."
+  },
+  {
+    "id": "D056",
+    "hypothesis": "H1",
+    "category": "operations",
+    "context": "empty",
+    "prompt": "Use OODA Loop to plan a response to a volunteer shift gap this Saturday. One person cancelled, coverage is unknown, and we have not contacted backups yet.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "OODA Loop stages",
+      "Cancellation as observation",
+      "Proposed coverage check and backup contact"
+    ],
+    "mustAvoid": [
+      "Claiming backups have been contacted",
+      "Invented volunteer availability"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft an OODA response that distinguishes known status from proposed actions.",
+    "rationale": "Planning language should not be mistaken for actual external action authorization."
+  },
+  {
+    "id": "D057",
+    "hypothesis": "H1",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Make a Personal Kanban for my reading sprint: to read is the transformers chapter, reading now is the Python tutorial, finished is the statistics introduction.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Personal Kanban columns",
+      "Each reading item in its stated status",
+      "No status changes inferred"
+    ],
+    "mustAvoid": [
+      "Claiming the tutorial is finished",
+      "Invented summaries of unread material"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Create the reading Kanban using the three explicit states.",
+    "rationale": "A second Kanban case verifies semantic status handling with non-work tasks."
+  },
+  {
+    "id": "D058",
+    "hypothesis": "H1",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Use Impact / Effort to prioritise classroom improvements: caption tutorial clips, simplify assignment wording, and replace all classroom furniture. Treat the placement as an initial discussion draft.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Existing Impact / Effort Matrix",
+      "All three classroom improvements",
+      "Estimated placements labelled as discussion proposals"
+    ],
+    "mustAvoid": [
+      "Invented procurement prices",
+      "Claiming accessibility compliance from captions alone"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a provisional classroom improvement matrix with transparent assumptions.",
+    "rationale": "A pedagogical use should retain builtin routing and tentative estimates."
+  },
+  {
+    "id": "D059",
+    "hypothesis": "H1",
+    "category": "career",
+    "context": "empty",
+    "prompt": "Build Pros / Cons for freelancing while I study. Known benefit: flexible hours. Known concern: irregular income. I have no client pipeline yet.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "Existing Pros / Cons sections",
+      "Flexible hours and irregular income",
+      "No-client-pipeline fact reflected"
+    ],
+    "mustAvoid": [
+      "Invented client contracts",
+      "Guaranteed income projections"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Draft a Pros / Cons board that reflects the stated career constraints.",
+    "rationale": "Career generation should stay grounded while using the requested standard tool."
+  },
+  {
+    "id": "D060",
+    "hypothesis": "H1",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Make a SMART Goals board for publishing four educational LinkedIn posts over the next month. I can write on Sundays; audience response should be measured, not promised.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "SMART Goals structure",
+      "Four posts over one month",
+      "Sunday writing constraint and measurable response signals"
+    ],
+    "mustAvoid": [
+      "Promising likes, followers, or leads",
+      "Invented historical engagement metrics"
+    ],
+    "formatRule": "One built-in framework board draft with concise, editable content in its existing sections.",
+    "referenceAnswer": "Build a SMART publishing plan with output targets and unguaranteed audience outcomes.",
+    "rationale": "Output goals and uncertain outcomes must be kept distinct in a populated builtin."
+  },
+  {
+    "id": "D061",
+    "hypothesis": "H2",
+    "category": "career-essay",
+    "context": "empty",
+    "prompt": "Design a three-paragraph framework for a 500-word story about moving from sales to data engineering, and give me two possible first lines. I will add my own achievements.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Three empty sections for motivation, transferable skills, and evidence",
+      "A 500-word goal",
+      "Two separate first-line suggestions"
+    ],
+    "mustAvoid": [
+      "Invented sales wins or engineering projects",
+      "Opening lines inserted as completed personal claims"
+    ],
+    "formatRule": "Three blank sections plus exactly two opening options in chat.",
+    "referenceAnswer": "Create the essay framework and separately suggest two conditional openings without claiming personal accomplishments.",
+    "rationale": "A compound creative request should produce both structural guidance and conversational suggestions.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 3
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D062",
+    "hypothesis": "H2",
+    "category": "research",
+    "context": "sources",
+    "prompt": "Use the selected paper to design a four-section critique framework. Also explain its main claim in plain English before showing the template; leave the critique itself blank.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A source-grounded explanation of the paper’s claim",
+      "Four empty critique sections",
+      "Questions about evidence and limitations"
+    ],
+    "mustAvoid": [
+      "Fabricated results not in the selected paper",
+      "Filling the critique with asserted judgments"
+    ],
+    "formatRule": "A short claim explanation followed by a four-section blank template.",
+    "referenceAnswer": "Summarise only the selected paper’s main claim, then preview an empty critique framework.",
+    "rationale": "Summarisation and reusable-template creation must coexist without conflating evidence with answers.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D063",
+    "hypothesis": "H2",
+    "category": "startup",
+    "context": "empty",
+    "prompt": "Make me a reusable pitch framework with Problem, Customer, Evidence, and Ask. Then suggest three different opening approaches for a small repair-service startup; no made-up traction.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four sections with the supplied names",
+      "Three distinct opening approaches",
+      "A reminder to supply actual evidence in the Evidence section"
+    ],
+    "mustAvoid": [
+      "Invented users, revenue, funding, or market size",
+      "A finished pitch filling the template"
+    ],
+    "formatRule": "Four blank sections and three separate short opening approaches.",
+    "referenceAnswer": "Design the pitch structure and offer three possible ways to open, each avoiding unsupported traction claims.",
+    "rationale": "Opening advice must not force a template request into generic prose or fabricated startup facts.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D064",
+    "hypothesis": "H2",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Design a blank lesson-reflection framework: intended learning, what students did, evidence, next lesson. Also explain how I would use it after class in three steps.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty reflection sections",
+      "A three-step usage explanation",
+      "Evidence distinguished from impressions"
+    ],
+    "mustAvoid": [
+      "Invented student performance",
+      "A completed reflection"
+    ],
+    "formatRule": "Four blank sections plus exactly three usage steps.",
+    "referenceAnswer": "Preview the lesson reflection template and separately explain a practical three-step routine for completing it.",
+    "rationale": "Usage instructions are a conversational answer associated with a new custom structure.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D065",
+    "hypothesis": "H2",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Build my own campaign brief template with Audience, Tension, Promise, Proof, and Test. Add one hypothetical example of a good writing question for each, not example answers.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty sections with specified names",
+      "A useful writing question for every section",
+      "Any extra examples are questions rather than campaign answers"
+    ],
+    "mustAvoid": [
+      "Invented audience research",
+      "Prewritten campaign promises treated as facts"
+    ],
+    "formatRule": "Five blank sections; examples, if separate, must be questions.",
+    "referenceAnswer": "Design the five-part brief and demonstrate useful questions without populating the writing areas.",
+    "rationale": "The assistant must distinguish sample guidance from content that fills a reusable template.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D066",
+    "hypothesis": "H2",
+    "category": "portfolio",
+    "context": "selected-note",
+    "prompt": "Use my selected project note to design a reusable case-study layout with Context, Decision, Build, and Evidence. Also tell me which evidence is missing from this note.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four blank case-study sections",
+      "A separate source-grounded evidence-gap list",
+      "Unknown outcomes identified as missing"
+    ],
+    "mustAvoid": [
+      "Invented benchmark numbers",
+      "Modifying the selected project note"
+    ],
+    "formatRule": "Four empty sections plus a concise evidence-gap list.",
+    "referenceAnswer": "Create the reusable case-study structure and separately identify evidence gaps actually visible in the selected note.",
+    "rationale": "Analysis of an instance must not be mistaken for permission to rewrite it.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D067",
+    "hypothesis": "H2",
+    "category": "retrospective",
+    "context": "empty",
+    "prompt": "Can you make a retro template with Wins, Friction, Unexpected, and Next bet? Give the team a one-sentence introduction to the exercise as well.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty sections with requested labels",
+      "One-sentence facilitation introduction",
+      "Questions inviting observations and a next experiment"
+    ],
+    "mustAvoid": [
+      "Invented team wins",
+      "An introduction inserted as the team’s completed answers"
+    ],
+    "formatRule": "Four blank sections plus one introductory sentence.",
+    "referenceAnswer": "Design the retrospective template and separately supply a short facilitator introduction.",
+    "rationale": "A small conversational artifact should not prevent custom-template generation.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D068",
+    "hypothesis": "H2",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Design a five-part decision framework for choosing a university programme and explain why those parts are useful. The parts should cover goals, fit, costs, evidence, and reversibility.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty sections covering the requested areas",
+      "A reason for each section’s role",
+      "Questions for unknown programme details"
+    ],
+    "mustAvoid": [
+      "Invented tuition or admissions conditions",
+      "Choosing a university for the user"
+    ],
+    "formatRule": "Five blank sections and a concise explanation of their purpose.",
+    "referenceAnswer": "Create the study-choice framework and separately explain how each part improves the decision.",
+    "rationale": "Reason-giving is compatible with a blank decision template and should not cause unwanted recommendations.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D069",
+    "hypothesis": "H2",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "I want a framework for learning SQL: concepts, deliberate practice, project, feedback. Can you also suggest three beginner project ideas, but leave the framework empty?",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty learning sections",
+      "Three beginner SQL project ideas",
+      "Ideas framed as options"
+    ],
+    "mustAvoid": [
+      "Claiming any project is completed",
+      "Putting project suggestions into the user’s answer fields"
+    ],
+    "formatRule": "Four blank sections plus exactly three project options in chat.",
+    "referenceAnswer": "Design the SQL learning template and separately suggest three feasible beginner projects.",
+    "rationale": "Suggested content must remain outside the template when the user explicitly requests empty fields.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D070",
+    "hypothesis": "H2",
+    "category": "writing",
+    "context": "empty",
+    "prompt": "Create a personal statement framework around curiosity, preparation, and contribution. Suggest an opening question I could ask myself before I write, not a complete statement.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Three blank sections",
+      "One separate opening reflection question",
+      "Guidance eliciting genuine preparation evidence"
+    ],
+    "mustAvoid": [
+      "Invented awards or qualifications",
+      "A finished personal statement"
+    ],
+    "formatRule": "Three empty sections plus one opening reflection question.",
+    "referenceAnswer": "Preview the statement structure and provide a question that helps the writer find their own opening.",
+    "rationale": "An opening request can seek a writing prompt rather than generated autobiography.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 3
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D071",
+    "hypothesis": "H2",
+    "category": "community",
+    "context": "empty",
+    "prompt": "Help me create a grant-review canvas: need, people affected, proposed approach, evidence, sustainability. Then give a short checklist for using it with a committee.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty grant-review sections",
+      "A separate committee-use checklist",
+      "Questions on evidence and sustainability"
+    ],
+    "mustAvoid": [
+      "Invented funding criteria",
+      "Treating a proposed project as funded"
+    ],
+    "formatRule": "Five blank sections plus a short usage checklist.",
+    "referenceAnswer": "Design the reusable grant-review canvas and explain how a committee can complete it using actual evidence.",
+    "rationale": "The combined artifact should remain a design request with clear supporting instructions.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D072",
+    "hypothesis": "H2",
+    "category": "product",
+    "context": "empty",
+    "prompt": "Design a reusable bug investigation template with Reproduction, Observations, Hypotheses, Tests, and Conclusion. Explain the difference between an observation and a hypothesis in one example.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty investigation sections",
+      "An example explicitly distinguishing observation and hypothesis",
+      "Conclusion guidance requires evidence"
+    ],
+    "mustAvoid": [
+      "Claiming a root cause has been proven",
+      "Running or claiming actual code tests"
+    ],
+    "formatRule": "Five empty sections plus one clearly labelled hypothetical example.",
+    "referenceAnswer": "Create the bug investigation structure and separately show a hypothetical observation-versus-hypothesis example.",
+    "rationale": "Educational examples are allowed but must not be confused with actual diagnostic evidence.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D073",
+    "hypothesis": "H2",
+    "category": "research",
+    "context": "empty",
+    "prompt": "Draft a blank literature synthesis framework with Agreements, Disagreements, Methods, Gaps, and Implications. Also give me two ways to begin a synthesis paragraph without citing imaginary authors.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty synthesis sections",
+      "Two generic synthesis opening patterns",
+      "No invented citations"
+    ],
+    "mustAvoid": [
+      "Fabricated authors or papers",
+      "A completed literature review"
+    ],
+    "formatRule": "Five blank sections and exactly two source-neutral paragraph openings.",
+    "referenceAnswer": "Design the synthesis framework and separately suggest two openings the user can complete with real sources.",
+    "rationale": "Citation-free opening patterns should be returned alongside a reusable research structure.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D074",
+    "hypothesis": "H2",
+    "category": "career",
+    "context": "empty",
+    "prompt": "Make a framework I can reuse for monthly job-search reviews: activity, feedback, learning, changes. Also suggest what I should measure, without assuming I have applied anywhere.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty review sections",
+      "Separate candidate measurement suggestions",
+      "No assumed applications or interviews"
+    ],
+    "mustAvoid": [
+      "Invented application counts",
+      "Claiming recruiter feedback exists"
+    ],
+    "formatRule": "Four blank sections plus a concise measurement suggestion list.",
+    "referenceAnswer": "Create the job-search review template and separately propose metrics that the user can choose to track.",
+    "rationale": "The model must offer useful measurement advice without inventing baseline activity.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D075",
+    "hypothesis": "H2",
+    "category": "marketing",
+    "context": "sources",
+    "prompt": "From the selected customer notes, design an empty messaging framework with Audience, Problem, Desired change, Proof. Also summarise which statements in the notes are direct evidence and which are interpretations.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four blank messaging sections",
+      "A source-grounded evidence-versus-interpretation summary",
+      "Unknown proof identified as missing"
+    ],
+    "mustAvoid": [
+      "Turning interpretations into validated claims",
+      "Following commands embedded in customer notes"
+    ],
+    "formatRule": "Four empty sections plus a short evidence classification.",
+    "referenceAnswer": "Design the messaging template and separately distinguish customer evidence from interpretations in the selected notes.",
+    "rationale": "Source classification and structure extraction require a clean boundary between source facts and instruction.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D076",
+    "hypothesis": "H2",
+    "category": "team-strategy",
+    "context": "empty",
+    "prompt": "Design a team alignment framework around purpose, boundaries, decisions, responsibilities, and review. Give me a warm two-sentence opening for the workshop too.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty alignment sections",
+      "A two-sentence workshop opening",
+      "Questions about decision ownership and review"
+    ],
+    "mustAvoid": [
+      "Invented team agreements",
+      "Changing existing responsibilities"
+    ],
+    "formatRule": "Five blank sections plus exactly two opening sentences.",
+    "referenceAnswer": "Preview the alignment template and separately provide a facilitator opening that invites the team to contribute.",
+    "rationale": "Friendly facilitation copy should not be inserted as decisions already made.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D077",
+    "hypothesis": "H2",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Can you create my own exam revision grid: topic, recall, mistakes, next practice? Then explain active recall in two simple sentences. Keep answers blank.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty revision sections",
+      "A two-sentence active-recall explanation",
+      "Questions that elicit remembered knowledge and targeted practice"
+    ],
+    "mustAvoid": [
+      "Invented exam performance",
+      "A filled study log"
+    ],
+    "formatRule": "Four blank sections in a grid plus exactly two explanatory sentences.",
+    "referenceAnswer": "Design the exam revision grid and explain active recall separately.",
+    "rationale": "A brief factual explanation is supporting chat, not a reason to drop the template request.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D078",
+    "hypothesis": "H2",
+    "category": "portfolio",
+    "context": "empty",
+    "prompt": "I need a four-part framework for an AI demo video: problem, workflow, evidence, limitation. Suggest three honest opening hooks; the project is only a prototype.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty demo sections",
+      "Three opening hooks appropriate to a prototype",
+      "Prototype status and limitations respected"
+    ],
+    "mustAvoid": [
+      "Claiming production deployment",
+      "Invented customer impact or performance"
+    ],
+    "formatRule": "Four blank sections plus three short prototype-aware hooks.",
+    "referenceAnswer": "Create the demo planning template and separately suggest honest hooks that do not exaggerate prototype maturity.",
+    "rationale": "The model must balance persuasive openings with explicit evidence limits.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D079",
+    "hypothesis": "H2",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Create a reusable framework for saying yes or no to side projects: attraction, cost, fit, small test. Also give me three questions I could use to decline kindly.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty project-decision sections",
+      "Three separate courteous conversation questions",
+      "Guidance about limited commitment"
+    ],
+    "mustAvoid": [
+      "Choosing a project without context",
+      "Sending any message to another person"
+    ],
+    "formatRule": "Four blank sections plus exactly three conversation questions.",
+    "referenceAnswer": "Design the side-project decision template and separately provide questions for a considerate decline conversation.",
+    "rationale": "A communication suggestion is not authorization for an external message.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D080",
+    "hypothesis": "H2",
+    "category": "writing",
+    "context": "empty",
+    "prompt": "I want an essay plan template with Claim, Because, Example, Counterpoint, and Return to claim. Show me a one-line dummy example of how the structure works, but keep the actual fields empty.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five requested empty sections",
+      "One explicitly hypothetical one-line example",
+      "Questions supporting evidence and counterargument"
+    ],
+    "mustAvoid": [
+      "Filling actual essay fields with the example",
+      "Treating the dummy example as the user’s belief"
+    ],
+    "formatRule": "Five blank sections plus one labelled hypothetical sentence.",
+    "referenceAnswer": "Create the argument template and demonstrate the sequence outside its writing fields with one hypothetical line.",
+    "rationale": "A worked example should not overwrite a reusable empty scaffold.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D081",
+    "hypothesis": "H2",
+    "category": "research",
+    "context": "selected-note",
+    "prompt": "Use this selected note as context for a fieldwork planner: research question, site, observation, reflection, follow-up. Also list anything I need to clarify before using it.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five blank fieldwork sections",
+      "Separate clarification needs derived from selected context",
+      "Guidance about observation versus interpretation"
+    ],
+    "mustAvoid": [
+      "Invented site permission",
+      "Editing the selected note"
+    ],
+    "formatRule": "Five empty sections plus a short clarification list.",
+    "referenceAnswer": "Design the fieldwork template and separately state missing context necessary to use it responsibly.",
+    "rationale": "A selected note can support design and gap analysis while remaining unchanged.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D082",
+    "hypothesis": "H2",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Make a reusable peer-feedback framework with Notice, Effect, Question, Suggestion. Explain how to phrase feedback on the work rather than on the person.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty peer-feedback sections",
+      "Separate phrasing guidance",
+      "Questions focused on observable work and impact"
+    ],
+    "mustAvoid": [
+      "Invented judgments about a real student",
+      "Personal labels or diagnoses"
+    ],
+    "formatRule": "Four blank sections plus concise feedback phrasing guidance.",
+    "referenceAnswer": "Create the feedback template and separately explain how to keep comments specific to the work.",
+    "rationale": "Norm-setting guidance should support the template rather than replace it.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D083",
+    "hypothesis": "H2",
+    "category": "startup",
+    "context": "empty",
+    "prompt": "Draft a new validation framework for a tiny meal-prep business: assumption, cheapest test, observation, decision. Give me two example assumptions to consider, clearly hypothetical.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty validation sections",
+      "Two clearly hypothetical assumptions",
+      "Decision questions tied to observed evidence"
+    ],
+    "mustAvoid": [
+      "Invented paying customers",
+      "Claiming food safety approval"
+    ],
+    "formatRule": "Four blank sections plus exactly two labelled hypothetical assumptions.",
+    "referenceAnswer": "Design the validation canvas and separately suggest two testable assumptions without claiming business facts.",
+    "rationale": "Hypothesis examples must remain explicit proposals with no fabricated validation.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D084",
+    "hypothesis": "H2",
+    "category": "retrospective",
+    "context": "empty",
+    "prompt": "Design a reusable moving-house reflection framework: plan, surprises, support, lessons. Also propose a gentle opening line for a family discussion.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty reflection sections",
+      "One gentle family-discussion opening",
+      "Neutral questions avoiding blame"
+    ],
+    "mustAvoid": [
+      "Invented family conflicts",
+      "A completed moving-house story"
+    ],
+    "formatRule": "Four blank sections plus one discussion opener.",
+    "referenceAnswer": "Create the reflection structure and separately offer a neutral family conversation opening.",
+    "rationale": "Domestic contexts need the same compound-intent handling as work contexts.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D085",
+    "hypothesis": "H2",
+    "category": "research",
+    "context": "empty",
+    "prompt": "Give me a blank framework for assessing a claim online: exact claim, source, corroboration, uncertainty, next check. Then show the difference between missing evidence and evidence against it.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty claim-checking sections",
+      "A separate explanation distinguishing absence of evidence from counterevidence",
+      "Questions on provenance and corroboration"
+    ],
+    "mustAvoid": [
+      "Fact-checking an unspecified claim as true or false",
+      "Invented authoritative sources"
+    ],
+    "formatRule": "Five blank sections plus a short conceptual distinction.",
+    "referenceAnswer": "Design the claim-assessment framework and separately explain the two evidence states without inventing sources.",
+    "rationale": "The model should provide conceptual help without pretending a real verification occurred.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D086",
+    "hypothesis": "H2",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "I want a new content-learning framework with Publish, Observe, Interpret, Adjust. Explain how this differs from just chasing likes. Keep my content entries blank.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four requested empty sections",
+      "Separate explanation of learning-oriented measures",
+      "Questions tying feedback to intended audience value"
+    ],
+    "mustAvoid": [
+      "Invented engagement analytics",
+      "Assuming likes are always useless"
+    ],
+    "formatRule": "Four blank sections plus a concise comparison.",
+    "referenceAnswer": "Create the content-learning cycle and explain how its questions connect metrics to a learning goal.",
+    "rationale": "Comparison language is supporting explanation rather than a request to populate a marketing board.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D087",
+    "hypothesis": "H2",
+    "category": "career",
+    "context": "empty",
+    "prompt": "Design a career-change evidence map: old skill, new application, small proof, next gap. Add three opening phrases for talking about a transition without apologising for my old career.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty evidence-map sections",
+      "Three separate transition opening phrases",
+      "Respectful treatment of prior experience"
+    ],
+    "mustAvoid": [
+      "Invented certifications or projects",
+      "Dismissive claims about the old career"
+    ],
+    "formatRule": "Four blank sections plus exactly three opening phrases.",
+    "referenceAnswer": "Design the evidence map and separately suggest confident, conditional transition phrases.",
+    "rationale": "A career narrative should preserve the user’s agency and require real evidence.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D088",
+    "hypothesis": "H2",
+    "category": "teaching",
+    "context": "empty",
+    "prompt": "Create a discussion framework for students reading a novel: moment, interpretation, textual evidence, another reading. Also give me two opening questions that do not spoil the plot.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty reading sections",
+      "Two plot-neutral opening questions",
+      "Guidance requiring textual evidence"
+    ],
+    "mustAvoid": [
+      "Invented scenes from an unspecified novel",
+      "Plot spoilers"
+    ],
+    "formatRule": "Four blank sections plus exactly two spoiler-free opening questions.",
+    "referenceAnswer": "Design the literature discussion template and provide two generic openings without assuming a particular novel.",
+    "rationale": "The assistant must satisfy a useful generic request without fabricating source material.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D089",
+    "hypothesis": "H2",
+    "category": "decision",
+    "context": "empty",
+    "prompt": "Make my own negotiation preparation framework: interests, alternatives, limits, questions, next move. Explain what belongs in alternatives, without inventing my bargaining position.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty preparation sections",
+      "Separate explanation of alternatives",
+      "Questions for limits and information gaps"
+    ],
+    "mustAvoid": [
+      "Invented salary, leverage, or offers",
+      "A binding negotiation recommendation"
+    ],
+    "formatRule": "Five blank sections plus a short explanation of alternatives.",
+    "referenceAnswer": "Create the negotiation planning template and explain alternatives in general terms outside the fields.",
+    "rationale": "Explanatory content must not become unsupported personal strategy.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D090",
+    "hypothesis": "H2",
+    "category": "product",
+    "context": "sources",
+    "prompt": "From the selected support notes, design a reusable triage framework with User impact, Frequency, Workaround, Evidence, Owner. Then list what extra evidence the notes do not provide.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty triage sections",
+      "Separate source-grounded missing-evidence list",
+      "Owner guidance without inventing assignments"
+    ],
+    "mustAvoid": [
+      "Invented bug frequencies",
+      "Assigning work to named people without basis"
+    ],
+    "formatRule": "Five blank sections plus a concise evidence-gap list.",
+    "referenceAnswer": "Design the triage structure and separately identify missing facts from the selected support notes.",
+    "rationale": "The assistant must distinguish structure, evidence gaps, and operational assignments.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D091",
+    "hypothesis": "H2",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Please create a blank reading-to-action framework: key idea, evidence, connection, experiment. Also give me a short note-taking instruction I can pin beside it.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty requested sections",
+      "Separate short pinned-instruction text",
+      "Questions distinguishing author claims from personal experiments"
+    ],
+    "mustAvoid": [
+      "Invented book content",
+      "Creating or pinning a note unless requested explicitly"
+    ],
+    "formatRule": "Four blank sections plus one short instruction paragraph in chat.",
+    "referenceAnswer": "Design the reading-to-action template and supply companion instruction text for the user to pin if desired.",
+    "rationale": "The phrasing give me text does not authorize unrelated canvas actions.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D092",
+    "hypothesis": "H2",
+    "category": "research",
+    "context": "empty",
+    "prompt": "I need a reusable experiment log with Setup, Prediction, Observation, Interpretation, Next test. Give an example of a falsifiable prediction separately, marked as hypothetical.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty experiment-log sections",
+      "One explicitly hypothetical falsifiable prediction",
+      "Observation separated from interpretation"
+    ],
+    "mustAvoid": [
+      "Invented experiment results",
+      "Filling the Prediction field with the example"
+    ],
+    "formatRule": "Five blank sections plus one labelled hypothetical prediction.",
+    "referenceAnswer": "Create the experiment log structure and separately demonstrate a testable prediction.",
+    "rationale": "A model should teach a criterion without contaminating the reusable fields.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D093",
+    "hypothesis": "H2",
+    "category": "startup",
+    "context": "empty",
+    "prompt": "Build a custom partnership conversation framework: mutual goal, contribution, risk, boundaries, trial. Suggest a 30-second opening I could adapt; nothing has been agreed yet.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty partnership sections",
+      "A short adaptable conversation opening",
+      "No agreement implied"
+    ],
+    "mustAvoid": [
+      "Invented partner commitments",
+      "A legal contract or guaranteed outcome"
+    ],
+    "formatRule": "Five blank sections plus an opening of roughly 50–75 words.",
+    "referenceAnswer": "Design the partnership discussion template and provide a tentative opening that invites exploration.",
+    "rationale": "Conversational positioning must respect the explicit absence of agreement.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D094",
+    "hypothesis": "H2",
+    "category": "writing",
+    "context": "empty",
+    "prompt": "Create an opinion-column framework with Position, Reasons, Objection, Response, and Invitation. Then offer three different opening techniques, not finished claims about a topic.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty requested sections",
+      "Three distinct opening techniques",
+      "Questions prompting evidence and fair objection"
+    ],
+    "mustAvoid": [
+      "Choosing an opinion for the user",
+      "Invented topical facts"
+    ],
+    "formatRule": "Five blank sections plus exactly three technique descriptions.",
+    "referenceAnswer": "Design the opinion-column framework and separately explain three ways to open without choosing the writer’s position.",
+    "rationale": "The model should provide writing tools rather than unrequested beliefs.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D095",
+    "hypothesis": "H2",
+    "category": "retrospective",
+    "context": "selected-frame",
+    "prompt": "The selected launch board is just background. Design a different lessons-learned template with Decision, Signal, Surprise, Change. Also summarise which questions we should ask next, not what the answers are.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A separate four-section empty template",
+      "A source-grounded list of next questions",
+      "The selected launch board preserved"
+    ],
+    "mustAvoid": [
+      "Writing into the selected launch framework",
+      "Invented launch results"
+    ],
+    "formatRule": "Four new blank sections plus a short question list.",
+    "referenceAnswer": "Design a separate lessons-learned framework and identify useful next questions from the selected launch context.",
+    "rationale": "Selected context plus a new design request must not authorize writes to the old framework.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D096",
+    "hypothesis": "H2",
+    "category": "career",
+    "context": "locked-note",
+    "prompt": "Please use the locked note only as background. Create a new interview-prep framework around motivation, examples, trade-offs, questions. Suggest two honest opening lines without editing the locked note.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four new empty interview sections",
+      "Two conditional opening lines",
+      "Locked note remains unchanged"
+    ],
+    "mustAvoid": [
+      "Unlocking or rewriting the selected note",
+      "Invented career achievements"
+    ],
+    "formatRule": "Four blank sections plus exactly two opening options.",
+    "referenceAnswer": "Create a separate interview template and offer two grounded or conditional openings while preserving the locked source.",
+    "rationale": "Compound requests must honour read-only context and prevent target confusion.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D097",
+    "hypothesis": "H2",
+    "category": "community",
+    "context": "empty",
+    "prompt": "Design a volunteer welcome framework with Purpose, First contribution, Support, Boundaries, Feedback. Add a friendly welcome paragraph I could adapt, but no names or dates.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty welcome sections",
+      "A separate adaptable welcome paragraph",
+      "No names or dates invented"
+    ],
+    "mustAvoid": [
+      "Claiming a volunteer accepted responsibilities",
+      "A filled onboarding record"
+    ],
+    "formatRule": "Five blank sections plus one short welcome paragraph.",
+    "referenceAnswer": "Design the volunteer onboarding structure and separately provide generic welcome copy.",
+    "rationale": "Reusable guidance and companion copy should be separate artifacts in one response.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D098",
+    "hypothesis": "H2",
+    "category": "learning",
+    "context": "empty",
+    "prompt": "Make a 4-box framework for learning from a YouTube lecture: claim, example, question, application. Also tell me what to record if there is no transcript. I have not pasted a video link.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four empty lecture-note sections",
+      "Separate advice for taking notes without a transcript",
+      "No claim to have accessed a video"
+    ],
+    "mustAvoid": [
+      "Invented video summary",
+      "Requesting credentials or pretending a transcript exists"
+    ],
+    "formatRule": "Four blank sections plus a short no-transcript note-taking suggestion.",
+    "referenceAnswer": "Create the lecture-note framework and separately suggest manual note-taking steps without claiming video access.",
+    "rationale": "The model can answer a workflow question without fabricating unavailable source content.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D099",
+    "hypothesis": "H2",
+    "category": "marketing",
+    "context": "empty",
+    "prompt": "Design my own research-to-copy framework with Quote, Need, Claim, Proof, Test. Give two examples of cautious claim wording, clearly made up for illustration.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty research-to-copy sections",
+      "Two explicitly illustrative cautious phrases",
+      "Questions linking claims to real proof"
+    ],
+    "mustAvoid": [
+      "Fabricated customer quotes presented as real",
+      "Guaranteed marketing outcomes"
+    ],
+    "formatRule": "Five blank sections plus exactly two labelled illustrative phrases.",
+    "referenceAnswer": "Design the messaging framework and separately demonstrate cautious wording without manufacturing evidence.",
+    "rationale": "Illustration permissions should not become permission to create fake research.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D100",
+    "hypothesis": "H2",
+    "category": "personal-reflection",
+    "context": "empty",
+    "prompt": "Create a blank annual reflection framework called What Changed: expectations, turning points, choices, evidence, next chapter. Offer three possible opening prompts, not an invented story of my year.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Title What Changed",
+      "Five empty requested sections",
+      "Three separate opening prompts"
+    ],
+    "mustAvoid": [
+      "Invented life events",
+      "A completed first-person annual story"
+    ],
+    "formatRule": "Five blank sections plus exactly three reflective opening prompts.",
+    "referenceAnswer": "Design the annual reflection template and separately offer prompts that elicit the user’s own memories.",
+    "rationale": "Opening prompts should preserve autobiographical truth while supporting a reusable structure.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ],
+    "requiredOutputs": [
+      "framework-template",
+      "chat-answer"
+    ]
+  },
+  {
+    "id": "D101",
+    "hypothesis": "H3",
+    "category": "career-essay",
+    "context": "prior-board",
+    "prompt": "New topic: design a blank framework for a 500-word essay about a career change. Use motivation, skills, and portfolio as three paragraphs. Do not reuse the board we discussed earlier.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "A separate new three-section essay template",
+      "A 500-word writing goal",
+      "Questions about actual career evidence"
+    ],
+    "mustAvoid": [
+      "Filling or editing the earlier conversation’s framework",
+      "Invented career achievements"
+    ],
+    "formatRule": "Exactly three empty essay sections with guidance.",
+    "referenceAnswer": "Create a new career essay template with the three requested parts, independently of the older board.",
+    "rationale": "Fresh design intent must override the previous mutation target.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 3
+      }
+    ]
+  },
+  {
+    "id": "D102",
+    "hypothesis": "H3",
+    "category": "research",
+    "context": "prior-board",
+    "prompt": "Leave that earlier analysis as it is. I now want a reusable reading framework with four parts: question, method, result, limitation. Empty writing spaces please.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four new empty reading sections",
+      "Questions eliciting evidence from a paper",
+      "Earlier analysis preserved"
+    ],
+    "mustAvoid": [
+      "Writing the reading prompts into the old board",
+      "Invented paper findings"
+    ],
+    "formatRule": "Four empty sections in a new template.",
+    "referenceAnswer": "Design a separate paper-reading framework and preserve the earlier analysis.",
+    "rationale": "An explicit topic reset must clear stale frame targeting.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D103",
+    "hypothesis": "H3",
+    "category": "teaching",
+    "context": "prior-board",
+    "prompt": "Different task now: create my own five-stage workshop planner from invitation to warm-up, practice, sharing, and follow-up. I will fill it later.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five new ordered workshop sections",
+      "Practical facilitator writing questions",
+      "Blank content fields"
+    ],
+    "mustAvoid": [
+      "Continuing the old board’s topic",
+      "Invented workshop attendance or outcomes"
+    ],
+    "formatRule": "Five empty stages in a flow.",
+    "referenceAnswer": "Create the new workshop-planning template without carrying forward old framework content.",
+    "rationale": "A change of domain should be enough to establish a fresh design request.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D104",
+    "hypothesis": "H3",
+    "category": "startup",
+    "context": "prior-board",
+    "prompt": "That previous canvas is finished. Give me a new reusable founder reflection map: assumption, evidence, decision, consequence. No answers filled in.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four new empty reflection sections",
+      "Questions separating assumptions and evidence",
+      "Previous canvas preserved"
+    ],
+    "mustAvoid": [
+      "Appending founder questions to the old framework",
+      "Invented business results"
+    ],
+    "formatRule": "Four empty sections in a separate template.",
+    "referenceAnswer": "Design a fresh founder reflection framework and leave the completed canvas untouched.",
+    "rationale": "Completed prior work must not become an implicit target of a new request.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D105",
+    "hypothesis": "H3",
+    "category": "learning",
+    "context": "prior-board",
+    "prompt": "Can we switch to designing a language-learning framework? I want Input, Notice, Try, Feedback in a cycle. This is a separate template from the one above.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four new named language-learning stages",
+      "A cycle layout",
+      "Empty reusable fields"
+    ],
+    "mustAvoid": [
+      "Renaming or replacing the earlier template",
+      "Invented language proficiency"
+    ],
+    "formatRule": "Four blank cycle stages.",
+    "referenceAnswer": "Create a separate language-learning cycle with the requested labels and questions.",
+    "rationale": "The assistant must respect a new design even when the prior conversation also involved a template.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D106",
+    "hypothesis": "H3",
+    "category": "decision",
+    "context": "prior-board",
+    "prompt": "Start a fresh decision guide for buying equipment: real need, constraints, alternatives, evidence, revisit rule. Do not fill any existing framework.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five empty decision sections",
+      "Questions about alternatives and reconsideration conditions",
+      "A new template rather than an old target write"
+    ],
+    "mustAvoid": [
+      "Invented equipment prices",
+      "Editing existing framework sections"
+    ],
+    "formatRule": "Five blank sections with writing questions.",
+    "referenceAnswer": "Design a fresh equipment decision template with no purchase recommendation filled in.",
+    "rationale": "Negative targeting constraints should be carried into the proposed action.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D107",
+    "hypothesis": "H3",
+    "category": "retrospective",
+    "context": "prior-board",
+    "prompt": "Separate from our last discussion, make a monthly personal review pattern with four boxes: energy, progress, friction, next experiment. Keep the answers blank.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Four new personal review sections",
+      "Questions about observations and a small next test",
+      "Empty answers"
+    ],
+    "mustAvoid": [
+      "Reusing facts from the old board as personal experience",
+      "Editing the old canvas"
+    ],
+    "formatRule": "Four blank sections in a compact grid.",
+    "referenceAnswer": "Create the separate personal-review template and do not import old topic facts.",
+    "rationale": "Stale context can corrupt content even if the mutation target is new.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D108",
+    "hypothesis": "H3",
+    "category": "marketing",
+    "context": "prior-board",
+    "prompt": "I am done with that board. Design a new reusable brief for volunteer recruitment: purpose, audience, contribution, support, invitation. Just questions for now.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five new recruitment brief sections",
+      "Question-only guidance",
+      "Earlier board left unchanged"
+    ],
+    "mustAvoid": [
+      "Filled recruitment copy",
+      "Invented volunteer numbers or commitments"
+    ],
+    "formatRule": "Five empty sections with questions only.",
+    "referenceAnswer": "Design a new volunteer recruitment template with the specified structure.",
+    "rationale": "Done with that board is a reset signal rather than permission to revise it.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D109",
+    "hypothesis": "H3",
+    "category": "portfolio",
+    "context": "prior-board",
+    "prompt": "Now I need a different framework for documenting a coding experiment. Use Setup, Prediction, Observation, Interpretation, and Next test. Do not put it in the previous framework.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Five new empty experiment sections",
+      "Prediction distinguished from observation",
+      "A separate reusable template"
+    ],
+    "mustAvoid": [
+      "Writing into the old framework",
+      "Invented test outcomes"
+    ],
+    "formatRule": "Five blank sections in the specified order.",
+    "referenceAnswer": "Create a separate coding experiment template and preserve prior framework contents.",
+    "rationale": "New structure must be authorised independently from the previous target.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 5
+      }
+    ]
+  },
+  {
+    "id": "D110",
+    "hypothesis": "H3",
+    "category": "writing",
+    "context": "prior-board",
+    "prompt": "Switch topics. Design an empty story-planning template called A Small Change, with Before, Disruption, Choice, and After. It should be reusable for fictional stories.",
+    "expectedRoutes": [
+      "design"
+    ],
+    "mustInclude": [
+      "Title A Small Change",
+      "Four empty narrative sections",
+      "Reusable fiction-writing questions"
+    ],
+    "mustAvoid": [
+      "Continuing the older board’s subject",
+      "Writing a full story instead of a template"
+    ],
+    "formatRule": "Four blank narrative sections under the requested title.",
+    "referenceAnswer": "Create the fresh fiction template without carrying over the previous board’s facts or labels.",
+    "rationale": "Explicit narrative design should not inherit a recent build or fill route.",
+    "outputChecks": [
+      {
+        "type": "section-count",
+        "value": 4
+      }
+    ]
+  },
+  {
+    "id": "D111",
+    "hypothesis": "H3",
+    "category": "marketing",
+    "context": "prior-board",
+    "prompt": "New board please: use SWOT for a community bookshop. We have loyal readers, limited storage, a nearby school partnership opportunity, and online price competition.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new SWOT board instance",
+      "All four supplied bookshop factors",
+      "Existing SWOT structure"
+    ],
+    "mustAvoid": [
+      "Revising the previous board",
+      "A new custom SWOT template"
+    ],
+    "formatRule": "One new populated SWOT draft with four existing sections.",
+    "referenceAnswer": "Build a fresh bookshop SWOT using only the supplied factors and leave the old board unchanged.",
+    "rationale": "A named builtin after a topic reset should remain build rather than a stale fill."
+  },
+  {
+    "id": "D112",
+    "hypothesis": "H3",
+    "category": "personal-planning",
+    "context": "prior-board",
+    "prompt": "Forget the previous task for this request. Make an Eisenhower Matrix for submitting a form due tonight, planning next month’s reading, and responding to a nonurgent message.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new Eisenhower Matrix",
+      "All three tasks included",
+      "Urgency based on the explicit deadline"
+    ],
+    "mustAvoid": [
+      "Deleting the prior task or board",
+      "Invented additional deadlines"
+    ],
+    "formatRule": "One new builtin matrix draft with tentative priority placement.",
+    "referenceAnswer": "Create a fresh task-priority board; interpret forget as conversational context reset, not deletion.",
+    "rationale": "Reset language must not trigger destructive canvas operations."
+  },
+  {
+    "id": "D113",
+    "hypothesis": "H3",
+    "category": "learning",
+    "context": "prior-board",
+    "prompt": "Let’s start another board using SMART Goals. I want to build one small SQL project in four weeks, with two study sessions weekly; the project topic is undecided.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new SMART Goals board",
+      "Four weeks and two weekly sessions",
+      "Project topic marked undecided"
+    ],
+    "mustAvoid": [
+      "Filling the old board",
+      "Invented project completion"
+    ],
+    "formatRule": "One new SMART Goals draft with unresolved topic visible.",
+    "referenceAnswer": "Build a fresh SMART learning plan with the supplied time constraints.",
+    "rationale": "A fresh builtin request must not inherit a previous design-only mode."
+  },
+  {
+    "id": "D114",
+    "hypothesis": "H3",
+    "category": "operations",
+    "context": "prior-board",
+    "prompt": "Separate board: use Personal Kanban for the next volunteer event. To do: book the room. Doing: draft the invitation. Done: choose the theme.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new Personal Kanban",
+      "Three tasks in the exact stated statuses",
+      "Earlier board unchanged"
+    ],
+    "mustAvoid": [
+      "Moving old board cards",
+      "Marking the room booking completed"
+    ],
+    "formatRule": "One new three-column Kanban draft.",
+    "referenceAnswer": "Build the event Kanban as a separate board draft with faithful statuses.",
+    "rationale": "New task state should not merge with old conversation work items."
+  },
+  {
+    "id": "D115",
+    "hypothesis": "H3",
+    "category": "retrospective",
+    "context": "prior-board",
+    "prompt": "New subject. Make a Start / Stop / Continue board for our study group: keep short quizzes, stop last-minute topic changes, start rotating who explains the solution.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new Start / Stop / Continue board",
+      "Each supplied improvement in the matching category",
+      "No carryover of older team facts"
+    ],
+    "mustAvoid": [
+      "Editing the earlier retrospective",
+      "Invented group feedback"
+    ],
+    "formatRule": "One new populated builtin retrospective.",
+    "referenceAnswer": "Build a separate study-group retrospective using the three explicit suggestions.",
+    "rationale": "Repeated framework use across different topics should create a new instance when requested."
+  },
+  {
+    "id": "D116",
+    "hypothesis": "H3",
+    "category": "career",
+    "context": "prior-board",
+    "prompt": "Please start fresh with Pros / Cons for a part-time internship while studying. Known benefit: work experience. Known concern: fewer study hours. Pay is unknown.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new Pros / Cons board",
+      "Experience and reduced study time",
+      "Pay marked unknown"
+    ],
+    "mustAvoid": [
+      "Invented salary",
+      "Writing into the earlier framework"
+    ],
+    "formatRule": "One new populated Pros / Cons draft.",
+    "referenceAnswer": "Build a fresh internship trade-off board with pay left unresolved.",
+    "rationale": "Fresh comparison intent should clear the earlier mutation target and facts."
+  },
+  {
+    "id": "D117",
+    "hypothesis": "H3",
+    "category": "product",
+    "context": "prior-board",
+    "prompt": "Different project: build an OODA Loop for a confusing checkout page. Known observation: two testers could not find the discount field. Any causes should stay hypotheses.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new OODA Loop",
+      "Two testers’ difficulty as the supplied observation",
+      "Possible causes explicitly tentative"
+    ],
+    "mustAvoid": [
+      "Claiming statistical significance",
+      "Reusing old project metrics"
+    ],
+    "formatRule": "One new OODA draft separating observation, hypothesis, and test.",
+    "referenceAnswer": "Create a new checkout OODA draft and keep causal explanations unverified.",
+    "rationale": "Project changes should isolate both target selection and evidence provenance."
+  },
+  {
+    "id": "D118",
+    "hypothesis": "H3",
+    "category": "marketing",
+    "context": "prior-board",
+    "prompt": "A fresh AIDA board for a free repair workshop, please. Target people repairing a household item for the first time; the action is registering interest. Leave the date undecided.",
+    "expectedRoutes": [
+      "build"
+    ],
+    "mustInclude": [
+      "A new AIDA Funnel",
+      "First-time household repair audience",
+      "Register-interest action and undecided date"
+    ],
+    "mustAvoid": [
+      "Invented workshop date or signup link",
+      "Filling the earlier campaign board"
+    ],
+    "formatRule": "One new AIDA draft with tentative messaging.",
+    "referenceAnswer": "Build a separate AIDA workshop board that preserves the unknown date.",
+    "rationale": "Fresh-board language should prevent accidental revision of a prior campaign."
+  },
+  {
+    "id": "D119",
+    "hypothesis": "H3",
+    "category": "writing-advice",
+    "context": "prior-board",
+    "prompt": "New topic, just answer here: what are three ways to open a career-change essay without claiming results I do not have? Do not create or change anything on the board.",
+    "expectedRoutes": [
+      "answer"
+    ],
+    "mustInclude": [
+      "Three distinct opening approaches",
+      "Evidence-aware wording",
+      "A chat-only response"
+    ],
+    "mustAvoid": [
+      "Any board creation or mutation",
+      "Invented career outcomes"
+    ],
+    "formatRule": "Exactly three concise suggestions in chat, no proposed board writes.",
+    "referenceAnswer": "Explain three honest opening approaches without using the earlier framework as a write target.",
+    "rationale": "A fresh question must not inherit the most recent board-mutating action."
+  },
+  {
+    "id": "D120",
+    "hypothesis": "H3",
+    "category": "framework-explanation",
+    "context": "prior-board",
+    "prompt": "Before we create anything else, explain in two sentences how a reusable framework differs from the notes I put inside it. Leave the previous board untouched.",
+    "expectedRoutes": [
+      "answer"
+    ],
+    "mustInclude": [
+      "A clear distinction between structure and instance content",
+      "Exactly two explanatory sentences",
+      "No board changes"
+    ],
+    "mustAvoid": [
+      "Creating another template",
+      "Editing previous framework writing"
+    ],
+    "formatRule": "Exactly two sentences in chat.",
+    "referenceAnswer": "Explain reusable structure versus filled notes without proposing or applying mutations.",
+    "rationale": "A conceptual follow-up after board work should route to conversation rather than fill."
+  }
+]

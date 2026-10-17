@@ -100,6 +100,8 @@ To create a completely new framework from chat, select your Markdown material in
 
 > Use the selected Markdown document to design a reusable custom framework. Create 4–6 sections with clear names and practical writing questions. Keep the sections empty for me to complete.
 
+For broader prompt testing, see the [300-request diagnostic library](docs/testing/assistant-generation/README.md), with hypothesis-based cases, reference outcomes, live-provider validation, and documented limits. The library includes desired behaviors that the current assistant does not yet support reliably.
+
 The assistant previews the custom structure without changing your board. Choose **Edit & save framework** to review its names, layout, and writing questions, then save it to your library or add it to the board. Unfinished custom drafts recover in the assistant after reopening. Instructions inside imported documents are reference material, not commands for the assistant to execute.
 
 - Draft a board, fill or expand a framework, or revise a note using an explicit goal and selected context.

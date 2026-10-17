@@ -3,9 +3,9 @@ import { createPortal } from 'react-dom'
 import { ArrowDown, ArrowUp, FilePlus2, LoaderCircle, Plus, Sparkles, Square, Trash2, X } from 'lucide-react'
 import type { CustomFrameworkTemplate, FrameworkLayout } from '../types'
 import { colors, fonts } from '../lib/designTokens'
-import { buildFrameworkDesignerRequest, createCustomFrameworkTemplate, validateFrameworkDesign, type FrameworkSectionDraft } from '../lib/customFrameworks'
+import { buildFrameworkDesignerRequest, createCustomFrameworkTemplate, validateFrameworkDesignReply, type FrameworkSectionDraft } from '../lib/customFrameworks'
 import type { AssistantSource } from '../lib/assistantPlan'
-import { generateNativeAssistant, nativeAIStatus, type NativeAIStatus } from '../lib/nativeAssistant'
+import { generateValidatedAssistantDraft, nativeAIStatus, type NativeAIStatus } from '../lib/nativeAssistant'
 import FrameworkLayoutPreview, { FrameworkLayoutThumbnail } from './FrameworkLayoutPreview'
 import { clearFrameworkDesignerDraft, frameworkDesignerDraftKey, readFrameworkDesignerDraft, writeFrameworkDesignerDraft } from '../lib/frameworkDesignerDraft'
 
@@ -71,6 +71,7 @@ export default function FrameworkDesignerModal({ open, boardId, dark, sources, i
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [receiving, setReceiving] = useState(false)
   const [progress, setProgress] = useState(initialDesign ? 'Framework ready to edit. Review the preview, then save it.' : '')
+  const [designResponse, setDesignResponse] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(!!recoveredDraft || !!initialDesign)
@@ -137,20 +138,22 @@ export default function FrameworkDesignerModal({ open, boardId, dark, sources, i
     controllerRef.current = controller
     setElapsedSeconds(0)
     setReceiving(false)
+    setDesignResponse('')
     setBusy(true)
     setProgress('Request started · waiting for an AI response…')
     try {
       const request = buildFrameworkDesignerRequest(boardId, goal, designSources, layout)
       let receivedResponse = false
-      const output = await generateNativeAssistant(request, controller.signal, chunk => {
+      const { template, response } = await generateValidatedAssistantDraft(request, controller.signal, output =>
+        validateFrameworkDesignReply(output, undefined, layout), chunk => {
         if (!chunk || receivedResponse || controller.signal.aborted) return
         receivedResponse = true
         setReceiving(true)
         setProgress('AI response arriving · designing your sections…')
-      })
+      }, () => setProgress('The first draft did not fit your brief. Correcting it once…'))
       if (controller.signal.aborted) return
       setProgress('Response received · checking the framework…')
-      const template = validateFrameworkDesign(output, undefined, layout)
+      setDesignResponse(response)
       setLabel(template.label)
       setPurpose(template.purpose)
       setLayout(template.layout)
@@ -377,7 +380,7 @@ export default function FrameworkDesignerModal({ open, boardId, dark, sources, i
       <div className="ib-framework-body">
         <div className="ib-framework-brief">
           <label htmlFor="ib-framework-brief">What should it help you think through?</label>
-          <textarea ref={briefRef} id="ib-framework-brief" className="ib-framework-control" disabled={working} maxLength={3000} value={goal} onChange={event => { setGoal(event.target.value); setError(''); setSaved(false); setHasUnsavedChanges(true) }} placeholder="For example: review a campaign idea before deciding whether to launch it." />
+          <textarea ref={briefRef} id="ib-framework-brief" className="ib-framework-control" disabled={working} maxLength={3000} value={goal} onChange={event => { setGoal(event.target.value); setDesignResponse(''); setError(''); setSaved(false); setHasUnsavedChanges(true) }} placeholder="For example: review a campaign idea before deciding whether to launch it." />
           <p className="ib-framework-help">Describe the decisions, stages, or questions the framework should organize.</p>
           {recoveredDraft && <p className="ib-framework-help" role="status">Recovered your local draft. Review the material and allow sharing again before using AI.</p>}
           <strong className="ib-framework-step">Choose a shape</strong>
@@ -447,6 +450,7 @@ export default function FrameworkDesignerModal({ open, boardId, dark, sources, i
         </div>
         <div className="ib-framework-preview" aria-busy={working}>
           <strong style={{ fontSize: 13 }}>Preview &amp; edit</strong>
+          {designResponse && <p role="status" style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}><strong>AI suggestion:</strong> {designResponse}</p>}
           <FrameworkLayoutPreview template={previewTemplate} dark={dark} />
           {!sections.length && <p className="ib-framework-help">Example preview. Design with AI or add your own sections below.</p>}
           <label>Framework name

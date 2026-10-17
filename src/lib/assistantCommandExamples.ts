@@ -9,6 +9,7 @@ export type AssistantCommandIntent =
   | 'organize'
   | 'sources'
   | 'canvas'
+  | 'conversation'
 
 export const ASSISTANT_COMMAND_INTENTS: readonly AssistantCommandIntent[] = [
   'emphasis',
@@ -21,6 +22,7 @@ export const ASSISTANT_COMMAND_INTENTS: readonly AssistantCommandIntent[] = [
   'organize',
   'sources',
   'canvas',
+  'conversation',
 ]
 
 export type AssistantCommandExample = {
@@ -29,6 +31,12 @@ export type AssistantCommandExample = {
 }
 
 export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
+  { intent: 'conversation', utterance: 'What framework would fit this essay best?' },
+  {
+    intent: 'conversation',
+    utterance: 'Can you suggest a few openings without changing the board?',
+  },
+  { intent: 'conversation', utterance: 'Explain the difference between these approaches.' },
   { intent: 'emphasis', utterance: 'Highlight the three strongest ideas on this board.' },
   {
     intent: 'emphasis',

@@ -1,5 +1,5 @@
 // src/components/HomeScreen.tsx
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import type { LocalUser, Board, Card, Group, BoardGroup } from '../types'
 import * as db from '../lib/db'
 import BoardThumbnail from './BoardThumbnail'
@@ -8,6 +8,7 @@ import { BOARD_TEMPLATES, buildBoardTemplatePayload, type BoardTemplateId } from
 import { Download, FolderPlus, GripVertical, Moon, Pencil, Plus, Sun, Trash2, Upload } from 'lucide-react'
 import { colors, fonts, radii } from '../lib/designTokens'
 import { createWorkspaceBackup, restoreWorkspaceBackup } from '../lib/workspaceBackup'
+import { sortBoardsByRecentActivity } from '../lib/boardRecency'
 
 interface Props {
   user: LocalUser
@@ -264,13 +265,15 @@ export default function HomeScreen({ user, onOpenBoard, dark, onToggleDark }: Pr
       .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
       .slice(0, 3)
 
+  const recentBoards = useMemo(() => sortBoardsByRecentActivity(boards, allCards), [boards, allCards])
+
   const bg   = dark ? colors.canvasDark : colors.canvasLight
   const bdr  = dark ? colors.borderDark : colors.borderLight
   const txt  = dark ? '#F7F7F2' : colors.ink
   const sub  = dark ? '#AAB5C9' : '#5F687B'
 
   const assignedIds = new Set(boardGroups.map(bg => bg.board_id))
-  const uncategorized = boards.filter(b => !assignedIds.has(b.id))
+  const uncategorized = recentBoards.filter(b => !assignedIds.has(b.id))
 
   const renderBoardCard = (b: Board) => (
     <div
@@ -445,7 +448,7 @@ export default function HomeScreen({ user, onOpenBoard, dark, onToggleDark }: Pr
           <>
             {groups.map(group => {
               const ids = boardGroups.filter(bg => bg.group_id === group.id).map(bg => bg.board_id)
-              const groupBoards = boards.filter(b => ids.includes(b.id))
+              const groupBoards = recentBoards.filter(b => ids.includes(b.id))
               return (
                 <div
                   key={group.id}

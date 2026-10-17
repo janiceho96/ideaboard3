@@ -37,6 +37,12 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
     utterance: 'Can you suggest a few openings without changing the board?',
   },
   { intent: 'conversation', utterance: 'Explain the difference between these approaches.' },
+  { intent: 'conversation', utterance: 'Summarize this board without changing anything.' },
+  { intent: 'conversation', utterance: 'What important questions are still unanswered?' },
+  { intent: 'conversation', utterance: 'Which framework best fits this problem, and why?' },
+  { intent: 'conversation', utterance: 'What are the main trade-offs in these notes?' },
+  { intent: 'conversation', utterance: 'Which idea seems strongest based on the notes?' },
+  { intent: 'conversation', utterance: 'How would you approach this decision using the material here?' },
   { intent: 'emphasis', utterance: 'Highlight the three strongest ideas on this board.' },
   {
     intent: 'emphasis',
@@ -69,7 +75,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'find', utterance: 'Find any open questions about distribution.' },
   { intent: 'find', utterance: 'Search these notes for partner feedback.' },
   { intent: 'find', utterance: "Where did we capture the competitor's new offer?" },
-  { intent: 'find', utterance: 'Find ideas that mention accessibility requirements.' },
 
   { intent: 'create', utterance: 'Create a note with three campaign concepts for students.' },
   { intent: 'create', utterance: 'Draft an action card for validating the pricing assumption.' },
@@ -80,7 +85,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'create', utterance: 'Make a note for the proposed positioning statement.' },
   { intent: 'create', utterance: 'Create a checklist for preparing the stakeholder review.' },
   { intent: 'create', utterance: "Add a card that summarizes the team's next steps." },
-  { intent: 'create', utterance: 'Draft a set of interview questions for new users.' },
 
   {
     intent: 'revise',
@@ -97,10 +101,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   },
   { intent: 'revise', utterance: 'Turn the "Research summary" note into three crisp bullets.' },
   { intent: 'revise', utterance: 'Improve the title and opening of "Retention ideas".' },
-  {
-    intent: 'revise',
-    utterance: 'Revise the "Success measures" note to separate leading and lagging indicators.',
-  },
 
   { intent: 'framework', utterance: 'Build a SWOT for the proposed campus launch.' },
   { intent: 'framework', utterance: 'Organize this strategy using a customer journey framework.' },
@@ -120,7 +120,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
     utterance: 'Compare the selected frameworks and choose the best fit for this goal.',
   },
   { intent: 'framework', utterance: 'Add a lean canvas for the subscription proposal.' },
-  { intent: 'framework', utterance: 'Use a decision tree to map the support escalation options.' },
 
   { intent: 'analyze', utterance: 'Compare these concepts against the same success criteria.' },
   { intent: 'analyze', utterance: 'Identify themes that recur across the interview notes.' },
@@ -143,7 +142,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
     utterance: 'What patterns distinguish feedback from new and returning customers?',
   },
   { intent: 'analyze', utterance: 'Rank the options by expected impact and confidence.' },
-  { intent: 'analyze', utterance: 'Explain how the selected evidence changes the recommendation.' },
 
   { intent: 'actions', utterance: 'Move "Research findings" to the left of "Campaign options".' },
   { intent: 'actions', utterance: 'Place "Budget assumptions" below "Launch plan".' },
@@ -160,7 +158,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'actions', utterance: 'Move "Risks" above "Milestones".' },
   { intent: 'actions', utterance: 'Delete the unlocked note titled "Scratch ideas".' },
   { intent: 'actions', utterance: 'Turn the agreed follow-up into an action item.' },
-  { intent: 'actions', utterance: 'Record "Test the prototype" as the next action.' },
 
   { intent: 'organize', utterance: 'Group these notes by customer problem.' },
   { intent: 'organize', utterance: 'Sort the ideas into short-term and long-term opportunities.' },
@@ -174,7 +171,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'organize', utterance: 'Put related notes about onboarding together.' },
   { intent: 'organize', utterance: 'Organize these insights by customer segment.' },
   { intent: 'organize', utterance: 'Split these ideas into proven, assumed, and unanswered.' },
-  { intent: 'organize', utterance: 'Create clear categories for the notes on this board.' },
 
   {
     intent: 'sources',
@@ -188,10 +184,6 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'sources', utterance: 'Pull the key figures from the selected spreadsheet notes.' },
   { intent: 'sources', utterance: 'Ground this draft in the attached competitor analysis.' },
   { intent: 'sources', utterance: 'Which selected sources support the pricing recommendation?' },
-  {
-    intent: 'sources',
-    utterance: 'Use the latest workshop notes and show where each point came from.',
-  },
 
   { intent: 'canvas', utterance: 'Lock these campaign notes before the review.' },
   { intent: 'canvas', utterance: 'Unlock the launch plan note so I can edit it.' },
@@ -202,14 +194,13 @@ export const ASSISTANT_COMMAND_EXAMPLES: readonly AssistantCommandExample[] = [
   { intent: 'canvas', utterance: 'Set a due date of 2026-11-01 on the launch task.' },
   { intent: 'canvas', utterance: 'Arrange the selected notes in a row.' },
   { intent: 'canvas', utterance: 'Put these notes in reading order from left to right.' },
-  { intent: 'canvas', utterance: 'Space these notes evenly in a grid.' },
 ]
 
 const MAX_EXAMPLES_PER_INTENT = 4
 const EXAMPLE_INDICES: Partial<Record<AssistantCommandIntent, number[]>> = {
   emphasis: [0, 1, 2, 7],
   actions: [0, 2, 4, 5],
-  organize: [0, 1, 4, 9],
+  organize: [0, 1, 4, 8],
   canvas: [0, 2, 4, 6],
 }
 
